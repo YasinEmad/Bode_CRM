@@ -113,40 +113,67 @@ export default function SalesDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Sales Dashboard</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Sales Dashboard</h1>
+          <p className="text-slate-400">Track your leads and progress at a glance</p>
+        </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <p className="text-gray-600 text-sm">Total Leads</p>
-            <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm font-medium">Total Leads</p>
+                <p className="text-4xl font-bold mt-2">{stats.total}</p>
+              </div>
+              <div className="text-5xl opacity-20">📋</div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <p className="text-gray-600 text-sm">Connected</p>
-            <p className="text-3xl font-bold text-green-600">{stats.connected}</p>
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-emerald-100 text-sm font-medium">Connected</p>
+                <p className="text-4xl font-bold mt-2">{stats.connected}</p>
+              </div>
+              <div className="text-5xl opacity-20">✓</div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <p className="text-gray-600 text-sm">Negotiation</p>
-            <p className="text-3xl font-bold text-yellow-600">{stats.negotiation}</p>
+          <div className="bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-amber-100 text-sm font-medium">Negotiation</p>
+                <p className="text-4xl font-bold mt-2">{stats.negotiation}</p>
+              </div>
+              <div className="text-5xl opacity-20">💬</div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <p className="text-gray-600 text-sm">Closed</p>
-            <p className="text-3xl font-bold text-purple-600">{stats.closed}</p>
+          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm font-medium">Closed</p>
+                <p className="text-4xl font-bold mt-2">{stats.closed}</p>
+              </div>
+              <div className="text-5xl opacity-20">🎉</div>
+            </div>
           </div>
         </div>
 
         {/* My Leads */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">My Assigned Leads</h2>
+        <div className="mb-8">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">My Assigned Leads</h2>
+          <p className="text-slate-400">Manage and progress your leads</p>
+        </div>
 
         {loadingLeads ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader size={32} className="animate-spin text-blue-600" />
+          <div className="flex items-center justify-center py-20">
+            <Loader size={40} className="animate-spin text-blue-400" />
           </div>
         ) : leads.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600 text-lg">No leads assigned yet</p>
+          <div className="bg-slate-700 rounded-2xl shadow-xl p-16 text-center border border-slate-600">
+            <p className="text-slate-300 text-lg">🤷 No leads assigned yet</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

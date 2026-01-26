@@ -3,26 +3,51 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, DollarSign, Clock } from 'lucide-react';
+import { useToast } from '@/components/Toast';
+import { CheckCircle, XCircle, Loader, Clock, AlertCircle } from 'lucide-react';
 
 interface Commission {
   _id: string;
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId: { name: string; value: number };
+  dealId: { _id: string; name: string; budget: number };
+  rejectionNote?: string;
+  createdAt?: string;
+  approvalDate?: string;
 }
+
+const statusColors: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+  pending: {
+    bg: 'bg-yellow-100',
+    text: 'text-yellow-800',
+    icon: <Clock size={20} className="text-yellow-600" />,
+  },
+  approved: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    icon: <CheckCircle size={20} className="text-green-600" />,
+  },
+  rejected: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    icon: <XCircle size={20} className="text-red-600" />,
+  },
+  paid: {
+    bg: 'bg-blue-100',
+    text: 'text-blue-800',
+    icon: <CheckCircle size={20} className="text-blue-600" />,
+  },
+};
 
 export default function SalesCommissions() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
+  const { addToast } = useToast();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [stats, setStats] = useState({
-    pending: 0,
-    approved: 0,
-    paid: 0,
-  });
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [showNoteModal, setShowNoteModal] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'sales')) {
@@ -34,35 +59,45 @@ export default function SalesCommissions() {
     if (token) {
       fetchCommissions();
     }
-  }, [token]);
+  }, [token, filterStatus]);
 
   const fetchCommissions = async () => {
     try {
-      const res = await fetch('/api/commissions', {
+      const url = filterStatus 
+        ? `/api/commissions?status=${filterStatus}`
+        : '/api/commissions';
+      
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const comms: Commission[] = Array.isArray(data.commissions) ? data.commissions : [];
-      setCommissions(comms);
-
-      setStats({
-        pending: comms.filter((c: Commission) => c.status === 'pending').length,
-        approved: comms.filter((c: Commission) => c.status === 'approved').length,
-        paid: comms.filter((c: Commission) => c.status === 'paid').length,
-      });
+      setCommissions(Array.isArray(data.commissions) ? data.commissions : []);
     } catch (error) {
       console.error('Error fetching commissions:', error);
+      addToast('Failed to fetch commissions', 'error');
     } finally {
       setLoadingData(false);
     }
   };
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-blue-100 text-blue-800',
-    paid: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
+  const calculateTotals = () => {
+    return {
+      pending: commissions
+        .filter((c) => c.status === 'pending')
+        .reduce((sum, c) => sum + c.amount, 0),
+      approved: commissions
+        .filter((c) => c.status === 'approved')
+        .reduce((sum, c) => sum + c.amount, 0),
+      rejected: commissions
+        .filter((c) => c.status === 'rejected')
+        .reduce((sum, c) => sum + c.amount, 0),
+      paid: commissions
+        .filter((c) => c.status === 'paid')
+        .reduce((sum, c) => sum + c.amount, 0),
+    };
   };
+
+  const totals = calculateTotals();
 
   if (loading) {
     return (
@@ -72,108 +107,225 @@ export default function SalesCommissions() {
     );
   }
 
-  const totalAmount = commissions.reduce((sum, c) => sum + c.amount, 0);
-  const pendingAmount = commissions
-    .filter((c) => c.status === 'pending')
-    .reduce((sum, c) => sum + c.amount, 0);
-  const approvedAmount = commissions
-    .filter((c) => c.status === 'approved')
-    .reduce((sum, c) => sum + c.amount, 0);
-
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">My Commissions</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">My Commissions</h1>
+          <p className="text-slate-400">Track your approved, pending, and rejected commissions</p>
+        </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-amber-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Earned</p>
-                <p className="text-3xl font-bold text-gray-800">${totalAmount.toLocaleString()}</p>
+                <p className="text-amber-100 text-sm font-medium">Pending</p>
+                <p className="text-3xl font-bold mt-2">${totals.pending.toLocaleString()}</p>
+                <p className="text-xs text-amber-100 mt-2">
+                  {commissions.filter((c) => c.status === 'pending').length} commission(s)
+                </p>
               </div>
-              <DollarSign size={32} className="text-blue-500" />
+              <Clock size={40} className="opacity-30" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-emerald-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Pending Approval</p>
-                <p className="text-3xl font-bold text-gray-800">${pendingAmount.toLocaleString()}</p>
+                <p className="text-emerald-100 text-sm font-medium">Approved</p>
+                <p className="text-3xl font-bold mt-2">${totals.approved.toLocaleString()}</p>
+                <p className="text-xs text-emerald-100 mt-2">
+                  {commissions.filter((c) => c.status === 'approved').length} commission(s)
+                </p>
               </div>
-              <Clock size={32} className="text-yellow-500" />
+              <CheckCircle size={40} className="opacity-30" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+          <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-red-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Approved/Paid</p>
-                <p className="text-3xl font-bold text-gray-800">${approvedAmount.toLocaleString()}</p>
+                <p className="text-red-100 text-sm font-medium">Rejected</p>
+                <p className="text-3xl font-bold mt-2">${totals.rejected.toLocaleString()}</p>
+                <p className="text-xs text-red-100 mt-2">
+                  {commissions.filter((c) => c.status === 'rejected').length} commission(s)
+                </p>
               </div>
-              <DollarSign size={32} className="text-green-500" />
+              <XCircle size={40} className="opacity-30" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm font-medium">Paid</p>
+                <p className="text-3xl font-bold mt-2">${totals.paid.toLocaleString()}</p>
+                <p className="text-xs text-blue-100 mt-2">
+                  {commissions.filter((c) => c.status === 'paid').length} commission(s)
+                </p>
+              </div>
+              <CheckCircle size={40} className="opacity-30" />
             </div>
           </div>
         </div>
 
-        {/* Commissions List */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Commission Details</h2>
+        {/* Filter */}
+        <div className="mb-8">
+          <div className="flex gap-2 flex-wrap">
+            {['', 'pending', 'approved', 'rejected', 'paid'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  filterStatus === status
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border border-blue-500'
+                    : 'bg-slate-700 text-slate-300 border border-slate-600 hover:bg-slate-600'
+                }`}
+              >
+                {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All'}
+              </button>
+            ))}
+          </div>
+        </div>
 
+        {/* Commissions List */}
         {loadingData ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader size={32} className="animate-spin text-blue-600" />
+          <div className="flex items-center justify-center py-20">
+            <Loader size={40} className="animate-spin text-blue-400" />
           </div>
         ) : commissions.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600 text-lg">No commissions yet</p>
+          <div className="bg-slate-700 rounded-2xl shadow-xl p-16 text-center border border-slate-600">
+            <p className="text-slate-300 text-lg">🤷 No commissions found</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-6">
             {commissions.map((commission) => (
               <div
                 key={commission._id}
-                className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500"
+                className={`bg-slate-800 rounded-2xl shadow-xl p-6 border-l-4 transition-all hover:shadow-2xl ${
+                  commission.status === 'pending'
+                    ? 'border-amber-500'
+                    : commission.status === 'approved'
+                    ? 'border-emerald-500'
+                    : commission.status === 'rejected'
+                    ? 'border-red-500'
+                    : 'border-blue-500'
+                } border border-slate-700`}
               >
-                <div className="flex justify-between items-start mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800">{commission.dealId.name}</h3>
-                    <p className="text-sm text-gray-600">Deal Value: ${commission.dealId.value.toLocaleString()}</p>
+                    <p className="text-sm text-slate-400 font-medium">📋 Deal Name</p>
+                    <p className="text-lg font-semibold text-white mt-1">{commission.dealId.name}</p>
                   </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      statusColors[commission.status]
-                    }`}
-                  >
-                    {commission.status}
-                  </span>
+
+                  <div>
+                    <p className="text-sm text-slate-400 font-medium">💰 Deal Amount</p>
+                    <p className="text-lg font-semibold text-blue-400 mt-1">
+                      ${commission.dealId.budget.toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 font-medium">📊 Commission Rate</p>
+                    <p className="text-lg font-semibold text-amber-400 mt-1">{commission.percentage}%</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 font-medium">💵 Commission Amount</p>
+                    <p className="text-lg font-semibold text-emerald-400 mt-1">
+                      ${commission.amount.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-2xl font-bold text-green-600">${commission.amount.toLocaleString()}</p>
-                    <p className="text-sm text-gray-600">{commission.percentage}% Commission</p>
+                <div className="border-t border-slate-700 pt-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`${statusColors[commission.status].bg} p-2 rounded-full`}>
+                      {statusColors[commission.status].icon}
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${statusColors[commission.status].text}`}>
+                        {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
+                      </p>
+                      {commission.createdAt && (
+                        <p className="text-xs text-slate-400">
+                          Submitted: {new Date(commission.createdAt).toLocaleDateString('ar-EG')}
+                        </p>
+                      )}
+                      {commission.approvalDate && (
+                        <p className="text-xs text-slate-400">
+                          Approved: {new Date(commission.approvalDate).toLocaleDateString('ar-EG')}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {commission.status === 'pending' && (
-                    <div className="bg-yellow-50 px-4 py-2 rounded text-sm text-yellow-700">
-                      Waiting for admin approval
-                    </div>
-                  )}
-                  {commission.status === 'approved' && (
-                    <div className="bg-blue-50 px-4 py-2 rounded text-sm text-blue-700">
-                      Approved by admin
-                    </div>
-                  )}
-                  {commission.status === 'paid' && (
-                    <div className="bg-green-50 px-4 py-2 rounded text-sm text-green-700">
-                      ✓ Payment received
-                    </div>
+                  {commission.status === 'rejected' && commission.rejectionNote && (
+                    <button
+                      onClick={() => setShowNoteModal(commission._id)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium flex items-center justify-center md:justify-start gap-2"
+                    >
+                      <AlertCircle size={18} />
+                      View Note
+                    </button>
                   )}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Rejection Note Modal */}
+        {showNoteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+              <div className="p-6 border-b border-red-500 bg-gradient-to-r from-red-900 to-red-800">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <AlertCircle size={24} />
+                  Rejection Note
+                </h2>
+              </div>
+
+              <div className="p-6">
+                <div className="mb-4 p-4 bg-red-900 bg-opacity-30 rounded-lg border border-red-700">
+                  {commissions
+                    .find((c) => c._id === showNoteModal)
+                    ?.rejectionNote ? (
+                    <p className="text-white whitespace-pre-wrap">
+                      {commissions.find((c) => c._id === showNoteModal)?.rejectionNote}
+                    </p>
+                  ) : (
+                    <p className="text-slate-400 italic">No note provided</p>
+                  )}
+                </div>
+
+                <div className="mb-6 space-y-2">
+                  <p className="text-sm text-slate-400">
+                    Commission:{' '}
+                    <span className="font-semibold text-emerald-400">
+                      ${commissions
+                        .find((c) => c._id === showNoteModal)
+                        ?.amount.toLocaleString()}
+                    </span>
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    Deal:{' '}
+                    <span className="font-semibold text-white">
+                      {commissions.find((c) => c._id === showNoteModal)?.dealId.name}
+                    </span>
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowNoteModal(null)}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2 rounded-lg font-semibold transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -13,7 +13,7 @@ interface Lead {
   name: string;
   budget: number;
   phone: string;
-  status: 'new' | 'connected' | 'negotiation' | 'closed';
+  status: 'new' | 'connected' | 'negotiation' | 'closed' | 'lost';
   source: string;
   notes: string;
   assignedTo?: { _id: string; name: string };
@@ -42,7 +42,7 @@ export default function AdminLeads() {
     name: '',
     budget: '',
     phone: '',
-    status: 'new' as const,
+    status: 'new' as 'new' | 'connected' | 'negotiation' | 'closed' | 'lost',
     source: 'other' as const,
     notes: '',
     assignedTo: '',
@@ -51,7 +51,7 @@ export default function AdminLeads() {
     name: '',
     budget: '',
     phone: '',
-    status: 'new' as const,
+    status: 'new' as 'new' | 'connected' | 'negotiation' | 'closed' | 'lost',
     source: 'other' as const,
     notes: '',
     assignedTo: '',
@@ -354,11 +354,13 @@ export default function AdminLeads() {
         </div>
 
         {/* Bulk Import Component */}
-        <BulkImportComponent
-          token={token}
-          onImportSuccess={fetchLeads}
-          employees={employees}
-        />
+        {token && (
+          <BulkImportComponent
+            token={token}
+            onImportSuccess={fetchLeads}
+            employees={employees}
+          />
+        )}
 
         {/* Form */}
         {showForm && (

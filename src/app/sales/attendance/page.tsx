@@ -121,24 +121,30 @@ export default function SalesAttendance() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Mark Attendance</h1>
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Mark Attendance</h1>
+          <p className="text-slate-400">Check in using your GPS location</p>
+        </div>
 
         {/* Attendance Button */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8 text-center">
-          <MapPin size={48} className="mx-auto text-blue-600 mb-4" />
+        <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl p-8 md:p-12 mb-12 text-center border border-slate-700 hover:border-blue-500 transition-all">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <MapPin size={40} className="text-white" />
+          </div>
 
-          <p className="text-gray-600 mb-6">
+          <p className="text-slate-300 mb-8 text-lg">
             {todayAttendance
-              ? 'Attendance already marked today'
-              : 'Click the button below to mark your attendance using your GPS location'}
+              ? '✅ Attendance already marked today'
+              : '📍 Click the button below to mark your attendance using your GPS location'}
           </p>
 
           <button
             onClick={handleMarkAttendance}
             disabled={isMarking || !!todayAttendance}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 mb-4"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:bg-slate-600 text-white py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-3 mb-6 transition-all"
           >
             {isMarking ? (
               <>
@@ -159,51 +165,54 @@ export default function SalesAttendance() {
           </button>
 
           {todayAttendance && !todayAttendance.withinRadius && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              <p className="font-medium">Note: You were outside the allowed radius</p>
+            <div className="bg-red-900 bg-opacity-40 border border-red-600 text-red-200 px-4 py-3 rounded-lg">
+              <p className="font-medium">⚠ Note: You were outside the allowed radius</p>
             </div>
           )}
         </div>
 
         {/* Attendance History */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Attendance</h2>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">Recent Attendance</h2>
+          <p className="text-slate-400">Your last 10 attendance records</p>
+        </div>
 
         {loadingData ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader size={32} className="animate-spin text-blue-600" />
+          <div className="flex items-center justify-center py-20">
+            <Loader size={40} className="animate-spin text-blue-400" />
           </div>
         ) : attendances.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600">No attendance records yet</p>
+          <div className="bg-slate-700 rounded-2xl shadow-xl p-16 text-center border border-slate-600">
+            <p className="text-slate-300">🤷 No attendance records yet</p>
           </div>
         ) : (
           <div className="space-y-4">
             {attendances.slice(0, 10).map((record) => (
               <div
                 key={record._id}
-                className={`bg-white rounded-lg shadow-md p-4 border-l-4 ${
-                  record.withinRadius ? 'border-green-500' : 'border-red-500'
-                }`}
+                className={`bg-slate-800 rounded-2xl shadow-xl p-5 border-l-4 transition-all hover:shadow-2xl ${
+                  record.withinRadius ? 'border-emerald-500 hover:border-emerald-400' : 'border-red-500 hover:border-red-400'
+                } border border-slate-700`}
               >
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                   <div>
-                    <p className="font-semibold text-gray-800">
-                      {new Date(record.date).toLocaleDateString()}
+                    <p className="font-semibold text-white text-lg">
+                      {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                     </p>
-                    <p className="text-sm text-gray-600">
-                      Check-in: {new Date(record.checkInTime).toLocaleTimeString()}
+                    <p className="text-sm text-slate-400 mt-2">
+                      🕐 Check-in: {new Date(record.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                       {record.checkOutTime &&
-                        ` | Check-out: ${new Date(record.checkOutTime).toLocaleTimeString()}`}
+                        ` | 🚪 Check-out: ${new Date(record.checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                     </p>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
                       record.withinRadius
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-red-600 text-white'
                     }`}
                   >
-                    {record.withinRadius ? 'Within Radius' : 'Outside Radius'}
+                    {record.withinRadius ? '✓ Within Radius' : '✗ Outside Radius'}
                   </span>
                 </div>
               </div>

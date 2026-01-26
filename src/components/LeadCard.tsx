@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Phone, Mail, Edit2, X, Save } from 'lucide-react';
 
 interface LeadCardProps {
   id: string;
@@ -15,11 +16,11 @@ interface LeadCardProps {
   onNotesChange?: (notes: string) => void;
 }
 
-const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-  new: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'New' },
-  connected: { bg: 'bg-green-100', text: 'text-green-800', label: 'Connected' },
-  negotiation: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Negotiation' },
-  closed: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Closed' },
+const statusColors: Record<string, { bg: string; text: string; border: string; label: string; icon: string }> = {
+  new: { bg: 'from-blue-600 to-blue-700', text: 'text-blue-100', border: 'border-blue-500', label: 'New', icon: '✨' },
+  connected: { bg: 'from-emerald-600 to-emerald-700', text: 'text-emerald-100', border: 'border-emerald-500', label: 'Connected', icon: '✓' },
+  negotiation: { bg: 'from-amber-600 to-amber-700', text: 'text-amber-100', border: 'border-amber-500', label: 'Negotiation', icon: '💬' },
+  closed: { bg: 'from-purple-600 to-purple-700', text: 'text-purple-100', border: 'border-purple-500', label: 'Closed', icon: '🎉' },
 };
 
 export default function LeadCard({
@@ -53,83 +54,107 @@ export default function LeadCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-4 border-l-4 border-blue-500">
-      <div className="flex justify-between items-start mb-3">
+    <div className={`bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-6 border-l-4 ${statusColor.border} border border-slate-600 flex flex-col h-full`}>
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-800">{name}</h3>
-          <p className="text-sm text-gray-600">{property}</p>
+          <h3 className="text-lg sm:text-xl font-bold text-white">{name}</h3>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">{property}</p>
         </div>
-        <div className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor.bg} ${statusColor.text}`}>
-          {statusColor.label}
+        <div className={`px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-gradient-to-r ${statusColor.bg} ${statusColor.text} flex items-center gap-1 whitespace-nowrap`}>
+          <span>{statusColor.icon}</span>
+          <span className="hidden sm:inline">{statusColor.label}</span>
         </div>
       </div>
 
-      <div className="space-y-2 mb-3 text-sm text-gray-700">
-        <p>
-          <span className="font-medium">Email:</span> {email}
-        </p>
-        <p>
-          <span className="font-medium">Phone:</span> {phone}
-        </p>
+      {/* Contact Details */}
+      <div className="space-y-3 mb-4 flex-1">
+        <div className="flex items-start gap-2 text-sm">
+          <span className="text-slate-500 flex-shrink-0">✉️</span>
+          <div>
+            <p className="text-xs text-slate-400">Email</p>
+            <p className="text-slate-200 break-all text-xs sm:text-sm">{email}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2 text-sm">
+          <span className="text-slate-500 flex-shrink-0">📱</span>
+          <div>
+            <p className="text-xs text-slate-400">Phone</p>
+            <p className="text-slate-200 text-xs sm:text-sm">{phone}</p>
+          </div>
+        </div>
         {value > 0 && (
-          <p>
-            <span className="font-medium">Value:</span> ${value.toLocaleString()}
-          </p>
+          <div className="flex items-start gap-2 text-sm">
+            <span className="text-slate-500 flex-shrink-0">💰</span>
+            <div>
+              <p className="text-xs text-slate-400">Value</p>
+              <p className="text-emerald-400 font-semibold text-xs sm:text-sm">${value.toLocaleString()}</p>
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="flex gap-2 mb-3">
+      {/* Action Buttons */}
+      <div className="flex gap-2 mb-4 flex-wrap">
         <button
           onClick={handleCall}
-          className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded text-sm font-medium"
+          className="flex-1 min-w-[80px] bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1"
         >
-          Call
+          <Phone size={16} className="hidden sm:block" />
+          <span>Call</span>
         </button>
         <button
           onClick={handleEmail}
-          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-sm font-medium"
+          className="flex-1 min-w-[80px] bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1"
         >
-          Email
+          <Mail size={16} className="hidden sm:block" />
+          <span>Email</span>
         </button>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-sm font-medium"
+          className="flex-1 min-w-[80px] bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1"
         >
-          {isExpanded ? 'Collapse' : 'Expand'}
+          <Edit2 size={16} className="hidden sm:block" />
+          <span>{isExpanded ? 'Close' : 'Edit'}</span>
         </button>
       </div>
 
+      {/* Expanded Section */}
       {isExpanded && (
-        <div className="border-t pt-3 mt-3">
-          <div className="mb-3">
-            <label className="text-sm font-medium text-gray-700">Update Status</label>
+        <div className="border-t border-slate-600 pt-4 mt-4 space-y-4">
+          {/* Status Selection */}
+          <div>
+            <label className="text-xs sm:text-sm font-semibold text-slate-300 block mb-2">Update Status</label>
             <select
               value={status}
               onChange={(e) => onStatusChange?.(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             >
-              <option value="new">New</option>
-              <option value="connected">Connected</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="closed">Closed</option>
+              <option value="new">✨ New</option>
+              <option value="connected">✓ Connected</option>
+              <option value="negotiation">💬 Negotiation</option>
+              <option value="closed">🎉 Closed</option>
             </select>
           </div>
 
-          <div className="mb-3">
-            <label className="text-sm font-medium text-gray-700">Notes</label>
+          {/* Notes Section */}
+          <div>
+            <label className="text-xs sm:text-sm font-semibold text-slate-300 block mb-2">Notes</label>
             <textarea
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition placeholder-slate-500"
               rows={3}
               placeholder="Add notes about this lead..."
             />
           </div>
 
+          {/* Save Button */}
           <button
             onClick={handleSaveNotes}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
+            <Save size={16} />
             Save Changes
           </button>
         </div>

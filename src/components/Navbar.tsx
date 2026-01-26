@@ -2,79 +2,117 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
+
+  const navLinks = user?.role === 'admin' 
+    ? [
+        { href: '/admin/dashboard', label: 'Dashboard' },
+        { href: '/admin/leads', label: 'Leads' },
+        { href: '/admin/employees', label: 'Employees' },
+        { href: '/admin/commissions', label: 'Commissions' },
+        { href: '/admin/settings', label: 'Settings' },
+      ]
+    : [
+        { href: '/sales/dashboard', label: 'Dashboard' },
+        { href: '/sales/leads', label: 'My Leads' },
+        { href: '/sales/commissions', label: 'My Commissions' },
+        { href: '/sales/attendance', label: 'Attendance' },
+      ];
 
   return (
-    <nav className="bg-blue-600 text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4">
+    <nav className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-xl border-b border-slate-700">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-2xl font-bold">
-            🏢 Bode CRM
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 text-xl sm:text-2xl font-bold hover:opacity-80 transition">
+            <span className="text-2xl">🏢</span>
+            <span className="hidden sm:inline">Bode CRM</span>
           </Link>
 
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden"
-          >
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center gap-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
 
-          <div className={`${menuOpen ? 'block' : 'hidden'} md:flex gap-6 items-center`}>
+          {/* User Info & Actions */}
+          <div className="flex items-center gap-2 sm:gap-4">
             {user && (
-              <>
-                <span className="text-sm">
-                  {user.name} ({user.role})
-                </span>
-                {user.role === 'admin' && (
-                  <>
-                    <Link href="/admin/dashboard" className="hover:text-blue-200">
-                      Dashboard
-                    </Link>
-                    <Link href="/admin/leads" className="hover:text-blue-200">
-                      Leads
-                    </Link>
-                    <Link href="/admin/employees" className="hover:text-blue-200">
-                      Employees
-                    </Link>
-                    <Link href="/admin/commissions" className="hover:text-blue-200">
-                      Commissions
-                    </Link>
-                    <Link href="/admin/settings" className="hover:text-blue-200">
-                      Settings
-                    </Link>
-                  </>
-                )}
-                {user.role === 'sales' && (
-                  <>
-                    <Link href="/sales/dashboard" className="hover:text-blue-200">
-                      Dashboard
-                    </Link>
-                    <Link href="/sales/leads" className="hover:text-blue-200">
-                      My Leads
-                    </Link>
-                    <Link href="/sales/attendance" className="hover:text-blue-200">
-                      Attendance
-                    </Link>
-                  </>
-                )}
+              <div className="hidden sm:flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs sm:text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+                </div>
                 <button
                   onClick={() => {
                     logout();
                   }}
-                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-3 py-2 rounded"
+                  className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                 >
-                  <LogOut size={18} />
-                  Logout
+                  <LogOut size={16} />
+                  <span className="hidden sm:inline">Logout</span>
                 </button>
-              </>
+              </div>
             )}
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="lg:hidden p-2 hover:bg-slate-700 rounded-lg transition"
+            >
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {menuOpen && (
+          <div className="lg:hidden border-t border-slate-700 py-3 space-y-2">
+            {user && (
+              <div className="px-3 py-3 bg-slate-700 rounded-lg mb-3">
+                <p className="font-medium text-sm">{user.name}</p>
+                <p className="text-xs text-slate-300 capitalize mt-1">{user.role}</p>
+              </div>
+            )}
+
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            {user && (
+              <button
+                onClick={() => {
+                  logout();
+                  setMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 px-3 py-2 rounded-lg text-sm font-medium transition-all mt-3"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   );
