@@ -1,4 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import './User';
+import './Lead';
 
 export interface ICommission extends Document {
   dealId: mongoose.Types.ObjectId;
@@ -9,6 +11,7 @@ export interface ICommission extends Document {
   approvedBy?: mongoose.Types.ObjectId;
   approvalDate?: Date;
   rejectionReason?: string;
+  rejectionNote?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +47,7 @@ const CommissionSchema = new Schema<ICommission>(
     },
     approvalDate: Date,
     rejectionReason: String,
+    rejectionNote: String,
   },
   {
     timestamps: true,

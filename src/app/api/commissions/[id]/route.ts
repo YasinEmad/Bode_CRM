@@ -27,7 +27,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { status, rejectionReason } = await req.json();
+    const { status, rejectionReason, rejectionNote } = await req.json();
 
     const commission = await Commission.findByIdAndUpdate(
       id,
@@ -36,6 +36,7 @@ export async function PUT(
         approvedBy: status === 'approved' ? payload.userId : undefined,
         approvalDate: status === 'approved' ? new Date() : undefined,
         rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+        rejectionNote: status === 'rejected' ? rejectionNote : undefined,
       },
       { new: true }
     )
