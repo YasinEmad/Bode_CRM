@@ -4,10 +4,12 @@ export interface IAttendance extends Document {
   userId: mongoose.Types.ObjectId;
   date: Date;
   checkInTime: Date;
-  checkOutTime?: Date;
   latitude: number;
   longitude: number;
   withinRadius: boolean;
+  isLate: boolean;
+  lateMinutes: number; // Number of minutes late
+  deviceId: string; // Device ID used for check-in
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,7 +29,6 @@ const AttendanceSchema = new Schema<IAttendance>(
       type: Date,
       required: true,
     },
-    checkOutTime: Date,
     latitude: {
       type: Number,
       required: true,
@@ -39,6 +40,18 @@ const AttendanceSchema = new Schema<IAttendance>(
     withinRadius: {
       type: Boolean,
       default: true,
+    },
+    isLate: {
+      type: Boolean,
+      default: false,
+    },
+    lateMinutes: {
+      type: Number,
+      default: 0,
+    },
+    deviceId: {
+      type: String,
+      required: true,
     },
   },
   {
