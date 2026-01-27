@@ -68,19 +68,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate budget is a number
+    const budgetNum = typeof budget === 'string' ? parseInt(budget) : budget;
+    if (isNaN(budgetNum)) {
+      return NextResponse.json({ error: 'Budget must be a valid number' }, { status: 400 });
+    }
+
+    // Convert assignedTo to ObjectId if it's a valid string
+    let assignedToId: any = undefined;
+    if (assignedTo) {
+      try {
+        const { Types } = await import('mongoose');
+        assignedToId = new Types.ObjectId(assignedTo);
+      } catch {
+        return NextResponse.json({ error: 'Invalid assignedTo ID' }, { status: 400 });
+      }
+    }
+
     const lead = await Lead.create({
       name,
-      budget,
+      budget: budgetNum,
       phone,
       status: status || 'new',
       source: source || 'other',
       notes: notes || '',
-      assignedTo,
+      assignedTo: assignedToId,
     });
 
     return NextResponse.json({ lead }, { status: 201 });
   } catch (error) {
     console.error('Error creating lead:', error);
-    return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create lead';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

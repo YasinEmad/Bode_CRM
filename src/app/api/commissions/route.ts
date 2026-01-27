@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Commission from '@/models/Commission';
 import Lead from '@/models/Lead';
+import User from '@/models/User';
+import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const { dealId, employeeId, percentage } = await req.json();
+    const { dealId, employeeId, percentage: percentageFromBody } = await req.json();
 
     // Verify the lead exists and belongs to the employee
     const lead = await Lead.findById(dealId);
@@ -78,6 +80,36 @@ export async function POST(req: NextRequest) {
     // If sales is submitting, verify it's their own lead
     if (payload.role === 'sales' && lead.assignedTo?.toString() !== payload.userId) {
       return NextResponse.json({ error: 'You can only submit commission for your own leads' }, { status: 403 });
+    }
+
+    // Determine commission percentage
+    let percentage = percentageFromBody;
+    
+    // If percentage not provided, fetch from commission rules based on employee's position
+    if (percentage === undefined) {
+      const employee = await User.findById(employeeId);
+      const settings = await SystemSettings.findOne();
+      
+      percentage = 5; // default fallback
+      
+      console.log(`[Commission] Creating commission for deal ${dealId}, employee ${employee?.name} (position: ${employee?.position})`);
+      console.log(`[Commission] Available rules:`, settings?.commissionRules);
+      
+      if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
+        const normalizedPosition = (employee.position || '').toLowerCase().trim();
+        const rule = settings.commissionRules.find(
+          (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
+        );
+        if (rule && rule.percentage > 0) {
+          percentage = rule.percentage;
+          console.log(`[Commission] Applied rule: ${rule.position} = ${rule.percentage}%`);
+        } else {
+          console.log(`[Commission] No rule found for position: ${employee.position} (normalized: ${normalizedPosition})`);
+          console.log(`[Commission] Available positions:`, settings.commissionRules.map((r: any) => r.position));
+        }
+      } else {
+        console.log(`[Commission] Using default 5% fallback`);
+      }
     }
 
     const amount = (lead.budget || 0) * (percentage / 100);

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Lead from '@/models/Lead';
 import Commission from '@/models/Commission';
+import User from '@/models/User';
+import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -47,12 +49,23 @@ export async function PUT(
 
     const updateData: any = {};
     if (name) updateData.name = name;
-    if (budget !== undefined) updateData.budget = budget;
+    if (budget !== undefined) updateData.budget = typeof budget === 'string' ? parseInt(budget) : budget;
     if (phone) updateData.phone = phone;
     if (status) updateData.status = status;
     if (source) updateData.source = source;
     if (notes !== undefined) updateData.notes = notes;
-    if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
+    if (assignedTo !== undefined) {
+      if (assignedTo) {
+        try {
+          const { Types } = await import('mongoose');
+          updateData.assignedTo = new Types.ObjectId(assignedTo);
+        } catch {
+          return NextResponse.json({ error: 'Invalid assignedTo ID' }, { status: 400 });
+        }
+      } else {
+        updateData.assignedTo = null;
+      }
+    }
 
     const updatedLead = await Lead.findByIdAndUpdate(id, updateData, { new: true }).populate(
       'assignedTo',
@@ -71,13 +84,38 @@ export async function PUT(
       });
 
       if (!existingCommission) {
-        // Create commission with default 5% percentage
-        const amount = (updatedLead.budget || 0) * 0.05;
+        // Get employee's position and find commission percentage from settings
+        const employee = await User.findById(updatedLead.assignedTo);
+        const settings = await SystemSettings.findOne();
+        
+        let commissionPercentage = 5; // default fallback
+        
+        console.log(`[Commission] Lead ${id} marked as closed for employee ${employee?.name} (position: ${employee?.position})`);
+        console.log(`[Commission] Settings rules:`, settings?.commissionRules);
+        
+        if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
+          const normalizedPosition = (employee.position || '').toLowerCase().trim();
+          const rule = settings.commissionRules.find(
+            (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
+          );
+          if (rule && rule.percentage > 0) {
+            commissionPercentage = rule.percentage;
+            console.log(`[Commission] Found matching rule: ${rule.position} = ${rule.percentage}%`);
+          } else {
+            console.log(`[Commission] No matching rule found for position: ${employee.position}`);
+          }
+        } else {
+          console.log(`[Commission] Using default 5% - position missing or no rules configured`);
+        }
+        
+        const amount = (updatedLead.budget || 0) * (commissionPercentage / 100);
+        console.log(`[Commission] Creating commission: ${amount} = ${updatedLead.budget} * ${commissionPercentage}%`);
+        
         await Commission.create({
           dealId: id,
           employeeId: updatedLead.assignedTo,
           amount,
-          percentage: 5,
+          percentage: commissionPercentage,
           status: 'pending',
         });
       }
@@ -86,7 +124,8 @@ export async function PUT(
     return NextResponse.json({ lead: updatedLead });
   } catch (error) {
     console.error('Error updating lead:', error);
-    return NextResponse.json({ error: 'Failed to update lead' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update lead';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

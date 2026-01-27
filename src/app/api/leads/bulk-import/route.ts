@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Lead from '@/models/Lead';
+import Commission from '@/models/Commission';
+import User from '@/models/User';
+import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
 import * as XLSX from 'xlsx';
 
@@ -94,10 +97,56 @@ export async function POST(req: NextRequest) {
     // Insert all leads
     const insertedLeads = await Lead.insertMany(leadsToInsert);
 
+    // Get system settings for commission rules
+    const settings = await SystemSettings.findOne();
+
+    // Create commissions for closed leads with assigned employees
+    const commissionsToCreate: any[] = [];
+    
+    for (const lead of insertedLeads) {
+      if (lead.status === 'closed' && lead.assignedTo) {
+        const employee = await User.findById(lead.assignedTo);
+        
+        let commissionPercentage = 5; // default fallback
+        
+        console.log(`[BulkImport] Creating commission for closed lead "${lead.name}" assigned to ${employee?.name} (position: ${employee?.position})`);
+        
+        if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
+          const normalizedPosition = (employee.position || '').toLowerCase().trim();
+          const rule = settings.commissionRules.find(
+            (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
+          );
+          if (rule && rule.percentage > 0) {
+            commissionPercentage = rule.percentage;
+            console.log(`[BulkImport] Applied rule: ${rule.position} = ${rule.percentage}%`);
+          } else {
+            console.log(`[BulkImport] No matching rule, using default 5%`);
+          }
+        } else {
+          console.log(`[BulkImport] Using default 5% - no position or rules`);
+        }
+
+        const amount = (lead.budget || 0) * (commissionPercentage / 100);
+        commissionsToCreate.push({
+          dealId: lead._id,
+          employeeId: lead.assignedTo,
+          amount,
+          percentage: commissionPercentage,
+          status: 'pending',
+        });
+      }
+    }
+
+    // Bulk create commissions if any
+    if (commissionsToCreate.length > 0) {
+      await Commission.insertMany(commissionsToCreate);
+    }
+
     return NextResponse.json(
       {
         message: `Successfully imported ${insertedLeads.length} leads`,
         imported: insertedLeads.length,
+        commissionsCreated: commissionsToCreate.length,
         errors: errors.length > 0 ? errors : undefined,
         leads: insertedLeads,
       },
