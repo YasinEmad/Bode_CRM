@@ -19,7 +19,7 @@ interface AttendanceRecord {
 export default function SalesAttendance() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
-  const { addToast, updateToast } = useToast();
+  const { addToast, removeToast } = useToast();
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [isMarking, setIsMarking] = useState(false);
@@ -44,13 +44,34 @@ export default function SalesAttendance() {
       });
       const data = await res.json();
       const records = Array.isArray(data.attendances) ? data.attendances : [];
+      
+      console.log('🔍 FETCHED ATTENDANCE RECORDS:', {
+        count: records.length,
+        firstRecord: records.length > 0 ? {
+          _id: records[0]._id,
+          date: records[0].date,
+          checkInTime: records[0].checkInTime,
+          isLate: records[0].isLate,
+          lateMinutes: records[0].lateMinutes,
+        } : null,
+      });
+      
       setAttendances(records);
 
-      // Check if already marked today
-      const today = new Date().toDateString();
-      const todayRecord = records.find(
-        (r: any) => new Date(r.date).toDateString() === today
-      );
+      // Check if already marked today OR yesterday
+      // (Early morning check-ins are recorded for the previous day)
+      const today = new Date();
+      const todayString = today.toDateString();
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayString = yesterday.toDateString();
+
+      // Find record for today or yesterday
+      const todayRecord = records.find((r: any) => {
+        const recordDate = new Date(r.date).toDateString();
+        return recordDate === todayString || recordDate === yesterdayString;
+      });
       setTodayAttendance(todayRecord || null);
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -106,25 +127,37 @@ export default function SalesAttendance() {
       }
 
       const data = await res.json();
-
-      if (data.isLate) {
+      
+      console.log('===== ATTENDANCE RESPONSE =====');
+      console.log('Full Response:', JSON.stringify(data, null, 2));
+      console.log('isLate:', data.isLate, 'type:', typeof data.isLate);
+      console.log('lateMinutes:', data.lateMinutes, 'type:', typeof data.lateMinutes);
+      console.log('===============================');
+      
+      // Remove the loading toast
+      removeToast(toastId);
+      
+      // Show appropriate message based on late status
+      if (data.isLate === true) {
+        console.log('CONDITION MET: User is late!');
         const hours = Math.floor(data.lateMinutes / 60);
         const minutes = data.lateMinutes % 60;
         let lateMessage = `⏰ You are ${minutes > 0 ? `${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}${hours > 0 && minutes > 0 ? ' and ' : ''}${hours > 0 ? `${hours} hour${hours !== 1 ? 's' : ''}` : ''} late!`;
-        updateToast(toastId, lateMessage, 'error');
+        console.log('Late message:', lateMessage);
+        console.log('About to call addToast with warning type');
+        addToast(lateMessage, 'warning');
+        console.log('addToast called!');
       } else {
-        updateToast(toastId, '✓ Attendance marked successfully on time!', 'success');
+        console.log('CONDITION NOT MET: Showing success message');
+        addToast('✅ Check-in marked today', 'success');
       }
 
       fetchAttendance();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to mark attendance';
       console.error('Attendance error:', errorMsg);
-      updateToast(
-        toastId,
-        errorMsg,
-        'error'
-      );
+      removeToast(toastId);
+      addToast(errorMsg, 'error');
     } finally {
       setIsMarking(false);
     }
@@ -181,16 +214,6 @@ export default function SalesAttendance() {
               </>
             )}
           </button>
-
-          {todayAttendance && todayAttendance.isLate && (
-            <div className="bg-orange-900 bg-opacity-40 border border-orange-600 text-orange-200 px-4 py-3 rounded-lg">
-              <p className="font-medium">
-                ⏰ Late by: {Math.floor(todayAttendance.lateMinutes / 60) > 0 
-                  ? `${Math.floor(todayAttendance.lateMinutes / 60)}h ${todayAttendance.lateMinutes % 60}m` 
-                  : `${todayAttendance.lateMinutes}m`}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Attendance History */}
@@ -212,11 +235,7 @@ export default function SalesAttendance() {
             {attendances.slice(0, 10).map((record) => (
               <div
                 key={record._id}
-                className={`bg-slate-800 rounded-2xl shadow-xl p-5 border-l-4 transition-all hover:shadow-2xl ${
-                  record.isLate 
-                    ? 'border-orange-500 hover:border-orange-400' 
-                    : 'border-emerald-500 hover:border-emerald-400'
-                } border border-slate-700`}
+                className="bg-slate-800 rounded-2xl shadow-xl p-5 border-l-4 border-emerald-500 hover:border-emerald-400 transition-all hover:shadow-2xl border border-slate-700"
               >
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                   <div>
@@ -226,25 +245,11 @@ export default function SalesAttendance() {
                     <p className="text-sm text-slate-400 mt-2">
                       🕐 Check-in: {new Date(record.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </p>
-                    {record.isLate && (
-                      <p className="text-sm text-orange-300 mt-1 font-medium">
-                        ⏰ Late by: {Math.floor(record.lateMinutes / 60) > 0 
-                          ? `${Math.floor(record.lateMinutes / 60)}h ${record.lateMinutes % 60}m` 
-                          : `${record.lateMinutes}m`}
-                      </p>
-                    )}
                   </div>
-                  <div className="flex gap-2 flex-col sm:flex-row">
-                    {record.isLate && (
-                      <span className="px-4 py-2 rounded-full text-sm font-medium bg-orange-600 text-white flex items-center gap-2">
-                        ⏰ Late
-                      </span>
-                    )}
-                    {!record.isLate && (
-                      <span className="px-4 py-2 rounded-full text-sm font-medium bg-emerald-600 text-white flex items-center gap-2">
-                        ✓ On Time
-                      </span>
-                    )}
+                  <div>
+                    <span className="px-4 py-2 rounded-full text-sm font-medium bg-emerald-600 text-white flex items-center gap-2">
+                      ✓ Check-in
+                    </span>
                   </div>
                 </div>
               </div>

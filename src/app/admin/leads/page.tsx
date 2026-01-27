@@ -4,9 +4,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Plus, Loader, Trash2, Users, Edit2, X, Search, Filter, TrendingUp, Target } from 'lucide-react';
+import { Plus, Loader, Trash2, Users, Edit2, X, Search, Filter, TrendingUp, Target, Download } from 'lucide-react';
 import LeadCard from '@/components/LeadCard';
 import BulkImportComponent from '@/components/BulkImportComponent';
+import { exportLeadsToExcel } from '@/lib/exportExcel';
 
 interface Lead {
   _id: string;
@@ -308,6 +309,39 @@ export default function AdminLeads() {
     }
   };
 
+  const handleExportToExcel = () => {
+    if (leads.length === 0) {
+      addToast('No leads to export', 'error');
+      return;
+    }
+
+    const filteredLeads = leads.filter((lead) => {
+      const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          lead.phone.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = filterStatus === 'all' || lead.status === filterStatus;
+      const matchesSource = filterSource === 'all' || lead.source === filterSource;
+      return matchesSearch && matchesStatus && matchesSource;
+    });
+
+    if (filteredLeads.length === 0) {
+      addToast('No leads match the current filters', 'error');
+      return;
+    }
+
+    const exportData = filteredLeads.map((lead) => ({
+      'Lead Name': lead.name,
+      'Budget': lead.budget,
+      'Phone': lead.phone,
+      'Status': lead.status,
+      'Source': lead.source,
+      'Assigned To': lead.assignedTo?.name || 'Unassigned',
+      'Notes': lead.notes || '',
+    }));
+
+    exportLeadsToExcel(exportData, 'leads');
+    addToast('✅ Leads exported successfully!', 'success');
+  };
+
   const handleDeleteLead = async (leadId: string) => {
     const toastId = addToast('Deleting lead...', 'loading');
 
@@ -372,13 +406,23 @@ export default function AdminLeads() {
               <h1 className="text-5xl font-bold text-white mb-2">Manage Leads</h1>
               <p className="text-slate-400">Create, assign, and track leads across your pipeline</p>
             </div>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-blue-500/50"
-            >
-              <Plus size={20} />
-              Add Lead
-            </button>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleExportToExcel}
+                disabled={leads.length === 0}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-emerald-500/50"
+              >
+                <Download size={20} />
+                Export to Excel
+              </button>
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-blue-500/50"
+              >
+                <Plus size={20} />
+                Add Lead
+              </button>
+            </div>
           </div>
 
           {/* Statistics Cards */}

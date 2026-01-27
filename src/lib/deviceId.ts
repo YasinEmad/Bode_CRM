@@ -2,36 +2,31 @@
 // مكتبة للتعامل مع deviceId
 
 /**
- * توليد معرف فريد للجهاز
- * يعتمد على معلومات المتصفح وخصائص الجهاز
+ * توليد بصمة جهاز فريدة وثابتة
+ * تُحسب من خصائص ثابتة في الجهاز وترسل للـ API
+ * الـ API هو المسؤول عن حفظها في قاعدة البيانات
  */
 export function generateDeviceId(): string {
-  // محاولة الحصول على معرف فريد من localStorage أولاً
-  const stored = localStorage.getItem('app_device_id');
-  if (stored) {
-    return stored;
-  }
-
-  // إذا لم يوجد، نولد واحد جديد
-  const deviceId = createUniqueDeviceId();
-  localStorage.setItem('app_device_id', deviceId);
-  return deviceId;
+  return createDeviceFingerprint();
 }
 
 /**
- * إنشاء معرف جهاز فريد بناءً على معلومات المتصفح
+ * إنشاء بصمة جهاز فريدة من خصائص ثابتة
  */
-function createUniqueDeviceId(): string {
-  const navigator_data = [
-    navigator.userAgent,
+function createDeviceFingerprint(): string {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const hardwareCores = navigator.hardwareConcurrency || 'na';
+
+  const fingerprint_data = [
     navigator.language,
-    new Date().getTimezoneOffset(),
-    screen.width + 'x' + screen.height,
+    screen.width,
+    screen.height,
     screen.colorDepth,
+    timezone,
+    hardwareCores,
   ].join('|');
 
-  const device_id = `${btoa(navigator_data)}-${Date.now()}`;
-  return device_id;
+  return btoa(fingerprint_data);
 }
 
 /**
@@ -42,8 +37,15 @@ export function getDeviceId(): string {
 }
 
 /**
- * إعادة تعيين معرف الجهاز (يمكن استخدامه عند تسجيل الخروج)
+ * إعادة تعيين معرف الجهاز
  */
 export function resetDeviceId(): void {
-  localStorage.removeItem('app_device_id');
+  // No local storage to clear - device ID is managed by backend
+}
+
+/**
+ * مقارنة بسيطة: هل البصمات متطابقة
+ */
+export function compareDeviceIds(savedDeviceId: string, currentDeviceId: string): boolean {
+  return savedDeviceId === currentDeviceId;
 }

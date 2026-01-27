@@ -4,6 +4,7 @@ import Attendance from '@/models/Attendance';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
+import { compareDeviceIds } from '@/lib/deviceId';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -60,26 +61,53 @@ export async function POST(req: NextRequest) {
     }
 
     // Check device ID - if user has a saved device ID, it must match
+    // التحقق من جهاز الموظف
     if (user.deviceId) {
-      if (user.deviceId !== deviceId) {
+      // جهاز مسجل مسبقاً - قارن البصمات
+      if (!compareDeviceIds(user.deviceId, deviceId)) {
         return NextResponse.json(
           { 
-            error: 'Invalid device. You are trying to check in from a different device. Please use the device you registered with.',
-            reason: 'DEVICE_MISMATCH'
+            error: 'Device mismatch detected. You registered with a different device. Please contact your admin to update your device ID.',
+            reason: 'DEVICE_MISMATCH',
+            registeredDevice: user.deviceId.substring(0, 10) + '...',
+            currentDevice: deviceId.substring(0, 10) + '...',
           },
           { status: 403 }
         );
       }
+      // البصمات متطابقة - السماح بالحضور
     } else {
-      // First check-in: save the device ID
+      // أول مرة - احفظ البصمة الجديدة في قاعدة البيانات
       user.deviceId = deviceId;
       await user.save();
+      console.log(`Device registered for user ${user.name}: ${deviceId.substring(0, 15)}...`);
     }
 
     const settings = await SystemSettings.findOne();
     if (!settings) {
       return NextResponse.json({ error: 'Office settings not configured' }, { status: 400 });
     }
+
+    // Validate attendance time is set
+    if (!settings.attendanceTime) {
+      console.error('attendanceTime is not set in settings!');
+      return NextResponse.json({ 
+        error: 'Shift start time not configured. Admin must set the shift start time in settings.',
+      }, { status: 400 });
+    }
+
+    // Get shift duration (default 9 hours)
+    const shiftDuration = settings.shiftDuration || 9;
+
+    console.log('Settings loaded:', {
+      shiftStartTime: settings.attendanceTime,
+      shiftDuration: shiftDuration,
+      attendanceRadius: settings.attendanceRadius,
+      officeLocation: {
+        lat: settings.officeLatitude,
+        lon: settings.officeLongitude,
+      },
+    });
 
     // Validate office location is configured
     if (settings.officeLatitude === 0 && settings.officeLongitude === 0) {
@@ -135,57 +163,220 @@ export async function POST(req: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Check if already marked today
+    // Calculate if late based ONLY on the time set by admin
+    // Ignore the date/calendar day - only compare the time of day
+    const checkInTime = new Date();
+    
+    // Parse shift start time safely with trimming
+    let shiftStartHours = 18;  // Default 6 PM
+    let shiftStartMinutes = 0;
+    
+    if (settings.attendanceTime && typeof settings.attendanceTime === 'string') {
+      const timeStr = settings.attendanceTime.trim();
+      const parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        shiftStartHours = parseInt(parts[0], 10);
+        shiftStartMinutes = parseInt(parts[1], 10);
+      }
+    }
+
+    // Validate parsed values
+    if (isNaN(shiftStartHours) || isNaN(shiftStartMinutes)) {
+      shiftStartHours = 18;
+      shiftStartMinutes = 0;
+    }
+
+    // Ensure hours and minutes are in valid range
+    shiftStartHours = Math.max(0, Math.min(23, shiftStartHours));
+    shiftStartMinutes = Math.max(0, Math.min(59, shiftStartMinutes));
+
+    // Determine if check-in is within valid shift time or after shift ends
+    let isLate = false;
+    let lateMinutes = 0;
+    let lateHours = 0;
+
+    // Calculate shift boundaries in minutes
+    const shiftStartTimeInMinutes = shiftStartHours * 60 + shiftStartMinutes;
+    const shiftDurationInMinutes = shiftDuration * 60;
+    
+    // Get current time in minutes from start of day
+    const currentTimeInMinutes = checkInTime.getHours() * 60 + checkInTime.getMinutes();
+    
+    // Case 1: Shift does NOT wrap around midnight (e.g., 9 AM - 5 PM)
+    if (shiftStartTimeInMinutes + shiftDurationInMinutes <= 24 * 60) {
+      const shiftEndTimeInMinutes = shiftStartTimeInMinutes + shiftDurationInMinutes;
+      
+      if (currentTimeInMinutes < shiftStartTimeInMinutes) {
+        // Before shift starts - this is late from PREVIOUS day's shift
+        return NextResponse.json(
+          {
+            error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
+            reason: 'SHIFT_ENDED',
+            shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
+            shiftEndTime: `${String(Math.floor(shiftEndTimeInMinutes / 60)).padStart(2, '0')}:${String(shiftEndTimeInMinutes % 60).padStart(2, '0')}`,
+          },
+          { status: 400 }
+        );
+      } else if (currentTimeInMinutes >= shiftEndTimeInMinutes) {
+        // After shift ends
+        return NextResponse.json(
+          {
+            error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
+            reason: 'SHIFT_ENDED',
+            shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
+            shiftEndTime: `${String(Math.floor(shiftEndTimeInMinutes / 60)).padStart(2, '0')}:${String(shiftEndTimeInMinutes % 60).padStart(2, '0')}`,
+          },
+          { status: 400 }
+        );
+      } else {
+        // Within valid shift time
+        const minutesAfterStart = currentTimeInMinutes - shiftStartTimeInMinutes;
+        if (minutesAfterStart > 0) {
+          isLate = true;
+          lateMinutes = minutesAfterStart;
+          lateHours = Math.floor(lateMinutes / 60);
+          lateMinutes = lateMinutes % 60;
+        }
+      }
+    } else {
+      // Case 2: Shift WRAPS around midnight (e.g., 6 PM - 3 AM next day)
+      // Shift period: from shiftStartTime until next day
+      
+      if (currentTimeInMinutes >= shiftStartTimeInMinutes) {
+        // Between shift start and midnight - definitely on time or late for current shift
+        const minutesAfterStart = currentTimeInMinutes - shiftStartTimeInMinutes;
+        if (minutesAfterStart > 0) {
+          isLate = true;
+          lateMinutes = minutesAfterStart;
+          lateHours = Math.floor(lateMinutes / 60);
+          lateMinutes = lateMinutes % 60;
+        }
+      } else {
+        // Before shift start (early morning)
+        // This could be part of current shift (if it wraps to this morning) or past shift
+        const shiftEndTimeActual = (shiftStartTimeInMinutes + shiftDurationInMinutes) % (24 * 60);
+        
+        if (currentTimeInMinutes < shiftEndTimeActual) {
+          // Still within shift that started yesterday
+          const minutesAfterStart = currentTimeInMinutes + (24 * 60) - shiftStartTimeInMinutes;
+          isLate = true;
+          lateMinutes = minutesAfterStart;
+          lateHours = Math.floor(lateMinutes / 60);
+          lateMinutes = lateMinutes % 60;
+        } else {
+          // Past the shift - REJECT
+          return NextResponse.json(
+            {
+              error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
+              reason: 'SHIFT_ENDED',
+              shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
+              shiftEndTime: `${String(Math.floor(shiftEndTimeActual / 60)).padStart(2, '0')}:${String(shiftEndTimeActual % 60).padStart(2, '0')}`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    console.log('=== SHIFT CHECK-IN DEBUG ===');
+    console.log('User:', user.name);
+    console.log('Check-in Time:', checkInTime.toISOString(), `Local: ${checkInTime.toLocaleString()}`);
+    console.log('Shift Start Time:', `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`);
+    console.log('Shift Duration:', `${shiftDuration} hours`);
+    console.log('Current Time (minutes):', currentTimeInMinutes);
+    console.log('Shift Start (minutes):', shiftStartTimeInMinutes);
+    console.log('Is Late:', isLate);
+    console.log('Late Hours:', lateHours, 'Minutes:', lateMinutes);
+    console.log('=== END DEBUG ===');
+
+    // Determine which shift date this belongs to
+    // If check-in is BEFORE shift start AND we're in the early morning hours
+    // then it's for the PREVIOUS day's shift (that runs late into the night)
+    let shiftDate = new Date(today);
+    
+    if (currentTimeInMinutes < shiftStartTimeInMinutes && shiftStartTimeInMinutes + shiftDurationInMinutes > 24 * 60) {
+      // Early morning, and shift wraps around midnight
+      shiftDate.setDate(shiftDate.getDate() - 1);
+    }
+
+    // Check if already marked for this shift
+    const shiftDateStart = new Date(shiftDate);
+    shiftDateStart.setHours(0, 0, 0, 0);
+    const shiftDateEnd = new Date(shiftDateStart);
+    shiftDateEnd.setDate(shiftDateEnd.getDate() + 1);
+
     const existingAttendance = await Attendance.findOne({
       userId: payload.userId,
-      date: { $gte: today, $lt: tomorrow },
+      date: { $gte: shiftDateStart, $lt: shiftDateEnd },
     });
 
     if (existingAttendance) {
       return NextResponse.json(
         { 
-          error: 'You have already marked attendance today. You can only check in once per day.',
+          error: 'You have already marked attendance for this shift. You can only check in once per shift.',
           markedAt: existingAttendance.checkInTime,
+          shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
         },
         { status: 400 }
       );
     }
 
-    // Calculate if late
-    const checkInTime = new Date();
-    const [attendanceHours, attendanceMinutes] = settings.attendanceTime.split(':').map(Number);
-    const attendanceDeadline = new Date();
-    attendanceDeadline.setHours(attendanceHours, attendanceMinutes, 0, 0);
-
-    const isLate = checkInTime > attendanceDeadline;
-    const lateMinutes = isLate 
-      ? Math.floor((checkInTime.getTime() - attendanceDeadline.getTime()) / (1000 * 60))
-      : 0;
-
     // Create new attendance record
     const attendance = await Attendance.create({
       userId: payload.userId,
-      date: today,
+      date: shiftDate,
       checkInTime,
       latitude,
       longitude,
       withinRadius: true, // Already verified above
       isLate,
-      lateMinutes,
+      lateMinutes: (lateHours * 60) + lateMinutes,
       deviceId, // Save the device ID used for check-in
     });
 
-    return NextResponse.json({
-      attendance,
+    // Fetch the record back to confirm what was saved
+    const savedRecord = await Attendance.findById(attendance._id);
+    console.log('🔍 SAVED RECORD IN DB:', {
+      _id: savedRecord?._id,
+      userId: savedRecord?.userId,
+      date: savedRecord?.date,
+      checkInTime: savedRecord?.checkInTime,
+      isLate: savedRecord?.isLate,
+      lateMinutes: savedRecord?.lateMinutes,
+      deviceId: savedRecord?.deviceId,
+    });
+
+    // Format the late time message
+    let message = 'تم تسجيل الحضور في الوقت المحدد';
+    if (savedRecord?.isLate) {
+      const hours = Math.floor((savedRecord?.lateMinutes || 0) / 60);
+      const minutes = (savedRecord?.lateMinutes || 0) % 60;
+      if (hours > 0 && minutes > 0) {
+        message = `تأخرت ${hours} ساعة و ${minutes} دقيقة`;
+      } else if (hours > 0) {
+        message = `تأخرت ${hours} ساعة`;
+      } else if (minutes > 0) {
+        message = `تأخرت ${minutes} دقيقة`;
+      }
+    }
+
+    const responseData = {
+      attendance: savedRecord,
       withinRadius: true,
       distance: Math.round(distance),
       allowedRadius: settings.attendanceRadius,
-      isLate,
-      lateMinutes,
-      message: isLate 
-        ? `Checked in late by ${lateMinutes} minutes`
-        : 'Checked in on time',
-    });
+      isLate: savedRecord?.isLate,
+      lateMinutes: savedRecord?.lateMinutes,
+      shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
+      shiftDuration: `${shiftDuration} hours`,
+      message: message,
+    };
+
+    console.log('=== RETURNING RESPONSE ===');
+    console.log('Response Data:', JSON.stringify(responseData, null, 2));
+    console.log('=== END RESPONSE ===');
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error marking attendance:', error);
     return NextResponse.json({ error: 'Failed to mark attendance' }, { status: 500 });
@@ -219,6 +410,23 @@ export async function GET(req: NextRequest) {
     }
 
     const attendances = await Attendance.find(query).sort({ date: -1 });
+
+    console.log('🔍 GET ATTENDANCE - FETCHING:', {
+      userId,
+      month,
+      recordCount: attendances.length,
+    });
+    
+    if (attendances.length > 0) {
+      console.log('🔍 FIRST RECORD RETURNED:', {
+        _id: attendances[0]._id,
+        date: attendances[0].date,
+        checkInTime: attendances[0].checkInTime,
+        isLate: attendances[0].isLate,
+        lateMinutes: attendances[0].lateMinutes,
+        deviceId: attendances[0].deviceId,
+      });
+    }
 
     return NextResponse.json({ attendances });
   } catch (error) {

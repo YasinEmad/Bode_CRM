@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Calendar, Users, CheckCircle, Clock } from 'lucide-react';
+import { Loader, Calendar, Users, CheckCircle, Clock, Download } from 'lucide-react';
+import { exportAttendanceToExcel } from '@/lib/exportExcel';
 
 interface AttendanceRecord {
   _id: string;
@@ -102,6 +103,32 @@ export default function AttendanceRecords() {
     }
   };
 
+  const handleExportToExcel = () => {
+    if (attendanceRecords.length === 0) {
+      addToast('No records to export', 'error');
+      return;
+    }
+
+    const exportData = attendanceRecords.map((record) => ({
+      'Employee Name': record.userId.name,
+      'Date': new Date(record.date).toLocaleDateString('en-US'),
+      'Check-In Time': new Date(record.checkInTime).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }),
+      'Status': record.isLate ? 'Late' : 'Present',
+      'Late Minutes': record.isLate ? record.lateMinutes : 0,
+      'Device ID': record.deviceId || 'N/A',
+    }));
+
+    exportAttendanceToExcel(
+      exportData,
+      `attendance_${selectedYear}-${selectedMonth}`
+    );
+    addToast('✅ Attendance records exported successfully!', 'success');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -144,42 +171,54 @@ export default function AttendanceRecords() {
 
         {/* Month/Year Selection */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 mb-8 border border-slate-700">
-          <div className="flex flex-col md:flex-row gap-6 items-center md:items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Month
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              >
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.name}
-                  </option>
-                ))}
-              </select>
+          <div className="flex flex-col md:flex-row gap-6 items-center md:items-end justify-between">
+            <div className="flex flex-col md:flex-row gap-6 items-center md:items-end flex-1">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Month
+                </label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                >
+                  {months.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Year
+                </label>
+                <input
+                  type="number"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 bg-gradient-to-br from-blue-600 to-blue-500 px-4 py-3 rounded-lg border border-blue-400">
+                <Calendar size={20} className="text-white" />
+                <span className="font-semibold text-white">
+                  {selectedMonthName} {selectedYear}
+                </span>
+              </div>
             </div>
 
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Year
-              </label>
-              <input
-                type="number"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 bg-gradient-to-br from-blue-600 to-blue-500 px-4 py-3 rounded-lg border border-blue-400">
-              <Calendar size={20} className="text-white" />
-              <span className="font-semibold text-white">
-                {selectedMonthName} {selectedYear}
-              </span>
-            </div>
+            {/* Export Button */}
+            <button
+              onClick={handleExportToExcel}
+              disabled={loadingRecords || attendanceRecords.length === 0}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap"
+            >
+              <Download size={20} />
+              Export to Excel
+            </button>
           </div>
         </div>
 

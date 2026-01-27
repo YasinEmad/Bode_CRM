@@ -5,7 +5,8 @@ export interface ISystemSettings extends Document {
   officeLongitude: number;
   officeName: string;
   attendanceRadius: number; // in meters
-  attendanceTime: string; // HH:mm format, e.g., "09:00"
+  attendanceTime: string; // HH:mm format, e.g., "18:00" (shift start time)
+  shiftDuration: number; // in hours, e.g., 9
   commissionRules: {
     position: string;
     percentage: number;
@@ -34,7 +35,11 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     },
     attendanceTime: {
       type: String,
-      default: '09:00', // Default 9 AM
+      default: '18:00', // Default 6 PM (shift start time)
+    },
+    shiftDuration: {
+      type: Number,
+      default: 9, // Default 9 hours
     },
     commissionRules: [
       {

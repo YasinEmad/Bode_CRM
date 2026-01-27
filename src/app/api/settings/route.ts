@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
 
     let settings = await SystemSettings.findOne();
     if (!settings) {
+      console.log('Creating default settings with attendanceTime: 09:00');
       settings = await SystemSettings.create({
         officeLatitude: 0,
         officeLongitude: 0,
@@ -32,6 +33,15 @@ export async function GET(req: NextRequest) {
         attendanceRadius: 500,
         attendanceTime: '09:00',
         commissionRules: [],
+      });
+    } else {
+      // Ensure attendanceTime is properly formatted
+      if (settings.attendanceTime) {
+        settings.attendanceTime = settings.attendanceTime.trim();
+      }
+      console.log('Fetched settings from DB:', {
+        attendanceTime: settings.attendanceTime,
+        _id: settings._id,
       });
     }
 
@@ -59,6 +69,18 @@ export async function PUT(req: NextRequest) {
     const { officeLatitude, officeLongitude, officeName, attendanceRadius, attendanceTime, commissionRules } =
       await req.json();
 
+    // Validate and sanitize attendanceTime
+    if (attendanceTime) {
+      const trimmedTime = attendanceTime.trim();
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(trimmedTime)) {
+        return NextResponse.json(
+          { error: 'Invalid time format. Use HH:mm (24-hour format, e.g., 09:00 or 14:30)' },
+          { status: 400 }
+        );
+      }
+    }
+
     let settings = await SystemSettings.findOne();
     if (!settings) {
       settings = new SystemSettings();
@@ -68,7 +90,7 @@ export async function PUT(req: NextRequest) {
     settings.officeLongitude = officeLongitude;
     settings.officeName = officeName;
     settings.attendanceRadius = attendanceRadius;
-    settings.attendanceTime = attendanceTime;
+    settings.attendanceTime = attendanceTime?.trim() || '09:00';
     settings.commissionRules = commissionRules;
 
     await settings.save();

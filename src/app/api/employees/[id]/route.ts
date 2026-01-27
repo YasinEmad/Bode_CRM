@@ -30,7 +30,7 @@ export async function PUT(
     await connectDB();
 
     const body = await req.json();
-    const { position, name, email, phone, salary } = body;
+    const { position, name, email, phone, salary, deviceId } = body;
     const { id } = await params;
 
     const updateData: any = {};
@@ -39,6 +39,7 @@ export async function PUT(
     if (email !== undefined) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone;
     if (salary !== undefined) updateData.salary = Number(salary);
+    if (deviceId !== undefined) updateData.deviceId = deviceId;
 
     console.log('Update data:', updateData);
 
@@ -46,7 +47,7 @@ export async function PUT(
       id,
       updateData,
       { new: true }
-    ).select('_id name email phone position salary createdAt');
+    ).select('_id name email phone position salary createdAt deviceId');
 
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });

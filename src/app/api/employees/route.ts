@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const employees = await User.find({ role: 'sales' }).select('_id name email phone position salary createdAt');
+    const employees = await User.find({ role: 'sales' }).select('_id name email phone position salary createdAt deviceId');
     
     console.log('Employees from DB:', employees.map(e => ({ name: e.name, salary: e.salary })));
     

@@ -24,6 +24,11 @@ export default function AdminSettings() {
   const [loadingData, setLoadingData] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Employees device management
+  const [employees, setEmployees] = useState<Array<any>>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [editingDeviceIdId, setEditingDeviceIdId] = useState<string | null>(null);
+  const [deviceIdEditValue, setDeviceIdEditValue] = useState<string>('');
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -34,8 +39,54 @@ export default function AdminSettings() {
   useEffect(() => {
     if (token) {
       fetchSettings();
+      fetchEmployees();
     }
   }, [token]);
+
+  const fetchEmployees = async () => {
+    setLoadingEmployees(true);
+    try {
+      const res = await fetch('/api/employees', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setEmployees(Array.isArray(data.employees) ? data.employees : []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      addToast('Failed to fetch employees', 'error');
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  const handleEditDevice = (emp: any) => {
+    setEditingDeviceIdId(emp._id);
+    setDeviceIdEditValue(emp.deviceId || '');
+  };
+
+  const handleSaveDevice = async (empId: string) => {
+    const toastId = addToast('Saving device id...', 'loading');
+    try {
+      const res = await fetch(`/api/employees/${empId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ deviceId: deviceIdEditValue || null }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update device id');
+
+      const data = await res.json();
+      setEmployees(employees.map(e => (e._id === empId ? data.employee : e)));
+      updateToast(toastId, 'Device ID updated', 'success');
+      setEditingDeviceIdId(null);
+      setDeviceIdEditValue('');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to update device id', 'error');
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -62,13 +113,28 @@ export default function AdminSettings() {
       // Filter out rules with 0 percentage
       const filteredRules = settings.commissionRules.filter(rule => rule.percentage > 0);
       
+      // Sanitize attendanceTime - ensure it's in correct HH:mm format
+      let attendanceTime = settings.attendanceTime;
+      if (attendanceTime) {
+        attendanceTime = attendanceTime.trim();
+        // Validate format HH:mm
+        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (!timeRegex.test(attendanceTime)) {
+          throw new Error('Invalid time format. Use HH:mm (24-hour format, e.g., 09:00 or 14:30)');
+        }
+      }
+      
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ ...settings, commissionRules: filteredRules }),
+        body: JSON.stringify({ 
+          ...settings, 
+          attendanceTime,
+          commissionRules: filteredRules 
+        }),
       });
 
       if (!res.ok) throw new Error('Failed to save settings');
@@ -250,6 +316,79 @@ export default function AdminSettings() {
                   Employees must be within this distance from office to mark attendance
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* Employee Devices Management */}
+          <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 md:p-8 border border-slate-700">
+            <h2 className="text-2xl font-bold text-white mb-6">Employee Devices</h2>
+
+            <div className="space-y-4">
+              {loadingEmployees ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+                </div>
+              ) : employees.length === 0 ? (
+                <p className="text-slate-400">No employees found</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-900 border-b border-slate-600">
+                        <th className="px-4 py-3 text-left text-sm font-bold text-white">Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-white">Email</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-white">Device ID</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold text-white">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map((emp) => (
+                        <tr key={emp._id} className="border-b border-slate-600 hover:bg-slate-700/40 transition-colors">
+                          <td className="px-4 py-3 text-sm text-white font-semibold">{emp.name}</td>
+                          <td className="px-4 py-3 text-sm text-slate-400">{emp.email}</td>
+                          <td className="px-4 py-3 text-sm text-slate-300">
+                            {editingDeviceIdId === emp._id ? (
+                              <input
+                                type="text"
+                                value={deviceIdEditValue}
+                                onChange={(e) => setDeviceIdEditValue(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white"
+                              />
+                            ) : (
+                              <div className="break-all">{emp.deviceId || <span className="text-slate-500">Not set</span>}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {editingDeviceIdId === emp._id ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleSaveDevice(emp._id)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => { setEditingDeviceIdId(null); setDeviceIdEditValue(''); }}
+                                  className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded-lg"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleEditDevice(emp)}
+                                className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-lg"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </section>
 

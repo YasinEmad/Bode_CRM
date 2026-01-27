@@ -3,8 +3,9 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle } from 'lucide-react';
+import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '@/components/Toast';
+import { exportEmployeesToExcel } from '@/lib/exportExcel';
 
 interface Employee {
   _id: string;
@@ -123,6 +124,33 @@ export default function AdminEmployees() {
     }
   };
 
+  const handleExportToExcel = () => {
+    if (employees.length === 0) {
+      addToast('No employees to export', 'error');
+      return;
+    }
+
+    const exportData = employees.map((emp) => {
+      const conversionRate = emp.leadsCount && emp.leadsCount > 0 
+        ? ((emp.closedDealsCount || 0) / emp.leadsCount * 100).toFixed(1)
+        : '0';
+      
+      return {
+        'Employee Name': emp.name,
+        'Email': emp.email,
+        'Phone': emp.phone || 'N/A',
+        'Position': emp.position ? emp.position.charAt(0).toUpperCase() + emp.position.slice(1) : 'N/A',
+        'Salary': emp.salary || 0,
+        'Total Leads': emp.leadsCount || 0,
+        'Closed Deals': emp.closedDealsCount || 0,
+        'Conversion Rate': `${conversionRate}%`,
+      };
+    });
+
+    exportEmployeesToExcel(exportData, 'employees');
+    addToast('✅ Employees exported successfully!', 'success');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -140,8 +168,20 @@ export default function AdminEmployees() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2">Sales Employees</h1>
-          <p className="text-slate-400">Manage employee details, positions, and salaries</p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-5xl font-bold text-white mb-2">Sales Employees</h1>
+              <p className="text-slate-400">Manage employee details, positions, and salaries</p>
+            </div>
+            <button
+              onClick={handleExportToExcel}
+              disabled={employees.length === 0}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-emerald-500/50"
+            >
+              <Download size={20} />
+              Export to Excel
+            </button>
+          </div>
         </div>
 
         {/* Commission Rules Info */}
