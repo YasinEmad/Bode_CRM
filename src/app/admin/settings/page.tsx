@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, MapPin, Save } from 'lucide-react';
+import { Loader, MapPin, Save, RefreshCw } from 'lucide-react';
 
 interface SystemSettings {
   _id?: string;
@@ -12,7 +12,8 @@ interface SystemSettings {
   officeLongitude: number;
   officeName: string;
   attendanceRadius: number;
-  commissionRules: Array<{ role: string; percentage: number }>;
+  attendanceTime: string;
+  commissionRules: Array<{ position: string; percentage: number }>;
 }
 
 export default function AdminSettings() {
@@ -21,6 +22,7 @@ export default function AdminSettings() {
   const { addToast, updateToast } = useToast();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -57,13 +59,16 @@ export default function AdminSettings() {
     const toastId = addToast('Saving settings...', 'loading');
 
     try {
+      // Filter out rules with 0 percentage
+      const filteredRules = settings.commissionRules.filter(rule => rule.percentage > 0);
+      
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, commissionRules: filteredRules }),
       });
 
       if (!res.ok) throw new Error('Failed to save settings');
@@ -78,26 +83,52 @@ export default function AdminSettings() {
     }
   };
 
+  const handleRecalculateCommissions = async () => {
+    setIsRecalculating(true);
+    const toastId = addToast('Recalculating commissions...', 'loading');
+
+    try {
+      const res = await fetch('/api/commissions/recalculate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to recalculate');
+
+      const data = await res.json();
+      updateToast(toastId, `${data.message}`, 'success');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to recalculate', 'error');
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
   const handleGetCurrentLocation = () => {
     if (navigator.geolocation) {
       const toastId = addToast('Getting your location...', 'loading');
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setSettings(
-            settings
-              ? {
-                  ...settings,
-                  officeLatitude: position.coords.latitude,
-                  officeLongitude: position.coords.longitude,
-                }
-              : null
-          );
-          updateToast(toastId, 'Location updated!', 'success');
+          if (settings) {
+            setSettings({
+              ...settings,
+              officeLatitude: position.coords.latitude,
+              officeLongitude: position.coords.longitude,
+            });
+            updateToast(toastId, 'Location updated!', 'success');
+          } else {
+            updateToast(toastId, 'Settings not loaded', 'error');
+          }
         },
         (error) => {
           updateToast(toastId, `Error: ${error.message}`, 'error');
         }
       );
+    } else {
+      addToast('Geolocation not supported', 'error');
     }
   };
 
@@ -111,41 +142,45 @@ export default function AdminSettings() {
 
   if (!settings) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-600">Failed to load settings</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+        <div className="max-w-2xl mx-auto bg-slate-800 rounded-2xl shadow-xl p-8 text-center border border-slate-700">
+          <p className="text-slate-400">Failed to load settings</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">System Settings</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">System Settings</h1>
+          <p className="text-slate-400">Configure office location, attendance, and commission rules</p>
+        </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8 space-y-8">
-          {/* Office Location */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin size={24} className="text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-800">Office Location</h2>
+        <div className="space-y-8">
+          {/* Office Location Section */}
+          <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 md:p-8 border border-slate-700">
+            <div className="flex items-center gap-3 mb-6">
+              <MapPin size={28} className="text-blue-400" />
+              <h2 className="text-2xl font-bold text-white">Office Location</h2>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Office Name</label>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">Office Name</label>
                 <input
                   type="text"
                   value={settings.officeName}
                   onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 transition"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Latitude</label>
                   <input
                     type="number"
                     step="0.0001"
@@ -153,12 +188,12 @@ export default function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, officeLatitude: parseFloat(e.target.value) })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Longitude</label>
                   <input
                     type="number"
                     step="0.0001"
@@ -166,14 +201,14 @@ export default function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, officeLongitude: parseFloat(e.target.value) })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 transition"
                   />
                 </div>
               </div>
 
               <button
                 onClick={handleGetCurrentLocation}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all"
               >
                 <MapPin size={18} />
                 Use Current Location
@@ -181,81 +216,109 @@ export default function AdminSettings() {
             </div>
           </section>
 
-          {/* Attendance Radius */}
-          <section className="border-t pt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Attendance Settings</h2>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Allowed Radius (meters)
-              </label>
-              <input
-                type="number"
-                value={settings.attendanceRadius}
-                onChange={(e) => setSettings({ ...settings, attendanceRadius: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                Employees must be within this distance from office to mark attendance
-              </p>
-            </div>
-          </section>
-
-          {/* Commission Rules */}
-          <section className="border-t pt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Commission Rules</h2>
+          {/* Attendance Settings */}
+          <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 md:p-8 border border-slate-700">
+            <h2 className="text-2xl font-bold text-white mb-6">Attendance Settings</h2>
 
             <div className="space-y-4">
-              {settings.commissionRules.map((rule, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="Role"
-                    value={rule.role}
-                    onChange={(e) => {
-                      const newRules = [...settings.commissionRules];
-                      newRules[index].role = e.target.value;
-                      setSettings({ ...settings, commissionRules: newRules });
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Percentage"
-                    value={rule.percentage}
-                    onChange={(e) => {
-                      const newRules = [...settings.commissionRules];
-                      newRules[index].percentage = parseFloat(e.target.value);
-                      setSettings({ ...settings, commissionRules: newRules });
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              ))}
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Attendance Time (required arrival time)
+                </label>
+                <input
+                  type="time"
+                  value={settings.attendanceTime}
+                  onChange={(e) => setSettings({ ...settings, attendanceTime: e.target.value })}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 transition"
+                />
+                <p className="text-sm text-slate-400 mt-2">
+                  Employees who check in after this time will be marked as late
+                </p>
+              </div>
 
-              <button
-                onClick={() => {
-                  setSettings({
-                    ...settings,
-                    commissionRules: [...settings.commissionRules, { role: '', percentage: 0 }],
-                  });
-                }}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium"
-              >
-                Add Commission Rule
-              </button>
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Allowed Radius (meters)
+                </label>
+                <input
+                  type="number"
+                  value={settings.attendanceRadius}
+                  onChange={(e) => setSettings({ ...settings, attendanceRadius: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 transition"
+                />
+                <p className="text-sm text-slate-400 mt-2">
+                  Employees must be within this distance from office to mark attendance
+                </p>
+              </div>
             </div>
           </section>
 
-          {/* Save Button */}
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2"
-          >
-            {isSaving ? <Loader size={20} className="animate-spin" /> : <Save size={20} />}
-            {isSaving ? 'Saving...' : 'Save Settings'}
-          </button>
+          {/* Commission Rules Section */}
+          <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 md:p-8 border border-slate-700">
+            <h2 className="text-2xl font-bold text-white mb-8">Commission Rules by Position</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {[
+                { position: 'Senior', key: 'senior' },
+                { position: 'Fresh', key: 'fresh' },
+                { position: 'Team Lead', key: 'teamlead' },
+                { position: 'Mid', key: 'mid' },
+              ].map(({ position, key }) => {
+                const rule = settings.commissionRules?.find(
+                  (r: any) => (r.position || '').toLowerCase() === position.toLowerCase()
+                );
+                const percentage = rule?.percentage || 0;
+
+                return (
+                  <div key={key} className="bg-slate-900 p-6 rounded-lg border border-slate-700">
+                    <label className="block text-sm font-semibold text-slate-300 mb-3">
+                      {position} Position
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={percentage}
+                        onChange={(e) => {
+                          const newPercentage = parseFloat(e.target.value) || 0;
+                          let newRules = [...(settings.commissionRules || [])];
+
+                          const existingIndex = newRules.findIndex(
+                            (r: any) => (r.position || '').toLowerCase() === position.toLowerCase()
+                          );
+
+                          if (existingIndex >= 0) {
+                            newRules[existingIndex].percentage = newPercentage;
+                          } else {
+                            newRules = [...newRules, { position, percentage: newPercentage }];
+                          }
+
+                          setSettings({ ...settings, commissionRules: newRules });
+                        }}
+                        className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 transition"
+                      />
+                      <span className="text-white text-lg font-semibold">%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Save and Recalculate Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:bg-slate-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all"
+            >
+              {isSaving ? <Loader size={20} className="animate-spin" /> : <Save size={20} />}
+              {isSaving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

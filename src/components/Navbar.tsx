@@ -15,6 +15,7 @@ export default function Navbar() {
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/leads', label: 'Leads' },
         { href: '/admin/employees', label: 'Employees' },
+        { href: '/admin/attendance-records', label: 'Attendance' },
         { href: '/admin/commissions', label: 'Commissions' },
         { href: '/admin/settings', label: 'Settings' },
       ]

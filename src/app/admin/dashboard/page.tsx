@@ -3,8 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, TrendingUp, DollarSign, CheckCircle } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, CheckCircle, BarChart3, Zap } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, loading, token } = useAuth();
@@ -15,7 +14,6 @@ export default function AdminDashboard() {
     totalCommissions: 0,
     activeEmployees: 0,
   });
-  const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -31,7 +29,6 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      // Fetch sample data
       const leadsRes = await fetch('/api/leads', {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -59,14 +56,6 @@ export default function AdminDashboard() {
         totalCommissions,
         activeEmployees: employees.length,
       });
-
-      // Mock chart data
-      setChartData([
-        { month: 'Jan', leads: 12, closed: 3, commission: 9000 },
-        { month: 'Feb', leads: 19, closed: 5, commission: 15000 },
-        { month: 'Mar', leads: 15, closed: 2, commission: 6000 },
-        { month: 'Apr', leads: 25, closed: 8, commission: 24000 },
-      ]);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -74,116 +63,175 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
       </div>
     );
   }
 
+  const conversionRate = stats.totalLeads > 0 ? ((stats.closedDeals / stats.totalLeads) * 100).toFixed(1) : 0;
+  const avgCommission = stats.closedDeals > 0 ? (stats.totalCommissions / stats.closedDeals).toLocaleString('en-US', {maximumFractionDigits: 0}) : 0;
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Admin Dashboard</h1>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Total Leads</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.totalLeads}</p>
-              </div>
-              <TrendingUp size={32} className="text-blue-500" />
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl">
+              <BarChart3 className="text-white" size={32} />
             </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Closed Deals</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.closedDeals}</p>
-              </div>
-              <CheckCircle size={32} className="text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Total Commission</p>
-                <p className="text-3xl font-bold text-gray-800">${(stats.totalCommissions / 1000).toFixed(1)}K</p>
-              </div>
-              <DollarSign size={32} className="text-purple-500" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Active Employees</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.activeEmployees}</p>
-              </div>
-              <Users size={32} className="text-orange-500" />
+            <div>
+              <h1 className="text-5xl font-bold text-white mb-1">Admin Dashboard</h1>
+              <p className="text-slate-400">Manage leads, employees, commissions and system settings</p>
             </div>
           </div>
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Performance Trend</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="leads" stroke="#3b82f6" />
-                <Line type="monotone" dataKey="closed" stroke="#10b981" />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-blue-500 transition-all group">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Total Leads</p>
+                <p className="text-4xl font-bold text-white mt-2">{stats.totalLeads}</p>
+                <p className="text-xs text-slate-500 mt-2">Active leads in pipeline</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
+                <TrendingUp size={32} className="text-white" />
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Commission by Month</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="commission" fill="#8b5cf6" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-emerald-500 transition-all group">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Closed Deals</p>
+                <p className="text-4xl font-bold text-white mt-2">{stats.closedDeals}</p>
+                <p className="text-xs text-slate-500 mt-2">Successfully closed</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
+                <CheckCircle size={32} className="text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-purple-500 transition-all group">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Total Commission</p>
+                <p className="text-4xl font-bold text-white mt-2">${(stats.totalCommissions / 1000).toFixed(1)}K</p>
+                <p className="text-xs text-slate-500 mt-2">Cumulative earnings</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-600 to-purple-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
+                <DollarSign size={32} className="text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-orange-500 transition-all group">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Active Employees</p>
+                <p className="text-4xl font-bold text-white mt-2">{stats.activeEmployees}</p>
+                <p className="text-xs text-slate-500 mt-2">Team members</p>
+              </div>
+              <div className="bg-gradient-to-br from-orange-600 to-orange-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
+                <Users size={32} className="text-white" />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <a
             href="/admin/leads"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-blue-500 transition-all group cursor-pointer"
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Manage Leads</h3>
-            <p className="text-gray-600">Create, assign, and track leads</p>
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <BarChart3 size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Manage Leads</h3>
+            <p className="text-slate-400">Create, assign, and track leads across your pipeline</p>
           </a>
 
           <a
             href="/admin/commissions"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-emerald-500 transition-all group cursor-pointer"
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Approve Commissions</h3>
-            <p className="text-gray-600">Review and approve employee commissions</p>
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <DollarSign size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Approve Commissions</h3>
+            <p className="text-slate-400">Review and approve employee commissions</p>
+          </a>
+
+          <a
+            href="/admin/employees"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-purple-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-purple-600 to-purple-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <Users size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Manage Employees</h3>
+            <p className="text-slate-400">View and manage your sales team</p>
+          </a>
+
+          <a
+            href="/admin/attendance-records"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-indigo-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-indigo-600 to-indigo-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <CheckCircle size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors">Attendance Records</h3>
+            <p className="text-slate-400">View attendance records by month</p>
           </a>
 
           <a
             href="/admin/settings"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-amber-500 transition-all group cursor-pointer"
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-2">System Settings</h3>
-            <p className="text-gray-600">Configure office location & rules</p>
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-amber-600 to-amber-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <BarChart3 size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">System Settings</h3>
+            <p className="text-slate-400">Configure office location & commission rules</p>
           </a>
+
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl transition-all group">
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-pink-600 to-pink-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <Zap size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Team Overview</h3>
+            <p className="text-slate-400">{stats.activeEmployees} employees • {stats.totalLeads} leads • {stats.closedDeals} deals closed</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl transition-all group">
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-cyan-600 to-cyan-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <TrendingUp size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Revenue Status</h3>
+            <p className="text-slate-400">Commission rate: {conversionRate}% • Revenue: ${(stats.totalCommissions / 1000).toFixed(1)}K</p>
+          </div>
         </div>
       </div>
     </div>

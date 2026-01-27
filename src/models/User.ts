@@ -6,6 +6,9 @@ export interface IUser extends Document {
   name: string;
   role: 'admin' | 'sales';
   phone?: string;
+  position?: string; // e.g., 'Sales Junior', 'Sales Senior', 'Team Leader'
+  salary?: number; // Monthly salary
+  deviceId?: string; // Device ID for check-in verification
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +36,18 @@ const UserSchema = new Schema<IUser>(
       default: 'sales',
     },
     phone: String,
+    position: {
+      type: String,
+      default: '',
+    },
+    salary: {
+      type: Number,
+      default: 0,
+    },
+    deviceId: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

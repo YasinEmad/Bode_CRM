@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
         officeLongitude: 0,
         officeName: 'Main Office',
         attendanceRadius: 500,
+        attendanceTime: '09:00',
         commissionRules: [],
       });
     }
@@ -55,7 +56,7 @@ export async function PUT(req: NextRequest) {
 
     await connectDB();
 
-    const { officeLatitude, officeLongitude, officeName, attendanceRadius, commissionRules } =
+    const { officeLatitude, officeLongitude, officeName, attendanceRadius, attendanceTime, commissionRules } =
       await req.json();
 
     let settings = await SystemSettings.findOne();
@@ -67,6 +68,7 @@ export async function PUT(req: NextRequest) {
     settings.officeLongitude = officeLongitude;
     settings.officeName = officeName;
     settings.attendanceRadius = attendanceRadius;
+    settings.attendanceTime = attendanceTime;
     settings.commissionRules = commissionRules;
 
     await settings.save();

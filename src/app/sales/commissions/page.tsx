@@ -82,16 +82,11 @@ export default function SalesCommissions() {
 
   const calculateTotals = () => {
     return {
-      pending: commissions
-        .filter((c) => c.status === 'pending')
-        .reduce((sum, c) => sum + c.amount, 0),
-      approved: commissions
-        .filter((c) => c.status === 'approved')
-        .reduce((sum, c) => sum + c.amount, 0),
-      rejected: commissions
-        .filter((c) => c.status === 'rejected')
-        .reduce((sum, c) => sum + c.amount, 0),
-      paid: commissions
+      pendingCount: commissions.filter((c) => c.status === 'pending').length,
+      approvedCount: commissions.filter((c) => c.status === 'approved').length,
+      rejectedCount: commissions.filter((c) => c.status === 'rejected').length,
+      paidCount: commissions.filter((c) => c.status === 'paid').length,
+      paidAmount: commissions
         .filter((c) => c.status === 'paid')
         .reduce((sum, c) => sum + c.amount, 0),
     };
@@ -117,15 +112,12 @@ export default function SalesCommissions() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
           <div className="bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-amber-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-amber-100 text-sm font-medium">Pending</p>
-                <p className="text-3xl font-bold mt-2">${totals.pending.toLocaleString()}</p>
-                <p className="text-xs text-amber-100 mt-2">
-                  {commissions.filter((c) => c.status === 'pending').length} commission(s)
-                </p>
+                <p className="text-amber-100 text-sm font-medium">Pending Deals</p>
+                <p className="text-4xl font-bold mt-2">{totals.pendingCount}</p>
               </div>
               <Clock size={40} className="opacity-30" />
             </div>
@@ -134,11 +126,8 @@ export default function SalesCommissions() {
           <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-emerald-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100 text-sm font-medium">Approved</p>
-                <p className="text-3xl font-bold mt-2">${totals.approved.toLocaleString()}</p>
-                <p className="text-xs text-emerald-100 mt-2">
-                  {commissions.filter((c) => c.status === 'approved').length} commission(s)
-                </p>
+                <p className="text-emerald-100 text-sm font-medium">Approved Deals</p>
+                <p className="text-4xl font-bold mt-2">{totals.approvedCount}</p>
               </div>
               <CheckCircle size={40} className="opacity-30" />
             </div>
@@ -147,11 +136,8 @@ export default function SalesCommissions() {
           <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-red-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-100 text-sm font-medium">Rejected</p>
-                <p className="text-3xl font-bold mt-2">${totals.rejected.toLocaleString()}</p>
-                <p className="text-xs text-red-100 mt-2">
-                  {commissions.filter((c) => c.status === 'rejected').length} commission(s)
-                </p>
+                <p className="text-red-100 text-sm font-medium">Rejected Deals</p>
+                <p className="text-4xl font-bold mt-2">{totals.rejectedCount}</p>
               </div>
               <XCircle size={40} className="opacity-30" />
             </div>
@@ -160,13 +146,20 @@ export default function SalesCommissions() {
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-blue-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Paid</p>
-                <p className="text-3xl font-bold mt-2">${totals.paid.toLocaleString()}</p>
-                <p className="text-xs text-blue-100 mt-2">
-                  {commissions.filter((c) => c.status === 'paid').length} commission(s)
-                </p>
+                <p className="text-blue-100 text-sm font-medium">Paid Deals</p>
+                <p className="text-4xl font-bold mt-2">{totals.paidCount}</p>
               </div>
               <CheckCircle size={40} className="opacity-30" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-purple-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm font-medium">Commission Paid</p>
+                <p className="text-3xl font-bold mt-2">${totals.paidAmount.toLocaleString()}</p>
+              </div>
+              <span className="text-5xl opacity-20">💰</span>
             </div>
           </div>
         </div>

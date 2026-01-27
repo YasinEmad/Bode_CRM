@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, MapPin, Check } from 'lucide-react';
+import { getDeviceId } from '@/lib/deviceId';
 
 interface AttendanceRecord {
   _id: string;
   date: string;
   checkInTime: string;
-  checkOutTime?: string;
   withinRadius: boolean;
+  isLate: boolean;
+  lateMinutes: number;
 }
 
 export default function SalesAttendance() {
@@ -70,8 +72,19 @@ export default function SalesAttendance() {
       const position = await new Promise<GeolocationCoordinates>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => resolve(pos.coords),
-          (err) => reject(err)
+          (err) => reject(err),
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
         );
+      });
+
+      console.log('User position:', { 
+        latitude: position.latitude, 
+        longitude: position.longitude,
+        accuracy: position.accuracy 
       });
 
       const res = await fetch('/api/attendance', {
@@ -83,28 +96,33 @@ export default function SalesAttendance() {
         body: JSON.stringify({
           latitude: position.latitude,
           longitude: position.longitude,
+          deviceId: getDeviceId(),
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to mark attendance');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to mark attendance');
+      }
 
       const data = await res.json();
 
-      if (data.withinRadius) {
-        updateToast(toastId, '✓ Attendance marked successfully!', 'success');
+      if (data.isLate) {
+        const hours = Math.floor(data.lateMinutes / 60);
+        const minutes = data.lateMinutes % 60;
+        let lateMessage = `⏰ You are ${minutes > 0 ? `${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}${hours > 0 && minutes > 0 ? ' and ' : ''}${hours > 0 ? `${hours} hour${hours !== 1 ? 's' : ''}` : ''} late!`;
+        updateToast(toastId, lateMessage, 'error');
       } else {
-        updateToast(
-          toastId,
-          `⚠ You are ${data.distance}m away (allowed: ${data.allowedRadius}m)`,
-          'error'
-        );
+        updateToast(toastId, '✓ Attendance marked successfully on time!', 'success');
       }
 
       fetchAttendance();
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to mark attendance';
+      console.error('Attendance error:', errorMsg);
       updateToast(
         toastId,
-        error instanceof Error ? error.message : 'Failed to mark attendance',
+        errorMsg,
         'error'
       );
     } finally {
@@ -137,7 +155,7 @@ export default function SalesAttendance() {
 
           <p className="text-slate-300 mb-8 text-lg">
             {todayAttendance
-              ? '✅ Attendance already marked today'
+              ? '✅ Check-in marked today'
               : '📍 Click the button below to mark your attendance using your GPS location'}
           </p>
 
@@ -154,7 +172,7 @@ export default function SalesAttendance() {
             ) : todayAttendance ? (
               <>
                 <Check size={24} />
-                Marked Today
+                Checked In
               </>
             ) : (
               <>
@@ -164,9 +182,13 @@ export default function SalesAttendance() {
             )}
           </button>
 
-          {todayAttendance && !todayAttendance.withinRadius && (
-            <div className="bg-red-900 bg-opacity-40 border border-red-600 text-red-200 px-4 py-3 rounded-lg">
-              <p className="font-medium">⚠ Note: You were outside the allowed radius</p>
+          {todayAttendance && todayAttendance.isLate && (
+            <div className="bg-orange-900 bg-opacity-40 border border-orange-600 text-orange-200 px-4 py-3 rounded-lg">
+              <p className="font-medium">
+                ⏰ Late by: {Math.floor(todayAttendance.lateMinutes / 60) > 0 
+                  ? `${Math.floor(todayAttendance.lateMinutes / 60)}h ${todayAttendance.lateMinutes % 60}m` 
+                  : `${todayAttendance.lateMinutes}m`}
+              </p>
             </div>
           )}
         </div>
@@ -191,7 +213,9 @@ export default function SalesAttendance() {
               <div
                 key={record._id}
                 className={`bg-slate-800 rounded-2xl shadow-xl p-5 border-l-4 transition-all hover:shadow-2xl ${
-                  record.withinRadius ? 'border-emerald-500 hover:border-emerald-400' : 'border-red-500 hover:border-red-400'
+                  record.isLate 
+                    ? 'border-orange-500 hover:border-orange-400' 
+                    : 'border-emerald-500 hover:border-emerald-400'
                 } border border-slate-700`}
               >
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -201,19 +225,27 @@ export default function SalesAttendance() {
                     </p>
                     <p className="text-sm text-slate-400 mt-2">
                       🕐 Check-in: {new Date(record.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                      {record.checkOutTime &&
-                        ` | 🚪 Check-out: ${new Date(record.checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                     </p>
+                    {record.isLate && (
+                      <p className="text-sm text-orange-300 mt-1 font-medium">
+                        ⏰ Late by: {Math.floor(record.lateMinutes / 60) > 0 
+                          ? `${Math.floor(record.lateMinutes / 60)}h ${record.lateMinutes % 60}m` 
+                          : `${record.lateMinutes}m`}
+                      </p>
+                    )}
                   </div>
-                  <span
-                    className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
-                      record.withinRadius
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-red-600 text-white'
-                    }`}
-                  >
-                    {record.withinRadius ? '✓ Within Radius' : '✗ Outside Radius'}
-                  </span>
+                  <div className="flex gap-2 flex-col sm:flex-row">
+                    {record.isLate && (
+                      <span className="px-4 py-2 rounded-full text-sm font-medium bg-orange-600 text-white flex items-center gap-2">
+                        ⏰ Late
+                      </span>
+                    )}
+                    {!record.isLate && (
+                      <span className="px-4 py-2 rounded-full text-sm font-medium bg-emerald-600 text-white flex items-center gap-2">
+                        ✓ On Time
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

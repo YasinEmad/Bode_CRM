@@ -5,8 +5,9 @@ export interface ISystemSettings extends Document {
   officeLongitude: number;
   officeName: string;
   attendanceRadius: number; // in meters
+  attendanceTime: string; // HH:mm format, e.g., "09:00"
   commissionRules: {
-    role: string;
+    position: string;
     percentage: number;
   }[];
   createdAt: Date;
@@ -31,9 +32,13 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       type: Number,
       default: 500, // 500 meters default
     },
+    attendanceTime: {
+      type: String,
+      default: '09:00', // Default 9 AM
+    },
     commissionRules: [
       {
-        role: String,
+        position: String,
         percentage: Number,
       },
     ],
