@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, Mail, Edit2, X, Save } from 'lucide-react';
+import { Mail, Edit2, X, Save } from 'lucide-react';
 
 interface LeadCardProps {
   id: string;
@@ -40,15 +40,34 @@ export default function LeadCard({
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [proofImageData, setProofImageData] = useState<string | null>(null);
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
+  
 
   const statusColor = statusColors[status] || { bg: 'from-slate-600 to-slate-700', text: 'text-slate-100', border: 'border-slate-500', label: status, icon: '•' };
 
-  const handleCall = () => {
-    window.location.href = `tel:${phone}`;
+  const handleWhatsApp = () => {
+    try {
+      const digits = (phone || '').toString().replace(/\D/g, '');
+      // If number starts with a leading 0, strip it (common local format)
+      const normalized = digits.startsWith('0') ? digits.replace(/^0+/, '') : digits;
+      if (!normalized) return;
+      const url = `https://wa.me/${normalized}`;
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('Failed to open WhatsApp:', err);
+    }
   };
 
   const handleEmail = () => {
-    window.location.href = `mailto:${email}`;
+    try {
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      try {
+        window.location.href = `mailto:${email}`;
+      } catch (err2) {
+        console.error('Failed to open mail client:', err2);
+      }
+    }
   };
 
   const handleSaveNotes = () => {
@@ -100,11 +119,14 @@ export default function LeadCard({
       {/* Action Buttons */}
       <div className="flex gap-2 mb-4 flex-wrap">
         <button
-          onClick={handleCall}
+          onClick={handleWhatsApp}
           className="flex-1 min-w-[80px] bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1"
         >
-          <Phone size={16} className="hidden sm:block" />
-          <span>Call</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="hidden sm:block">
+            <path d="M21.05 2.93a11.07 11.07 0 0 0-15.66 0 11 11 0 0 0 0 15.66L2 22l3.41-1.11A11 11 0 0 0 21.05 2.93z"></path>
+            <path d="M17.5 14.5c-.44-.22-1.3-.65-1.5-.72-.2-.06-.34-.1-.49.22-.16.33-.62.72-.76.87-.14.16-.29.18-.54.06-.25-.12-1- .37-1.9-1.17-.7-.62-1.17-1.38-1.31-1.64-.14-.26-.01-.4.1-.52.1-.1.24-.27.36-.4.12-.14.16-.24.25-.4.08-.16.04-.3-.02-.43-.06-.12-.49-1.18-.67-1.62-.18-.44-.36-.38-.5-.38-.13 0-.28 0-.43 0-.14 0-.36.05-.55.25-.2.2-.76.74-.76 1.8 0 1.06.78 2.08.88 2.22.1.14 1.52 2.34 3.68 3.28 2.2.95 2.2.64 2.6.6.4-.04 1.3-.53 1.49-1.05.19-.52.19-.96.13-1.05-.06-.1-.22-.15-.46-.27z" />
+          </svg>
+          <span>WhatsApp</span>
         </button>
         <button
           onClick={handleEmail}
@@ -237,6 +259,8 @@ export default function LeadCard({
           </div>
         </div>
       )}
+
+      
     </div>
   );
 }

@@ -7,6 +7,7 @@ export interface ILead extends Document {
   name: string;
   budget: number;
   phone: string;
+  email?: string;
   status: LeadStatus;
   source: LeadSource;
   assignedTo?: mongoose.Types.ObjectId;
@@ -29,6 +30,10 @@ const LeadSchema = new Schema<ILead>(
     phone: {
       type: String,
       required: true,
+    },
+    email: {
+      type: String,
+      default: '',
     },
     status: {
       type: String,

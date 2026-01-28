@@ -198,6 +198,8 @@ export async function POST(req: NextRequest) {
     // Calculate shift boundaries in minutes
     const shiftStartTimeInMinutes = shiftStartHours * 60 + shiftStartMinutes;
     const shiftDurationInMinutes = shiftDuration * 60;
+    // Allow employees to check in up to this many minutes early (default 60)
+    const allowedEarlyMinutes = (settings as any).allowedEarlyMinutes ?? 60;
     
     // Get current time in minutes from start of day
     const currentTimeInMinutes = checkInTime.getHours() * 60 + checkInTime.getMinutes();
@@ -207,16 +209,23 @@ export async function POST(req: NextRequest) {
       const shiftEndTimeInMinutes = shiftStartTimeInMinutes + shiftDurationInMinutes;
       
       if (currentTimeInMinutes < shiftStartTimeInMinutes) {
-        // Before shift starts - this is late from PREVIOUS day's shift
-        return NextResponse.json(
-          {
-            error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
-            reason: 'SHIFT_ENDED',
-            shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
-            shiftEndTime: `${String(Math.floor(shiftEndTimeInMinutes / 60)).padStart(2, '0')}:${String(shiftEndTimeInMinutes % 60).padStart(2, '0')}`,
-          },
-          { status: 400 }
-        );
+        // Before shift starts - allow if within early window, otherwise treat as previous day's shift ended
+        const earlyBy = shiftStartTimeInMinutes - currentTimeInMinutes;
+        if (earlyBy <= allowedEarlyMinutes) {
+          // Early arrival within allowed window — treat as on-time (not late)
+          isLate = false;
+          lateMinutes = 0;
+        } else {
+          return NextResponse.json(
+            {
+              error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
+              reason: 'SHIFT_ENDED',
+              shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
+              shiftEndTime: `${String(Math.floor(shiftEndTimeInMinutes / 60)).padStart(2, '0')}:${String(shiftEndTimeInMinutes % 60).padStart(2, '0')}`,
+            },
+            { status: 400 }
+          );
+        }
       } else if (currentTimeInMinutes >= shiftEndTimeInMinutes) {
         // After shift ends
         return NextResponse.json(

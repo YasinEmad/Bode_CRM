@@ -9,12 +9,22 @@ import LeadCard from '@/components/LeadCard';
 import BulkImportComponent from '@/components/BulkImportComponent';
 import { exportLeadsToExcel } from '@/lib/exportExcel';
 
+type LeadStatus =
+  | 'new'
+  | 'connected'
+  | 'negotiation'
+  | 'pending_closed'
+  | 'closed_pending_approval'
+  | 'closed'
+  | 'lost';
+
 interface Lead {
   _id: string;
   name: string;
   budget: number;
   phone: string;
-  status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
+  email?: string;
+  status: LeadStatus;
   source: string;
   notes: string;
   proofImage?: string;
@@ -48,7 +58,8 @@ export default function AdminLeads() {
     name: '',
     budget: '',
     phone: '',
-    status: 'new' as 'new' | 'connected' | 'negotiation' | 'closed' | 'lost',
+    email: '',
+    status: 'new' as LeadStatus,
     source: 'other' as const,
     notes: '',
     assignedTo: '',
@@ -57,7 +68,8 @@ export default function AdminLeads() {
     name: '',
     budget: '',
     phone: '',
-    status: 'new' as 'new' | 'connected' | 'negotiation' | 'closed' | 'lost',
+    email: '',
+    status: 'new' as LeadStatus,
     source: 'other' as const,
     notes: '',
     assignedTo: '',
@@ -82,6 +94,9 @@ export default function AdminLeads() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      try {
+        console.log('[AdminLeads] fetched leads emails:', Array.isArray(data.leads) ? data.leads.map((l: any) => l.email) : data.leads);
+      } catch (e) {}
       setLeads(Array.isArray(data.leads) ? data.leads : []);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -120,11 +135,10 @@ export default function AdminLeads() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to create lead');
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create lead');
       setLeads([...leads, data.lead]);
-      setFormData({ name: '', budget: '', phone: '', status: 'new', source: 'other', notes: '', assignedTo: '' });
+      setFormData({ name: '', budget: '', phone: '', email: '', status: 'new', source: 'other', notes: '', assignedTo: '' });
       setShowForm(false);
       updateToast(toastId, 'Lead created successfully!', 'success');
     } catch (error) {
@@ -258,6 +272,7 @@ export default function AdminLeads() {
       name: lead.name,
       budget: lead.budget.toString(),
       phone: lead.phone,
+      email: lead.email || '',
       status: lead.status,
       source: lead.source as any,
       notes: lead.notes,
@@ -287,6 +302,7 @@ export default function AdminLeads() {
           name: editFormData.name,
           budget: parseInt(editFormData.budget),
           phone: editFormData.phone,
+          email: editFormData.email,
           status: editFormData.status,
           source: editFormData.source,
           notes: editFormData.notes,
@@ -333,6 +349,7 @@ export default function AdminLeads() {
     const exportData = filteredLeads.map((lead) => ({
       'Lead Name': lead.name,
       'Budget': lead.budget,
+      'Email': lead.email || '',
       'Phone': lead.phone,
       'Status': lead.status,
       'Source': lead.source,
@@ -418,7 +435,8 @@ export default function AdminLeads() {
                 Export to Excel
               </button>
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => setShowForm((s) => !s)}
+                aria-label="Toggle create lead form"
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-blue-500/50"
               >
                 <Plus size={20} />
@@ -515,6 +533,16 @@ export default function AdminLeads() {
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500 transition"
                     required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Email</label>
+                  <input
+                    type="email"
+                    placeholder="Enter client email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-4 py-3 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500 transition"
                   />
                 </div>
                 <div>
@@ -737,8 +765,62 @@ export default function AdminLeads() {
               </div>
             )}
 
-            {/* Table */}
-            <div className="overflow-x-auto">
+            {/* Results list (mobile) */}
+            <div className="md:hidden p-4 space-y-4">
+              {filteredLeads.map((lead) => (
+                <div key={lead._id} className={`bg-slate-800/60 border border-slate-700 rounded-lg p-4 transition hover:shadow-lg ${selectedLeads.has(lead._id) ? 'ring-2 ring-blue-500' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-white font-semibold">{lead.name}</h3>
+                        <div className="text-slate-300 text-sm">${lead.budget.toLocaleString()}</div>
+                      </div>
+                      <p className="text-slate-300 text-sm mt-1">{lead.phone} • {lead.email || '—'}</p>
+                      <p className="text-slate-400 text-xs mt-2 truncate">{lead.notes}</p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${lead.status === 'new' ? 'bg-blue-500/20 text-blue-300' : lead.status === 'connected' ? 'bg-emerald-500/20 text-emerald-300' : lead.status === 'negotiation' ? 'bg-amber-500/20 text-amber-300' : lead.status === 'closed' ? 'bg-purple-500/20 text-purple-300' : 'bg-red-500/20 text-red-300'}`}>
+                          {lead.status}
+                        </span>
+                        {lead.assignedTo ? (
+                          <span className="text-emerald-300 text-xs bg-emerald-500/10 px-2 py-1 rounded-full">{lead.assignedTo.name}</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">Unassigned</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div>
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.has(lead._id)}
+                          onChange={() => handleToggleLead(lead._id)}
+                          className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditLead(lead)}
+                          className="p-2 bg-blue-500/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition"
+                          title="Edit lead"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => setDeletingLeadId(lead._id)}
+                          className="p-2 bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white rounded-lg transition"
+                          title="Delete lead"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Table (desktop) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-700 border-b border-slate-600">
                   <tr>
@@ -758,6 +840,7 @@ export default function AdminLeads() {
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Name</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Phone</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-200">Email</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Budget</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Status</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Source</th>
@@ -791,6 +874,7 @@ export default function AdminLeads() {
                         </td>
                         <td className="px-4 py-3 font-medium text-white">{lead.name}</td>
                         <td className="px-4 py-3 text-slate-300">{lead.phone}</td>
+                        <td className="px-4 py-3 text-slate-300">{lead.email || '-'}</td>
                         <td className="px-4 py-3 text-emerald-400 font-semibold">${lead.budget.toLocaleString()}</td>
                         <td className="px-4 py-3">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${
@@ -875,6 +959,16 @@ export default function AdminLeads() {
                       placeholder="Enter phone number"
                       value={editFormData.phone}
                       onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Email</label>
+                    <input
+                      type="email"
+                      placeholder="Enter client email"
+                      value={editFormData.email}
+                      onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                       className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
                     />
                   </div>

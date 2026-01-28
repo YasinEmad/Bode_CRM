@@ -56,6 +56,32 @@ export async function POST(req: NextRequest) {
       const notes = row.notes || row.Notes || row.NOTES || '';
       const assignedTo = row.assignedTo || row.AssignedTo || row.assigned_to || '';
 
+      // Robust email detection: prefer common keys, then any header containing "email" after normalization
+      let email: any = '';
+      if (row.email || row.Email || row.EMAIL) {
+        email = row.email || row.Email || row.EMAIL;
+      } else {
+        for (const key of Object.keys(row || {})) {
+          if (typeof key === 'string') {
+            const normalizedKey = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (normalizedKey.includes('email')) {
+              email = row[key];
+              break;
+            }
+          }
+        }
+      }
+
+      // Normalize and validate the email value
+      if (email == null) email = '';
+      email = String(email).trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        email = '';
+      } else {
+        email = email.toLowerCase();
+      }
+
       if (!name || !budget || !phone) {
         errors.push({
           row: rowNum,
@@ -81,6 +107,7 @@ export async function POST(req: NextRequest) {
         budget: isNaN(Number(budget)) ? 0 : Number(budget),
         phone: String(phone).trim(),
         status: finalStatus,
+        email: email,
         source: finalSource,
         notes: String(notes).trim(),
         assignedTo: assignedTo ? String(assignedTo).trim() : null,
@@ -94,8 +121,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Insert all leads
-    const insertedLeads = await Lead.insertMany(leadsToInsert);
+    // Filter out leads whose phone already exists in DB to avoid duplicates
+    const phones = leadsToInsert.map(l => l.phone);
+    const existingLeads = await Lead.find({ phone: { $in: phones } }).select('phone');
+    const existingPhones = new Set(existingLeads.map((l: any) => l.phone));
+
+    const filteredLeadsToInsert = leadsToInsert.filter(l => {
+      return !existingPhones.has(l.phone);
+    });
+
+    // Collect row-level errors for duplicates
+    const dupErrors = leadsToInsert
+      .map((l, idx) => ({ lead: l, row: idx + 2 }))
+      .filter(item => existingPhones.has(item.lead.phone))
+      .map(item => ({ row: item.row, error: `Phone ${item.lead.phone} already exists` }));
+
+    // Insert non-duplicate leads
+    const insertedLeads = filteredLeadsToInsert.length > 0 ? await Lead.insertMany(filteredLeadsToInsert) : [];
+    try {
+      console.log('[BulkImport] Inserted leads emails:', insertedLeads.map((l: any) => l.email));
+    } catch (e) {
+      // ignore
+    }
 
     // Get system settings for commission rules
     const settings = await SystemSettings.findOne();
@@ -142,13 +189,17 @@ export async function POST(req: NextRequest) {
       await Commission.insertMany(commissionsToCreate);
     }
 
+    // Combine validation errors and duplicate errors
+    const combinedErrors = [...errors, ...dupErrors];
+
     return NextResponse.json(
       {
-        message: `Successfully imported ${insertedLeads.length} leads`,
+        message: `Imported ${insertedLeads.length} leads. ${dupErrors.length} rows skipped due to duplicate phones.`,
         imported: insertedLeads.length,
         commissionsCreated: commissionsToCreate.length,
-        errors: errors.length > 0 ? errors : undefined,
+        errors: combinedErrors.length > 0 ? combinedErrors : undefined,
         leads: insertedLeads,
+        skippedDuplicates: dupErrors.length,
       },
       { status: 201 }
     );

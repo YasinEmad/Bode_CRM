@@ -41,6 +41,12 @@ export async function GET(req: NextRequest) {
       .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 });
 
+    try {
+      console.log('[Leads API] Returning leads emails:', leads.slice(0, 10).map((l: any) => l.email));
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json({ leads });
   } catch (error) {
     console.error('Error fetching leads:', error);
@@ -56,13 +62,13 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || (payload.role !== 'admin' && payload.role !== 'sales')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     await connectDB();
 
-    const { name, budget, phone, status, source, notes, assignedTo } = await req.json();
+    const { name, budget, phone, email, status, source, notes, assignedTo } = await req.json();
 
     if (!name || !budget || !phone) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -85,15 +91,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Prevent duplicate phone numbers
+    const existing = await Lead.findOne({ phone: phone });
+    if (existing) {
+      return NextResponse.json({ error: 'Phone number already exists' }, { status: 409 });
+    }
+
     const lead = await Lead.create({
       name,
       budget: budgetNum,
       phone,
+      email: email || '',
       status: status || 'new',
       source: source || 'other',
       notes: notes || '',
       assignedTo: assignedToId,
     });
+
+    try {
+      console.log('[Leads API] Created lead email:', lead.email);
+    } catch (e) {
+      // ignore
+    }
 
     return NextResponse.json({ lead }, { status: 201 });
   } catch (error) {

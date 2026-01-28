@@ -4,13 +4,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Edit2, Phone, Mail, MessageSquare, X, Save } from 'lucide-react';
+import { Loader, Edit2, Mail, X, Save } from 'lucide-react';
 
 interface Lead {
   _id: string;
   name: string;
   budget: number;
   phone: string;
+  email?: string;
   status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
   source: string;
   notes: string;
@@ -176,6 +177,7 @@ export default function SalesLeads() {
                   <tr>
                     <th className="px-6 py-4 text-left font-bold text-white">Name</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Budget</th>
+                    <th className="px-6 py-4 text-left font-bold text-white">Email</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Phone</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Source</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Status</th>
@@ -188,6 +190,7 @@ export default function SalesLeads() {
                     <tr key={lead._id} className="hover:bg-slate-700 transition">
                       <td className="px-6 py-4 font-semibold text-white">{lead.name}</td>
                       <td className="px-6 py-4 text-slate-300">${lead.budget.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-slate-300">{lead.email || '-'}</td>
                       <td className="px-6 py-4 text-slate-300">{lead.phone}</td>
                       <td className="px-6 py-4 text-slate-300 capitalize">{lead.source}</td>
                       <td className="px-6 py-4">
@@ -212,15 +215,44 @@ export default function SalesLeads() {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2 flex-wrap">
                           <button
-                            onClick={() => window.location.href = `tel:${lead.phone}`}
-                            title="Call"
+                            onClick={() => {
+                              try {
+                                const digits = (lead.phone || '').toString().replace(/\D/g, '');
+                                const normalized = digits.startsWith('0') ? digits.replace(/^0+/, '') : digits;
+                                if (!normalized) return;
+                                const url = `https://wa.me/${normalized}`;
+                                window.open(url, '_blank');
+                              } catch (err) {
+                                console.error('Failed to open WhatsApp:', err);
+                              }
+                            }}
+                            title="WhatsApp"
                             className="p-2 text-emerald-400 hover:bg-emerald-500 hover:bg-opacity-20 rounded-lg transition"
                           >
-                            <Phone size={18} />
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.05 2.93a11.07 11.07 0 0 0-15.66 0 11 11 0 0 0 0 15.66L2 22l3.41-1.11A11 11 0 0 0 21.05 2.93z"></path>
+                              <path d="M17.5 14.5c-.44-.22-1.3-.65-1.5-.72-.2-.06-.34-.1-.49.22-.16.33-.62.72-.76.87-.14.16-.29.18-.54.06-.25-.12-1- .37-1.9-1.17-.7-.62-1.17-1.38-1.31-1.64-.14-.26-.01-.4.1-.52.1-.1.24-.27.36-.4.12-.14.16-.24.25-.4.08-.16.04-.3-.02-.43-.06-.12-.49-1.18-.67-1.62-.18-.44-.36-.38-.5-.38-.13 0-.28 0-.43 0-.14 0-.36.05-.55.25-.2.2-.76.74-.76 1.8 0 1.06.78 2.08.88 2.22.1.14 1.52 2.34 3.68 3.28 2.2.95 2.2.64 2.6.6.4-.04 1.3-.53 1.49-1.05.19-.52.19-.96.13-1.05-.06-.1-.22-.15-.46-.27z" />
+                            </svg>
                           </button>
                           <button
-                            onClick={() => window.location.href = `mailto:${lead.phone}`}
-                            title="Contact"
+                            onClick={() => {
+                              try {
+                                const email = lead.email || '';
+                                if (!email) {
+                                  addToast('No client email available', 'error');
+                                  return;
+                                }
+                                const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
+                                window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+                              } catch (err) {
+                                try {
+                                  window.location.href = `mailto:${lead.email}`;
+                                } catch (err2) {
+                                  console.error('Failed to open mail client:', err2);
+                                }
+                              }
+                            }}
+                            title="Email"
                             className="p-2 text-blue-400 hover:bg-blue-500 hover:bg-opacity-20 rounded-lg transition"
                           >
                             <Mail size={18} />

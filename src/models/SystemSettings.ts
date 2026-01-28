@@ -6,6 +6,7 @@ export interface ISystemSettings extends Document {
   officeName: string;
   attendanceRadius: number; // in meters
   attendanceTime: string; // HH:mm format, e.g., "18:00" (shift start time)
+  allowedEarlyMinutes: number; // how many minutes before shift start employees may check in
   shiftDuration: number; // in hours, e.g., 9
   commissionRules: {
     position: string;
@@ -36,6 +37,10 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     attendanceTime: {
       type: String,
       default: '18:00', // Default 6 PM (shift start time)
+    },
+    allowedEarlyMinutes: {
+      type: Number,
+      default: 60, // allow 60 minutes early by default
     },
     shiftDuration: {
       type: Number,

@@ -30,7 +30,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { name, budget, phone, status, source, notes, assignedTo, proofImage } = await req.json();
+    const { name, budget, phone, email, status, source, notes, assignedTo, proofImage } = await req.json();
 
     // Only admin can edit name, budget, phone, source, assignedTo
     // Sales can only edit status and notes for their assigned leads
@@ -53,8 +53,16 @@ export async function PUT(
 
     const updateData: any = {};
     if (name) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
     if (budget !== undefined) updateData.budget = typeof budget === 'string' ? parseInt(budget) : budget;
-    if (phone) updateData.phone = phone;
+    if (phone) {
+      // Prevent duplicate phone numbers when updating
+      const existing = await Lead.findOne({ phone: phone });
+      if (existing && existing._id.toString() !== id) {
+        return NextResponse.json({ error: 'Phone number already exists' }, { status: 409 });
+      }
+      updateData.phone = phone;
+    }
     // Handle sales attempting to mark closed: require proofImage + notes
     if (status) {
       if (payload.role === 'sales' && status === 'closed') {

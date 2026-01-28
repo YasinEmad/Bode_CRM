@@ -12,6 +12,7 @@ export interface AttendanceExportData {
 export interface LeadExportData {
   'Lead Name': string;
   'Budget': number;
+  'Email': string;
   'Phone': string;
   'Status': string;
   'Source': string;
@@ -94,7 +95,7 @@ export function exportLeadsToExcel(
   const ws = utils.json_to_sheet(data);
   
   // Set column widths
-  const colWidths = [20, 15, 15, 15, 15, 20, 30];
+  const colWidths = [20, 20, 20, 15, 15, 20, 30];
   ws['!cols'] = colWidths.map(width => ({ wch: width }));
 
   // Style header row
