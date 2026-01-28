@@ -168,7 +168,7 @@ export default function BulkImportComponent({
               <div className="mt-2">
                 <p className="text-sm text-slate-300 font-medium">Imported leads (preview):</p>
                 <ul className="mt-2 text-sm text-slate-300 space-y-1 max-h-28 overflow-auto">
-                  {result.leads.slice(0, 10).map((l) => (
+                  {result.leads.slice(0, 10).map((l: any) => (
                     <li key={l._id} className="flex items-center justify-between">
                       <span>{l.name}{l.email ? ` — ${l.email}` : ''}</span>
                       <span className="text-slate-400 text-xs">${l.budget.toLocaleString()}</span>

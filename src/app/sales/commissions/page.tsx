@@ -11,8 +11,7 @@ interface Commission {
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId: { _id: string; name: string; budget: number };
-    dealId?: { _id: string; name: string; budget: number } | null;
+  dealId?: { _id: string; name: string; budget: number } | null;
   rejectionNote?: string;
   createdAt?: string;
   approvalDate?: string;

@@ -135,7 +135,11 @@ export async function POST(req: NextRequest) {
       withinRadius: distance <= settings.attendanceRadius,
     });
 
-    const withinRadius = distance <= settings.attendanceRadius;
+    // استخدم tolerance margin بسيط (10 متر إضافي) لتعويض عدم دقة GPS
+    // GPS accuracy can vary by ±10-20 meters depending on device and conditions
+    const GPS_TOLERANCE_METERS = 10;
+    const effectiveRadius = settings.attendanceRadius + GPS_TOLERANCE_METERS;
+    const withinRadius = distance <= effectiveRadius;
 
     // Reject if outside allowed radius
     if (!withinRadius) {

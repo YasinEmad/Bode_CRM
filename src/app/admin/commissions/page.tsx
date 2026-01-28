@@ -344,7 +344,7 @@ export default function AdminCommissions() {
               </div>
 
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                {proofCommission.dealId?.proofImage ? (
+                {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
                   <img src={proofCommission.dealId.proofImage} alt="proof" className="w-full object-contain rounded" />
                 ) : (
                   <div className="text-slate-400">No proof image provided</div>
@@ -352,12 +352,12 @@ export default function AdminCommissions() {
 
                 <div>
                   <h3 className="text-sm font-semibold text-slate-300 mb-2">Notes</h3>
-                  <p className="text-slate-200 whitespace-pre-wrap">{proofCommission.dealId?.notes || 'No notes provided'}</p>
+                  <p className="text-slate-200 whitespace-pre-wrap">{proofCommission.dealId && 'notes' in proofCommission.dealId ? (proofCommission.dealId as any).notes : 'No notes provided'}</p>
                 </div>
               </div>
 
               <div className="flex gap-3 p-6 border-t border-slate-700 bg-slate-800">
-                {proofCommission.dealId?.proofImage ? (
+                {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
                   <a
                     href={proofCommission.dealId.proofImage}
                     download={`proof_${proofCommission._id}.png`}

@@ -69,6 +69,14 @@ export async function PUT(req: NextRequest) {
     const { officeLatitude, officeLongitude, officeName, attendanceRadius, attendanceTime, commissionRules } =
       await req.json();
 
+    console.log('🔍 API RECEIVED:', {
+      officeLatitude,
+      officeLongitude,
+      types: `${typeof officeLatitude}, ${typeof officeLongitude}`,
+      raw_lat: officeLatitude,
+      raw_lon: officeLongitude,
+    });
+
     // Validate and sanitize attendanceTime
     if (attendanceTime) {
       const trimmedTime = attendanceTime.trim();
@@ -86,6 +94,11 @@ export async function PUT(req: NextRequest) {
       settings = new SystemSettings();
     }
 
+    console.log('💾 BEFORE DB UPDATE:', {
+      new_lat: officeLatitude,
+      new_lon: officeLongitude,
+    });
+
     settings.officeLatitude = officeLatitude;
     settings.officeLongitude = officeLongitude;
     settings.officeName = officeName;
@@ -94,6 +107,11 @@ export async function PUT(req: NextRequest) {
     settings.commissionRules = commissionRules;
 
     await settings.save();
+
+    console.log('✅ AFTER DB SAVE:', {
+      saved_lat: settings.officeLatitude,
+      saved_lon: settings.officeLongitude,
+    });
 
     return NextResponse.json({ settings });
   } catch (error) {

@@ -297,8 +297,8 @@ export default function AdminEmployees() {
                         }`}
                       >
                         <td className="px-6 py-4 text-sm text-white font-semibold">{emp.name}</td>
-                        <td className="px-6 py-4 text-sm text-slate-400">{emp.username || emp.email}</td>
-                        <td className="px-6 py-4 text-sm text-slate-400">{emp.phone || '—'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">{(emp as any).username || (emp as any).email || '—'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">{(emp as any).phone || '—'}</td>
                         <td className="px-6 py-4 text-sm">
                           <span className="inline-block">
                             <span className="text-white font-medium capitalize">{emp.position || '—'}</span>

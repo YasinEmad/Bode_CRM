@@ -129,6 +129,12 @@ export default function AdminSettings() {
     const toastId = addToast('Saving settings...', 'loading');
 
     try {
+      console.log('📤 BEFORE SAVE - Current settings:', {
+        officeLatitude: settings.officeLatitude,
+        officeLongitude: settings.officeLongitude,
+        types: `${typeof settings.officeLatitude}, ${typeof settings.officeLongitude}`,
+      });
+
       // Filter out rules with 0 percentage
       const filteredRules = settings.commissionRules.filter(rule => rule.percentage > 0);
       
@@ -147,23 +153,34 @@ export default function AdminSettings() {
       let allowedEarly = parseInt(String(settings.allowedEarlyMinutes ?? 60), 10);
       if (isNaN(allowedEarly) || allowedEarly < 0) allowedEarly = 60;
 
+      const bodyToSend = { 
+        ...settings, 
+        attendanceTime,
+        allowedEarlyMinutes: allowedEarly,
+        commissionRules: filteredRules 
+      };
+
+      console.log('📤 SENDING TO API:', {
+        officeLatitude: bodyToSend.officeLatitude,
+        officeLongitude: bodyToSend.officeLongitude,
+      });
+
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          ...settings, 
-          attendanceTime,
-          allowedEarlyMinutes: allowedEarly,
-          commissionRules: filteredRules 
-        }),
+        body: JSON.stringify(bodyToSend),
       });
 
       if (!res.ok) throw new Error('Failed to save settings');
 
       const data = await res.json();
+      console.log('📥 RECEIVED FROM API:', {
+        officeLatitude: data.settings.officeLatitude,
+        officeLongitude: data.settings.officeLongitude,
+      });
       setSettings(data.settings);
       updateToast(toastId, 'Settings saved successfully!', 'success');
     } catch (error) {

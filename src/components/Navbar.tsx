@@ -3,18 +3,46 @@
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
+interface NavLink {
+  href: string;
+  label: string;
+}
+
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
   const pathname = usePathname() || '';
+  const [isTeamLeader, setIsTeamLeader] = useState(false);
 
   const isAuthPage = pathname === '/login';
 
-  const navLinks = user?.role === 'admin' 
+  // Check if user is team leader
+  useEffect(() => {
+    if (user?.role === 'sales' && token) {
+      checkTeamLeaderStatus();
+    } else {
+      setIsTeamLeader(false);
+    }
+  }, [user, token]);
+
+  const checkTeamLeaderStatus = async () => {
+    try {
+      const res = await fetch('/api/teams/check-team-leader', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setIsTeamLeader(data.isTeamLeader || false);
+    } catch (error) {
+      console.error('Error checking team leader status:', error);
+      setIsTeamLeader(false);
+    }
+  };
+
+  const navLinks: NavLink[] = user?.role === 'admin' 
     ? [
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/leads', label: 'Leads' },
@@ -27,7 +55,7 @@ export default function Navbar() {
     : [
         { href: '/sales/dashboard', label: 'Dashboard' },
         { href: '/sales/leads', label: 'My Leads' },
-        { href: '/sales/my-team', label: 'My Team' },
+        ...(isTeamLeader ? [{ href: '/sales/my-team', label: 'My Team' }] : []),
         { href: '/sales/commissions', label: 'My Commissions' },
         { href: '/sales/attendance', label: 'Attendance' },
       ];

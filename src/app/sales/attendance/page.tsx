@@ -95,7 +95,6 @@ export default function SalesAttendance() {
           (pos) => resolve(pos.coords),
           (err) => reject(err),
           {
-            enableHighAccuracy: true,
             timeout: 10000,
             maximumAge: 0
           }

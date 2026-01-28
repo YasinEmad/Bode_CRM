@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
     const team = await Team.findOne({ leader: payload.userId }).lean();
     if (!team) return NextResponse.json({ error: 'Team not found or you are not a team leader' }, { status: 404 });
 
-    const members = await User.find({ teamId: team._id }).select('_id name position username').lean();
+    // Get members excluding the team leader
+    const members = await User.find({ 
+      teamId: team._id,
+      _id: { $ne: payload.userId } // Exclude the team leader
+    }).select('_id name position username').lean();
     const membersWithStats = await Promise.all(
       members.map(async (m: any) => {
         const leadsCount = await Lead.countDocuments({ assignedTo: m._id });
