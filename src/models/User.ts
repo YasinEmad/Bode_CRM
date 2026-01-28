@@ -10,6 +10,7 @@ export interface IUser extends Document {
   position?: string; // e.g., 'Sales Junior', 'Sales Senior', 'Team Leader'
   salary?: number; // Monthly salary
   deviceId?: string; // Device ID for check-in verification
+  teamId?: mongoose.Types.ObjectId | null; // Reference to team
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +54,11 @@ const UserSchema = new Schema<IUser>(
     },
     deviceId: {
       type: String,
+      default: null,
+    },
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team',
       default: null,
     },
   },

@@ -19,6 +19,7 @@ export default function Navbar() {
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/leads', label: 'Leads' },
         { href: '/admin/employees', label: 'Employees' },
+        { href: '/admin/teams', label: 'Teams' },
         { href: '/admin/attendance-records', label: 'Attendance' },
         { href: '/admin/commissions', label: 'Commissions' },
         { href: '/admin/settings', label: 'Settings' },
@@ -26,6 +27,7 @@ export default function Navbar() {
     : [
         { href: '/sales/dashboard', label: 'Dashboard' },
         { href: '/sales/leads', label: 'My Leads' },
+        { href: '/sales/my-team', label: 'My Team' },
         { href: '/sales/commissions', label: 'My Commissions' },
         { href: '/sales/attendance', label: 'Attendance' },
       ];
