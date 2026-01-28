@@ -12,7 +12,7 @@ interface Lead {
   email: string;
   phone: string;
   property: string;
-  status: 'new' | 'connected' | 'negotiation' | 'closed';
+  status: string;
   notes: string;
   value?: number;
 }
@@ -63,24 +63,31 @@ export default function SalesDashboard() {
     }
   };
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string, extra?: { proofImage?: string; notes?: string }) => {
     try {
+      const body: any = { status: newStatus };
+      if (extra?.notes !== undefined) body.notes = extra.notes;
+      if (extra?.proofImage !== undefined) body.proofImage = extra.proofImage;
+
       const res = await fetch(`/api/leads/${leadId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error('Failed to update');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update');
+      }
 
       const data = await res.json();
       setLeads(leads.map((l) => (l._id === leadId ? data.lead : l)));
       fetchLeads();
     } catch (error) {
-      console.error('Error updating lead:', error);
+      console.error('Error updating lead:', error instanceof Error ? error.message : error);
     }
   };
 
@@ -188,7 +195,7 @@ export default function SalesDashboard() {
                 status={lead.status}
                 notes={lead.notes}
                 value={lead.value}
-                onStatusChange={(status) => handleStatusChange(lead._id, status)}
+                onStatusChange={(status, extra) => handleStatusChange(lead._id, status, extra)}
                 onNotesChange={(notes) => handleNotesChange(lead._id, notes)}
               />
             ))}

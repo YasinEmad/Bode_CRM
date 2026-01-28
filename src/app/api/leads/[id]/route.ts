@@ -30,7 +30,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { name, budget, phone, status, source, notes, assignedTo } = await req.json();
+    const { name, budget, phone, status, source, notes, assignedTo, proofImage } = await req.json();
 
     // Only admin can edit name, budget, phone, source, assignedTo
     // Sales can only edit status and notes for their assigned leads
@@ -51,9 +51,22 @@ export async function PUT(
     if (name) updateData.name = name;
     if (budget !== undefined) updateData.budget = typeof budget === 'string' ? parseInt(budget) : budget;
     if (phone) updateData.phone = phone;
-    if (status) updateData.status = status;
+    // Handle sales attempting to mark closed: require proofImage + notes
+    if (status) {
+      if (payload.role === 'sales' && status === 'closed') {
+        if (!proofImage || !notes) {
+          return NextResponse.json({ error: 'Proof image and notes are required to close a lead' }, { status: 400 });
+        }
+        updateData.proofImage = proofImage;
+        updateData.notes = notes;
+        updateData.status = 'closed_pending_approval';
+      } else {
+        updateData.status = status;
+      }
+    }
     if (source) updateData.source = source;
     if (notes !== undefined) updateData.notes = notes;
+    if (proofImage !== undefined) updateData.proofImage = proofImage;
     if (assignedTo !== undefined) {
       if (assignedTo) {
         try {
@@ -76,8 +89,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    // Auto-create commission if status is changed to "closed" and no pending/approved commission exists
-    if (status === 'closed' && updatedLead.assignedTo) {
+    // Auto-create commission if status is changed to "closed" (admin approval) and no pending/approved commission exists
+    if (updateData.status === 'closed' || status === 'closed') {
+      if (updatedLead.assignedTo) {
       const existingCommission = await Commission.findOne({
         dealId: id,
         status: { $in: ['pending', 'approved'] },
@@ -118,6 +132,7 @@ export async function PUT(
           percentage: commissionPercentage,
           status: 'pending',
         });
+      }
       }
     }
 

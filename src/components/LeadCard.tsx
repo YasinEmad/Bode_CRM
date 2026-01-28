@@ -9,10 +9,10 @@ interface LeadCardProps {
   email: string;
   phone: string;
   property: string;
-  status: 'new' | 'connected' | 'negotiation' | 'closed';
+  status: string;
   notes?: string;
   value?: number;
-  onStatusChange?: (status: string) => void;
+  onStatusChange?: (status: string, extra?: { proofImage?: string; notes?: string }) => void;
   onNotesChange?: (notes: string) => void;
 }
 
@@ -37,8 +37,11 @@ export default function LeadCard({
 }: LeadCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [editNotes, setEditNotes] = useState(notes);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [proofImageData, setProofImageData] = useState<string | null>(null);
+  const [isSubmittingClose, setIsSubmittingClose] = useState(false);
 
-  const statusColor = statusColors[status];
+  const statusColor = statusColors[status] || { bg: 'from-slate-600 to-slate-700', text: 'text-slate-100', border: 'border-slate-500', label: status, icon: '•' };
 
   const handleCall = () => {
     window.location.href = `tel:${phone}`;
@@ -127,7 +130,15 @@ export default function LeadCard({
             <label className="text-xs sm:text-sm font-semibold text-slate-300 block mb-2">Update Status</label>
             <select
               value={status}
-              onChange={(e) => onStatusChange?.(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'closed') {
+                  // open modal to collect proof and notes before submitting
+                  setShowCloseModal(true);
+                } else {
+                  onStatusChange?.(val);
+                }
+              }}
               className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             >
               <option value="new">✨ New</option>
@@ -157,6 +168,69 @@ export default function LeadCard({
             <Save size={16} />
             Save Changes
           </button>
+        </div>
+      )}
+
+      {showCloseModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg border border-slate-700">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">أضف دليل الإغلاق</h3>
+              <button onClick={() => setShowCloseModal(false)} className="text-slate-400">إغلاق</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">Upload Image (contract/transfer)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setProofImageData(reader.result as string);
+                    reader.readAsDataURL(file);
+                  }}
+                  className="w-full text-sm text-white"
+                />
+                {proofImageData && <img src={proofImageData} alt="proof" className="mt-2 max-h-40 object-contain rounded" />}
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">Notes</label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm"
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (!proofImageData || !editNotes) return;
+                    try {
+                      setIsSubmittingClose(true);
+                      await onStatusChange?.('closed', { proofImage: proofImageData, notes: editNotes });
+                      setShowCloseModal(false);
+                      setIsExpanded(false);
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setIsSubmittingClose(false);
+                    }
+                  }}
+                  disabled={!proofImageData || !editNotes || isSubmittingClose}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 rounded-lg font-semibold disabled:opacity-50"
+                >
+                  {isSubmittingClose ? 'Sending...' : 'حفظ وإرسال'}
+                </button>
+                <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-700 text-white py-2 rounded-lg">Cancel</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

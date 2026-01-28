@@ -4,14 +4,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { CheckCircle, XCircle, Loader, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Loader, Clock, X } from 'lucide-react';
 
 interface Commission {
   _id: string;
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId: { _id: string; name: string; budget: number };
+  dealId?: { _id: string; name: string; budget: number } | null;
   employeeId: { _id: string; name: string };
   rejectionReason?: string;
   createdAt?: string;
@@ -28,6 +28,7 @@ export default function AdminCommissions() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+  const [proofCommission, setProofCommission] = useState<Commission | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -194,12 +195,12 @@ export default function AdminCommissions() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                   <div>
                     <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Deal Name</p>
-                    <p className="text-lg font-bold text-white">{commission.dealId.name}</p>
+                    <p className="text-lg font-bold text-white">{commission.dealId?.name || 'Unknown Deal'}</p>
                   </div>
 
                   <div>
                     <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Deal Amount</p>
-                    <p className="text-lg font-bold text-blue-400">${commission.dealId.budget.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-blue-400">{commission.dealId?.budget ? `$${commission.dealId.budget.toLocaleString()}` : '—'}</p>
                   </div>
 
                   <div>
@@ -239,6 +240,14 @@ export default function AdminCommissions() {
                         </p>
                       )}
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setProofCommission(commission)}
+                      className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+                    >
+                      الدليل
+                    </button>
                   </div>
                 </div>
 
@@ -321,6 +330,72 @@ export default function AdminCommissions() {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Proof Modal for commission (view lead proofImage and notes) */}
+        {proofCommission && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-700">
+              <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-indigo-600/20 to-purple-600/20">
+                <h2 className="text-2xl font-bold text-white">الدليل</h2>
+                <button onClick={() => setProofCommission(null)} className="text-slate-400 hover:text-white p-2 rounded-lg"><X size={24} /></button>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                {proofCommission.dealId?.proofImage ? (
+                  <img src={proofCommission.dealId.proofImage} alt="proof" className="w-full object-contain rounded" />
+                ) : (
+                  <div className="text-slate-400">No proof image provided</div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Notes</h3>
+                  <p className="text-slate-200 whitespace-pre-wrap">{proofCommission.dealId?.notes || 'No notes provided'}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-6 border-t border-slate-700 bg-slate-800">
+                {proofCommission.dealId?.proofImage ? (
+                  <a
+                    href={proofCommission.dealId.proofImage}
+                    download={`proof_${proofCommission._id}.png`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold flex items-center justify-center"
+                  >
+                    Download
+                  </a>
+                ) : (
+                  <button disabled className="px-4 py-3 bg-slate-700/50 text-slate-400 rounded-lg font-semibold">No image</button>
+                )}
+
+                <button onClick={() => setProofCommission(null)} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold">Close</button>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      await handleApprove(proofCommission._id);
+                      setProofCommission(null);
+                    } catch (err) {
+                      setProofCommission(null);
+                    }
+                  }}
+                  className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
+                >
+                  Approve
+                </button>
+
+                <button
+                  onClick={() => {
+                    setRejectingId(proofCommission._id);
+                    setProofCommission(null);
+                  }}
+                  className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+                >
+                  Reject
+                </button>
               </div>
             </div>
           </div>

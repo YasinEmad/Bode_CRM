@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     const commissions = await Commission.find(query)
-      .populate('dealId', 'name budget')
+      .populate('dealId', 'name budget proofImage notes')
       .populate('employeeId', 'name')
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });

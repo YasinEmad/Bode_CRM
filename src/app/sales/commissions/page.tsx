@@ -12,6 +12,7 @@ interface Commission {
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   dealId: { _id: string; name: string; budget: number };
+    dealId?: { _id: string; name: string; budget: number } | null;
   rejectionNote?: string;
   createdAt?: string;
   approvalDate?: string;
@@ -210,13 +211,13 @@ export default function SalesCommissions() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div>
                     <p className="text-sm text-slate-400 font-medium">📋 Deal Name</p>
-                    <p className="text-lg font-semibold text-white mt-1">{commission.dealId.name}</p>
+                    <p className="text-lg font-semibold text-white mt-1">{commission.dealId?.name || 'Unknown Deal'}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 font-medium">💰 Deal Amount</p>
                     <p className="text-lg font-semibold text-blue-400 mt-1">
-                      ${commission.dealId.budget.toLocaleString()}
+                      {commission.dealId?.budget ? `$${commission.dealId.budget.toLocaleString()}` : '—'}
                     </p>
                   </div>
 
@@ -306,7 +307,7 @@ export default function SalesCommissions() {
                   <p className="text-sm text-slate-400">
                     Deal:{' '}
                     <span className="font-semibold text-white">
-                      {commissions.find((c) => c._id === showNoteModal)?.dealId.name}
+                      {commissions.find((c) => c._id === showNoteModal)?.dealId?.name || 'Unknown Deal'}
                     </span>
                   </p>
                 </div>

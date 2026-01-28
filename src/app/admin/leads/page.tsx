@@ -14,9 +14,10 @@ interface Lead {
   name: string;
   budget: number;
   phone: string;
-  status: 'new' | 'connected' | 'negotiation' | 'closed' | 'lost';
+  status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
   source: string;
   notes: string;
+  proofImage?: string;
   assignedTo?: { _id: string; name: string };
 }
 
@@ -38,6 +39,7 @@ export default function AdminLeads() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
+  
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -821,6 +823,7 @@ export default function AdminLeads() {
                             >
                               <Edit2 size={18} />
                             </button>
+                            
                             <button
                               onClick={() => setDeletingLeadId(lead._id)}
                               className="p-2.5 bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white rounded-lg transition duration-200 font-medium"
@@ -1008,6 +1011,7 @@ export default function AdminLeads() {
             </div>
           </div>
         )}
+        
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Commission from '@/models/Commission';
+import Lead from '@/models/Lead';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -40,11 +41,20 @@ export async function PUT(
       },
       { new: true }
     )
-      .populate('dealId', 'name budget')
+      .populate('dealId', 'name budget proofImage notes')
       .populate('employeeId', 'name');
 
     if (!commission) {
       return NextResponse.json({ error: 'Commission not found' }, { status: 404 });
+    }
+
+    // If admin approved the commission, also mark the related Lead as closed
+    if (status === 'approved' && commission.dealId) {
+      try {
+        await Lead.findByIdAndUpdate(commission.dealId._id || commission.dealId, { status: 'closed' });
+      } catch (err) {
+        console.error('Failed to update lead status after commission approval:', err);
+      }
     }
 
     return NextResponse.json({ commission });

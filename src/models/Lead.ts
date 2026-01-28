@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type LeadStatus = 'new' | 'connected' | 'negotiation' | 'closed' | 'lost';
+export type LeadStatus = 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
 export type LeadSource = 'website' | 'referral' | 'phone' | 'email' | 'facebook' | 'instagram' | 'google ads' | 'other';
 
 export interface ILead extends Document {
@@ -11,6 +11,7 @@ export interface ILead extends Document {
   source: LeadSource;
   assignedTo?: mongoose.Types.ObjectId;
   notes: string;
+  proofImage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,7 +32,7 @@ const LeadSchema = new Schema<ILead>(
     },
     status: {
       type: String,
-      enum: ['new', 'connected', 'negotiation', 'closed', 'lost'],
+      enum: ['new', 'connected', 'negotiation', 'pending_closed', 'closed_pending_approval', 'closed', 'lost'],
       default: 'new',
     },
     source: {
@@ -44,6 +45,10 @@ const LeadSchema = new Schema<ILead>(
       ref: 'User',
     },
     notes: {
+      type: String,
+      default: '',
+    },
+    proofImage: {
       type: String,
       default: '',
     },

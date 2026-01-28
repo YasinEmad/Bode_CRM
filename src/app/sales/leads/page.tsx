@@ -11,7 +11,7 @@ interface Lead {
   name: string;
   budget: number;
   phone: string;
-  status: 'new' | 'connected' | 'negotiation' | 'closed' | 'lost';
+  status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
   source: string;
   notes: string;
   assignedTo?: { _id: string; name: string };
@@ -22,6 +22,8 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   connected: { bg: 'bg-green-100', text: 'text-green-800' },
   negotiation: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
   closed: { bg: 'bg-purple-100', text: 'text-purple-800' },
+  pending_closed: { bg: 'bg-purple-50', text: 'text-purple-700' },
+  closed_pending_approval: { bg: 'bg-purple-200', text: 'text-purple-900' },
   lost: { bg: 'bg-red-100', text: 'text-red-800' },
 };
 
@@ -194,8 +196,8 @@ export default function SalesLeads() {
                           onChange={(e) => handleStatusChange(lead._id, e.target.value)}
                           disabled={statusUpdating === lead._id}
                           className={`px-3 py-1 rounded-lg text-xs font-medium border-0 cursor-pointer transition ${
-                            statusColors[lead.status].bg
-                          } ${statusColors[lead.status].text} ${statusUpdating === lead._id ? 'opacity-50' : ''}`}
+                            (statusColors[lead.status]?.bg || 'bg-slate-200')
+                          } ${(statusColors[lead.status]?.text || 'text-slate-800')} ${statusUpdating === lead._id ? 'opacity-50' : ''}`}
                         >
                           <option value="new">New</option>
                           <option value="connected">Connected</option>
@@ -259,7 +261,7 @@ export default function SalesLeads() {
 
               <div className="p-6 space-y-4">
                 <div className="bg-slate-700 p-4 rounded-lg border border-slate-600">
-                  <p className="text-sm text-slate-300"><span className="font-semibold">Status:</span> <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[editingLead.status].bg} ${statusColors[editingLead.status].text}`}>{editingLead.status.charAt(0).toUpperCase() + editingLead.status.slice(1)}</span></p>
+                  <p className="text-sm text-slate-300"><span className="font-semibold">Status:</span> <span className={`px-2 py-1 rounded text-xs font-medium ${(statusColors[editingLead.status]?.bg || 'bg-slate-200')} ${(statusColors[editingLead.status]?.text || 'text-slate-800')}`}>{editingLead.status.charAt(0).toUpperCase() + editingLead.status.slice(1)}</span></p>
                   <p className="text-sm text-slate-300 mt-2"><span className="font-semibold">Budget:</span> ${editingLead.budget.toLocaleString()}</p>
                 </div>
 
