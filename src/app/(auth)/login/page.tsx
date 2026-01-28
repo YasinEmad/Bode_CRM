@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/Toast';
 import { Loader } from 'lucide-react';
+import Lottie from 'lottie-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +17,15 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
+  const [animationData, setAnimationData] = useState<any>(null);
+
+  useEffect(() => {
+    // fetch animation from public folder (file name: "Bode login.json")
+    fetch('/Bode%20login.json')
+      .then((r) => r.json())
+      .then(setAnimationData)
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,59 +52,86 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">🏢 Bode CRM</h1>
-        <p className="text-center text-gray-600 mb-8">Real Estate Management System</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-black flex items-center justify-center p-6">
+      <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="flex items-center justify-center p-4">
+          {animationData ? (
+            <div className="w-64 h-64 md:w-96 md:h-96">
+              <Lottie animationData={animationData} loop={true} />
+            </div>
+          ) : (
+            <div className="w-64 h-64 md:w-80 md:h-80 bg-slate-800/30 rounded-lg" />
+          )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-              placeholder="you@example.com"
-              required
-            />
+        <div className="relative mx-auto md:mx-0">
+          <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="mb-3 flex justify-center">
+              <img src="/Night_Blue-removebg-preview.png" alt="Bode CRM" className="h-14" />
+            </div>
+            <h2 className="text-2xl text-slate-100 font-semibold text-center mb-2">Welcome back</h2>
+            <p className="text-center text-slate-300 mb-6">Sign in to continue to Bode CRM</p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full mt-1 px-4 py-3 border border-slate-700 bg-slate-900/40 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-400"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full mt-1 px-4 py-3 border border-slate-700 bg-slate-900/40 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-400"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-1">
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                  <input type="checkbox" className="form-checkbox h-4 w-4 text-indigo-500 rounded" />
+                  Remember me
+                </label>
+                <Link href="#" className="text-sm text-indigo-300 hover:underline">
+                  Forgot?
+                </Link>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2"
+              >
+                {loading && <Loader size={18} className="animate-spin" />}
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+            </form>
+
+            <p className="text-center text-slate-400 mt-6 text-sm">Or continue with</p>
+            <div className="mt-3 flex gap-3 justify-center">
+              <div className="px-4 py-2 bg-slate-700 rounded-md text-slate-200 text-sm">Google</div>
+              <div className="px-4 py-2 bg-slate-700 rounded-md text-slate-200 text-sm">GitHub</div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-              placeholder="Enter your password"
-              required
-            />
+          <div className="mt-6 text-center text-slate-300">
+            <span>Don't have an account? </span>
+            <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-medium">
+              Register here
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-2 rounded-lg font-medium flex items-center justify-center gap-2"
-          >
-            {loading && <Loader size={18} className="animate-spin" />}
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-600 mt-6">
-          Don't have an account?{' '}
-          <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
-            Register here
-          </Link>
-        </p>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-gray-700">
-          <p className="font-medium mb-2">Demo Credentials:</p>
-          <p>Admin: admin@example.com / password</p>
-          <p>Sales: sales@example.com / password</p>
         </div>
       </div>
     </div>

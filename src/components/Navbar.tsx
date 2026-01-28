@@ -2,13 +2,17 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, Menu, X, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
+  const pathname = usePathname() || '';
+
+  const isAuthPage = pathname === '/login' || pathname === '/register';
 
   const navLinks = user?.role === 'admin' 
     ? [
@@ -26,13 +30,25 @@ export default function Navbar() {
         { href: '/sales/attendance', label: 'Attendance' },
       ];
 
+  if (isAuthPage) {
+    return (
+      <header className="bg-slate-900/40 backdrop-blur-sm border-b border-slate-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-center py-4">
+          <Link href="/" className="flex items-center gap-3 text-2xl font-bold hover:opacity-90 transition">
+            <img src="/Night_Blue-removebg-preview.png" alt="Bode CRM" className="h-10 w-auto" />
+          </Link>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <nav className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-xl border-b border-slate-700">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 text-xl sm:text-2xl font-bold hover:opacity-80 transition">
-            <span className="text-2xl">🏢</span>
+            <img src="/Night_Blue-removebg-preview.png" alt="Bode CRM" className="h-8 w-auto" />
             <span className="hidden sm:inline">Bode CRM</span>
           </Link>
 
