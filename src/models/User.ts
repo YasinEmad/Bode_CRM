@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUser extends Document {
-  email: string;
+  username: string;
+  email?: string;
   password: string;
   name: string;
   role: 'admin' | 'sales';
@@ -15,10 +16,16 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
-    email: {
+    username: {
       type: String,
       required: true,
       unique: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: false,
+      unique: false,
       lowercase: true,
       match: /.+\@.+\..+/,
     },

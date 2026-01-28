@@ -47,7 +47,7 @@ export async function PUT(
       id,
       updateData,
       { new: true }
-    ).select('_id name email phone position salary createdAt deviceId');
+    ).select('_id username name email phone position salary createdAt deviceId');
 
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });

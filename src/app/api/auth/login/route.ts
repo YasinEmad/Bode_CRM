@@ -7,13 +7,13 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const { email, password } = await req.json();
+    const { username, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
+    if (!username || !password) {
+      return NextResponse.json({ error: 'Missing username or password' }, { status: 400 });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username: username.trim() });
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       token,
       user: {
         id: user._id.toString(),
-        email: user.email,
+        username: user.username,
         name: user.name,
         role: user.role,
       },

@@ -12,7 +12,7 @@ export default function Navbar() {
   const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
   const pathname = usePathname() || '';
 
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isAuthPage = pathname === '/login';
 
   const navLinks = user?.role === 'admin' 
     ? [

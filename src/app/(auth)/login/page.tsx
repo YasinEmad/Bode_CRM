@@ -14,7 +14,7 @@ export default function LoginPage() {
   const { addToast, updateToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
   const [animationData, setAnimationData] = useState<any>(null);
@@ -34,7 +34,7 @@ export default function LoginPage() {
     const toastId = addToast('Logging in...', 'loading');
 
     try {
-      await login(formData.email, formData.password);
+      await login(formData.username, formData.password);
       updateToast(toastId, 'Login successful!', 'success');
       router.push('/');
     } catch (error) {
@@ -74,14 +74,14 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300">Email</label>
+                <label className="block text-sm font-medium text-slate-300">Username</label>
                 <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   className="w-full mt-1 px-4 py-3 border border-slate-700 bg-slate-900/40 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-400"
-                  placeholder="you@example.com"
+                  placeholder="your-username"
                   required
                 />
               </div>
@@ -127,10 +127,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 text-center text-slate-300">
-            <span>Don't have an account? </span>
-            <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-medium">
-              Register here
-            </Link>
+            <span>If you don't have an account, contact your admin.</span>
           </div>
         </div>
       </div>

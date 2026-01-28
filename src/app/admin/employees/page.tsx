@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download } from 'lucide-react';
+import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { exportEmployeesToExcel } from '@/lib/exportExcel';
 
@@ -28,6 +28,9 @@ export default function AdminEmployees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addFormData, setAddFormData] = useState({ username: '', name: '', password: '', position: '', phone: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [commissionRules, setCommissionRules] = useState<Array<{ position: string; percentage: number }>>([]);
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -124,6 +127,45 @@ export default function AdminEmployees() {
     }
   };
 
+  const handleCreateEmployee = async () => {
+    if (!addFormData.username || !addFormData.name || !addFormData.password) {
+      addToast('Username, name and password are required', 'error');
+      return;
+    }
+
+    const pwd = String(addFormData.password);
+    const strongPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    if (!strongPwdRegex.test(pwd)) {
+      addToast('Password must be at least 8 chars and include uppercase, lowercase, number and special char', 'error');
+      return;
+    }
+
+    const toastId = addToast('Creating employee...', 'loading');
+    try {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(addFormData),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to create employee');
+      }
+
+      const data = await res.json();
+      setEmployees([...(employees || []), data.employee]);
+      updateToast(toastId, 'Employee created successfully!', 'success');
+      setShowAddModal(false);
+      setAddFormData({ username: '', name: '', password: '', position: '', phone: '' });
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to create employee', 'error');
+    }
+  };
+
   const handleExportToExcel = () => {
     if (employees.length === 0) {
       addToast('No employees to export', 'error');
@@ -173,7 +215,8 @@ export default function AdminEmployees() {
               <h1 className="text-5xl font-bold text-white mb-2">Sales Employees</h1>
               <p className="text-slate-400">Manage employee details, positions, and salaries</p>
             </div>
-            <button
+            <div className="flex gap-3">
+              <button
               onClick={handleExportToExcel}
               disabled={employees.length === 0}
               className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-emerald-500/50"
@@ -181,6 +224,13 @@ export default function AdminEmployees() {
               <Download size={20} />
               Export to Excel
             </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg"
+              >
+                Add Employee
+              </button>
+            </div>
           </div>
         </div>
 
@@ -222,7 +272,7 @@ export default function AdminEmployees() {
                 <thead>
                   <tr className="bg-slate-900 border-b border-slate-600">
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-white">Email</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-white">Username</th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Phone</th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Position</th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Salary</th>
@@ -247,7 +297,7 @@ export default function AdminEmployees() {
                         }`}
                       >
                         <td className="px-6 py-4 text-sm text-white font-semibold">{emp.name}</td>
-                        <td className="px-6 py-4 text-sm text-slate-400">{emp.email}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">{emp.username || emp.email}</td>
                         <td className="px-6 py-4 text-sm text-slate-400">{emp.phone || '—'}</td>
                         <td className="px-6 py-4 text-sm">
                           <span className="inline-block">
@@ -416,6 +466,99 @@ export default function AdminEmployees() {
                   className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600 flex items-center justify-center gap-2"
                 >
                   <X size={18} />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Employee Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Add Employee</h2>
+                <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white p-2">Close</button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Username *</label>
+                    <input
+                      type="text"
+                      value={addFormData.username}
+                      onChange={(e) => setAddFormData({ ...addFormData, username: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Full Name *</label>
+                    <input
+                      type="text"
+                      value={addFormData.name}
+                      onChange={(e) => setAddFormData({ ...addFormData, name: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={addFormData.password}
+                        onChange={(e) => setAddFormData({ ...addFormData, password: e.target.value })}
+                        className="w-full pr-12 px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-white"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Position</label>
+                    <select
+                      value={addFormData.position}
+                      onChange={(e) => setAddFormData({ ...addFormData, position: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900"
+                    >
+                      <option value="">Select Position</option>
+                      {POSITION_CHOICES.map((pos) => (
+                        <option key={pos} value={pos} className="capitalize">
+                          {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Phone</label>
+                    <input
+                      type="tel"
+                      value={addFormData.phone}
+                      onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-6 border-t border-slate-600 bg-slate-900">
+                <button
+                  onClick={() => handleCreateEmployee()}
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white py-2 px-4 rounded-lg font-semibold"
+                >
+                  Create Employee
+                </button>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold border border-slate-600"
+                >
                   Cancel
                 </button>
               </div>
