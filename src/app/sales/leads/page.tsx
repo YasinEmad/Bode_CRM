@@ -199,7 +199,7 @@ export default function SalesLeads() {
                             (statusColors[lead.status]?.bg || 'bg-slate-200')
                           } ${(statusColors[lead.status]?.text || 'text-slate-800')} ${statusUpdating === lead._id ? 'opacity-50' : ''}`}
                         >
-                          <option value="new">New</option>
+                          <option value="new" disabled={lead.status === 'closed'}>New</option>
                           <option value="connected">Connected</option>
                           <option value="negotiation">Negotiation</option>
                           <option value="closed">Closed</option>

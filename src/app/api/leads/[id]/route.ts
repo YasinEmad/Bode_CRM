@@ -43,6 +43,10 @@ export async function PUT(
       if (!lead || lead.assignedTo?.toString() !== payload.userId) {
         return NextResponse.json({ error: 'You can only update your assigned leads' }, { status: 403 });
       }
+      // Prevent sales from changing a closed lead to any other status
+      if (lead.status === 'closed' && status && status !== 'closed') {
+        return NextResponse.json({ error: 'You cannot change the status of a closed lead' }, { status: 403 });
+      }
     } else if (payload.role !== 'admin') {
       return NextResponse.json({ error: 'Admin or sales access required' }, { status: 403 });
     }

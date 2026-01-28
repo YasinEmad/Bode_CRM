@@ -132,6 +132,10 @@ export default function LeadCard({
               value={status}
               onChange={(e) => {
                 const val = e.target.value;
+                // Prevent reverting a closed lead back to 'new' at the UI level
+                if (val === 'new' && status === 'closed') {
+                  return;
+                }
                 if (val === 'closed') {
                   // open modal to collect proof and notes before submitting
                   setShowCloseModal(true);
@@ -141,7 +145,7 @@ export default function LeadCard({
               }}
               className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             >
-              <option value="new">✨ New</option>
+              <option value="new" disabled={status === 'closed'}>✨ New</option>
               <option value="connected">✓ Connected</option>
               <option value="negotiation">💬 Negotiation</option>
               <option value="closed">🎉 Closed</option>
