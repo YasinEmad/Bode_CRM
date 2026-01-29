@@ -103,6 +103,32 @@ export default function AttendanceRecords() {
     }
   };
 
+  // Calculate attendance percentage for an employee in the selected month
+  const calculateAttendancePercentage = (employeeId: string): number => {
+    const dayRecords = recordsByEmployee.get(employeeId);
+    if (!dayRecords || dayRecords.size === 0) return 0;
+
+    const presentDays = dayRecords.size;
+    const totalWorkDays = currentDaysInMonth;
+
+    return Math.round((presentDays / totalWorkDays) * 100);
+  };
+
+  // Calculate total late minutes for an employee in the selected month
+  const calculateTotalLateMinutes = (employeeId: string): number => {
+    const dayRecords = recordsByEmployee.get(employeeId);
+    if (!dayRecords || dayRecords.size === 0) return 0;
+
+    let totalLate = 0;
+    dayRecords.forEach((record) => {
+      if (record.isLate) {
+        totalLate += record.lateMinutes;
+      }
+    });
+
+    return totalLate;
+  };
+
   const handleExportToExcel = () => {
     if (attendanceRecords.length === 0) {
       addToast('No records to export', 'error');
@@ -249,62 +275,87 @@ export default function AttendanceRecords() {
                         {day}
                       </th>
                     ))}
+                    <th className="px-6 py-4 text-center text-sm font-bold text-white border-l border-slate-700 bg-blue-600/20">
+                      Attendance %
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-white border-l border-slate-700 bg-orange-600/20">
+                      Total Late (min)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {Array.from(recordsByEmployee.entries()).map(
-                    ([employeeId, dayRecords], index) => (
-                      <tr
-                        key={employeeId}
-                        className={index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-700/50'}
-                      >
-                        <td className="px-6 py-4 text-sm font-semibold text-white border-r border-slate-700 sticky left-0 bg-inherit z-10 whitespace-nowrap">
-                          {employees.get(employeeId)}
-                        </td>
-                        {daysArray.map((day) => {
-                          const record = dayRecords.get(day);
-                          return (
-                            <td
-                              key={day}
-                              className="px-3 py-4 text-center text-xs border-r border-slate-700 bg-inherit hover:bg-slate-600/30 transition"
-                            >
-                              {record ? (
-                                <div className="space-y-2">
-                                  <div
-                                    className={`inline-block px-3 py-1.5 rounded-full text-white font-bold text-xs ${
-                                      record.isLate ? 'bg-orange-500' : 'bg-emerald-500'
-                                    }`}
-                                  >
-                                    {record.isLate ? 'Late' : 'Present'}
-                                  </div>
-                                  {record.isLate && (
-                                    <div className="text-orange-400 font-bold text-xs">
-                                      +{record.lateMinutes} min
+                    ([employeeId, dayRecords], index) => {
+                      const attendancePercentage = calculateAttendancePercentage(employeeId);
+                      const totalLateMinutes = calculateTotalLateMinutes(employeeId);
+
+                      return (
+                        <tr
+                          key={employeeId}
+                          className={index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-700/50'}
+                        >
+                          <td className="px-6 py-4 text-sm font-semibold text-white border-r border-slate-700 sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                            {employees.get(employeeId)}
+                          </td>
+                          {daysArray.map((day) => {
+                            const record = dayRecords.get(day);
+                            return (
+                              <td
+                                key={day}
+                                className="px-3 py-4 text-center text-xs border-r border-slate-700 bg-inherit hover:bg-slate-600/30 transition"
+                              >
+                                {record ? (
+                                  <div className="space-y-2">
+                                    <div
+                                      className={`inline-block px-3 py-1.5 rounded-full text-white font-bold text-xs ${
+                                        record.isLate ? 'bg-orange-500' : 'bg-emerald-500'
+                                      }`}
+                                    >
+                                      {record.isLate ? 'Late' : 'Present'}
                                     </div>
-                                  )}
-                                  <div className="text-slate-400 text-xs font-medium">
-                                    {new Date(record.checkInTime).toLocaleTimeString('en-US', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: false,
-                                    })}
-                                  </div>
-                                  {record.deviceId && (
-                                    <div className="text-slate-500 text-xs truncate" title={record.deviceId}>
-                                      {record.deviceId.substring(0, 8)}...
+                                    {record.isLate && (
+                                      <div className="text-orange-400 font-bold text-xs">
+                                        +{record.lateMinutes} min
+                                      </div>
+                                    )}
+                                    <div className="text-slate-400 text-xs font-medium">
+                                      {new Date(record.checkInTime).toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false,
+                                      })}
                                     </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="inline-block px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 font-bold text-xs">
-                                  Absent
-                                </span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )
+                                    {record.deviceId && (
+                                      <div className="text-slate-500 text-xs truncate" title={record.deviceId}>
+                                        {record.deviceId.substring(0, 8)}...
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="inline-block px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 font-bold text-xs">
+                                    Absent
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          {/* Attendance Percentage Column */}
+                          <td className="px-6 py-4 text-center border-l border-slate-700 bg-blue-600/10">
+                            <div className="inline-block bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl px-4 py-3 text-center">
+                              <p className="text-2xl font-bold text-white">{attendancePercentage}%</p>
+                              <p className="text-xs text-blue-100 mt-1">Attendance</p>
+                            </div>
+                          </td>
+                          {/* Total Late Minutes Column */}
+                          <td className="px-6 py-4 text-center border-l border-slate-700 bg-orange-600/10">
+                            <div className="inline-block bg-gradient-to-br from-orange-600 to-orange-500 rounded-xl px-4 py-3 text-center">
+                              <p className="text-2xl font-bold text-white">{totalLateMinutes}</p>
+                              <p className="text-xs text-orange-100 mt-1">Total Minutes</p>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
                   )}
                 </tbody>
               </table>

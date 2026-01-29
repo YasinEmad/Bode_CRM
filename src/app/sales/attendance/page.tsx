@@ -87,79 +87,107 @@ export default function SalesAttendance() {
     }
 
     setIsMarking(true);
-    const toastId = addToast('Getting your location...', 'loading');
+    const toastId = addToast('Acquiring high-precision location...', 'loading');
 
-    try {
-      const position = await new Promise<GeolocationCoordinates>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve(pos.coords),
-          (err) => reject(err),
-          {
-            timeout: 10000,
-            maximumAge: 0
+    // Use the same high-accuracy options as admin settings
+    const options = {
+      enableHighAccuracy: true, // Forces GPS use
+      timeout: 15000,           // Wait up to 15s for satellite lock
+      maximumAge: 0             // Do not use cached position
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude, accuracy } = position.coords;
+          
+          console.log('User position:', { 
+            latitude, 
+            longitude,
+            accuracy 
+          });
+
+          const res = await fetch('/api/attendance', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              latitude,
+              longitude,
+              deviceId: getDeviceId(),
+            }),
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'Failed to mark attendance');
           }
-        );
-      });
 
-      console.log('User position:', { 
-        latitude: position.latitude, 
-        longitude: position.longitude,
-        accuracy: position.accuracy 
-      });
+          const data = await res.json();
+          
+          console.log('===== ATTENDANCE RESPONSE =====');
+          console.log('Full Response:', JSON.stringify(data, null, 2));
+          console.log('isLate:', data.isLate, 'type:', typeof data.isLate);
+          console.log('lateMinutes:', data.lateMinutes, 'type:', typeof data.lateMinutes);
+          console.log('Location Accuracy:', accuracy, 'meters');
+          console.log('===============================');
+          
+          // Remove the loading toast
+          removeToast(toastId);
+          
+          // Show appropriate message based on late status
+          if (data.isLate === true) {
+            console.log('CONDITION MET: User is late!');
+            const hours = Math.floor(data.lateMinutes / 60);
+            const minutes = data.lateMinutes % 60;
+            let lateMessage = `⏰ You are ${minutes > 0 ? `${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}${hours > 0 && minutes > 0 ? ' and ' : ''}${hours > 0 ? `${hours} hour${hours !== 1 ? 's' : ''}` : ''} late!`;
+            if (accuracy > 100) {
+              lateMessage += ` (Low GPS accuracy: ~${Math.round(accuracy)}m)`;
+            }
+            console.log('Late message:', lateMessage);
+            addToast(lateMessage, 'warning');
+          } else {
+            console.log('CONDITION NOT MET: Showing success message');
+            let successMessage = '✅ Check-in marked today';
+            if (accuracy > 100) {
+              successMessage += ` (GPS accuracy: ~${Math.round(accuracy)}m)`;
+            } else {
+              successMessage += ` (High accuracy: ~${Math.round(accuracy)}m)`;
+            }
+            addToast(successMessage, 'success');
+          }
 
-      const res = await fetch('/api/attendance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          latitude: position.latitude,
-          longitude: position.longitude,
-          deviceId: getDeviceId(),
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to mark attendance');
-      }
-
-      const data = await res.json();
-      
-      console.log('===== ATTENDANCE RESPONSE =====');
-      console.log('Full Response:', JSON.stringify(data, null, 2));
-      console.log('isLate:', data.isLate, 'type:', typeof data.isLate);
-      console.log('lateMinutes:', data.lateMinutes, 'type:', typeof data.lateMinutes);
-      console.log('===============================');
-      
-      // Remove the loading toast
-      removeToast(toastId);
-      
-      // Show appropriate message based on late status
-      if (data.isLate === true) {
-        console.log('CONDITION MET: User is late!');
-        const hours = Math.floor(data.lateMinutes / 60);
-        const minutes = data.lateMinutes % 60;
-        let lateMessage = `⏰ You are ${minutes > 0 ? `${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}${hours > 0 && minutes > 0 ? ' and ' : ''}${hours > 0 ? `${hours} hour${hours !== 1 ? 's' : ''}` : ''} late!`;
-        console.log('Late message:', lateMessage);
-        console.log('About to call addToast with warning type');
-        addToast(lateMessage, 'warning');
-        console.log('addToast called!');
-      } else {
-        console.log('CONDITION NOT MET: Showing success message');
-        addToast('✅ Check-in marked today', 'success');
-      }
-
-      fetchAttendance();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to mark attendance';
-      console.error('Attendance error:', errorMsg);
-      removeToast(toastId);
-      addToast(errorMsg, 'error');
-    } finally {
-      setIsMarking(false);
-    }
+          fetchAttendance();
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Failed to mark attendance';
+          console.error('Attendance error:', errorMsg);
+          removeToast(toastId);
+          addToast(errorMsg, 'error');
+        } finally {
+          setIsMarking(false);
+        }
+      },
+      (error) => {
+        let errorMsg = error.message;
+        switch(error.code) {
+          case error.PERMISSION_DENIED: 
+            errorMsg = "Location access denied. Please enable GPS permissions in your device settings."; 
+            break;
+          case error.POSITION_UNAVAILABLE: 
+            errorMsg = "Location information is unavailable. Make sure GPS is enabled."; 
+            break;
+          case error.TIMEOUT: 
+            errorMsg = "GPS signal not found. Please ensure you're in an open area and GPS is enabled."; 
+            break;
+        }
+        removeToast(toastId);
+        addToast(`Error: ${errorMsg}`, 'error');
+        setIsMarking(false);
+      },
+      options // Pass the high accuracy options here
+    );
   };
 
   if (loading) {
@@ -176,7 +204,7 @@ export default function SalesAttendance() {
         {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Mark Attendance</h1>
-          <p className="text-slate-400">Check in using your GPS location</p>
+          <p className="text-slate-400">Check in using your GPS location with high precision</p>
         </div>
 
         {/* Attendance Button */}
@@ -188,7 +216,7 @@ export default function SalesAttendance() {
           <p className="text-slate-300 mb-8 text-lg">
             {todayAttendance
               ? '✅ Check-in marked today'
-              : '📍 Click the button below to mark your attendance using your GPS location'}
+              : '📍 Click the button below to mark your attendance using your GPS location. For best accuracy, use a mobile device with GPS enabled and try to be in an open area.'}
           </p>
 
           <button
@@ -199,7 +227,7 @@ export default function SalesAttendance() {
             {isMarking ? (
               <>
                 <Loader size={24} className="animate-spin" />
-                Marking...
+                Acquiring GPS Signal...
               </>
             ) : todayAttendance ? (
               <>

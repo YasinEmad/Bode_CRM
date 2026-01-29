@@ -71,13 +71,18 @@ export default function Navbar() {
         { href: '/admin/employees', label: 'Employees' },
         { href: '/admin/teams', label: 'Teams' },
         { href: '/admin/attendance-records', label: 'Attendance' },
+        { href: '/admin/monthly-employee-report', label: 'Monthly Report' },
+        { href: '/admin/team-leaders-monthly-report', label: 'Team Leaders' },
         { href: '/admin/commissions', label: 'Commissions' },
         { href: '/admin/settings', label: 'Settings' },
       ]
     : [
         { href: '/sales/dashboard', label: 'Dashboard' },
         { href: '/sales/leads', label: 'My Leads' },
-        ...(isTeamLeader ? [{ href: '/sales/my-team', label: 'My Team' }] : []),
+        ...(isTeamLeader ? [
+          { href: '/sales/my-team', label: 'My Team' },
+          { href: '/sales/team-report', label: 'Team Report' }
+        ] : []),
         { href: '/sales/commissions', label: 'My Commissions' },
         { href: '/sales/attendance', label: 'Attendance' },
       ];
