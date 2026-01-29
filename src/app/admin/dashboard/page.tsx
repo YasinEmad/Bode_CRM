@@ -143,11 +143,24 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Bode Home */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
+          <h2 className="text-2xl font-bold text-white mb-6">Bode home</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <a
+            href="/admin/dashboard"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-slate-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-slate-600 to-slate-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <BarChart3 size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-slate-400 transition-colors">Dashboard</h3>
+            <p className="text-slate-400">View overall system statistics and metrics</p>
+          </a>
+
           <a
             href="/admin/leads"
             className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-blue-500 transition-all group cursor-pointer"
@@ -159,19 +172,6 @@ export default function AdminDashboard() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Manage Leads</h3>
             <p className="text-slate-400">Create, assign, and track leads across your pipeline</p>
-          </a>
-
-          <a
-            href="/admin/commissions"
-            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-emerald-500 transition-all group cursor-pointer"
-          >
-            <div className="mb-4">
-              <div className="inline-block bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
-                <DollarSign size={28} className="text-white" />
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Approve Commissions</h3>
-            <p className="text-slate-400">Review and approve employee commissions</p>
           </a>
 
           <a
@@ -188,6 +188,19 @@ export default function AdminDashboard() {
           </a>
 
           <a
+            href="/admin/teams"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-cyan-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-cyan-600 to-cyan-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <Users size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">Teams</h3>
+            <p className="text-slate-400">Manage teams and team leaders</p>
+          </a>
+
+          <a
             href="/admin/attendance-records"
             className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-indigo-500 transition-all group cursor-pointer"
           >
@@ -198,6 +211,45 @@ export default function AdminDashboard() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors">Attendance Records</h3>
             <p className="text-slate-400">View attendance records by month</p>
+          </a>
+
+          <a
+            href="/admin/monthly-employee-report"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-green-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-green-600 to-green-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <TrendingUp size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">Monthly Report</h3>
+            <p className="text-slate-400">View monthly employee performance reports</p>
+          </a>
+
+          <a
+            href="/admin/team-leaders-monthly-report"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-orange-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-orange-600 to-orange-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <TrendingUp size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-orange-400 transition-colors">Team Leaders</h3>
+            <p className="text-slate-400">View team leaders monthly performance</p>
+          </a>
+
+          <a
+            href="/admin/commissions"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-emerald-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <DollarSign size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Approve Commissions</h3>
+            <p className="text-slate-400">Review and approve employee commissions</p>
           </a>
 
           <a
@@ -212,26 +264,6 @@ export default function AdminDashboard() {
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">System Settings</h3>
             <p className="text-slate-400">Configure office location & commission rules</p>
           </a>
-
-          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl transition-all group">
-            <div className="mb-4">
-              <div className="inline-block bg-gradient-to-br from-pink-600 to-pink-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
-                <Zap size={28} className="text-white" />
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Team Overview</h3>
-            <p className="text-slate-400">{stats.activeEmployees} employees • {stats.totalLeads} leads • {stats.closedDeals} deals closed</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl transition-all group">
-            <div className="mb-4">
-              <div className="inline-block bg-gradient-to-br from-cyan-600 to-cyan-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
-                <TrendingUp size={28} className="text-white" />
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Revenue Status</h3>
-            <p className="text-slate-400">Commission rate: {conversionRate}% • Revenue: ${(stats.totalCommissions / 1000).toFixed(1)}K</p>
-          </div>
         </div>
       </div>
     </div>
