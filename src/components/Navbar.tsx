@@ -20,6 +20,9 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const isAuthPage = pathname === '/login';
+  const isAdminPage = pathname.startsWith('/admin');
+  const isSalesPage = pathname.startsWith('/sales');
+  const isHomePage = pathname === '/';
 
   // Check if user is team leader and fetch unread notes
   useEffect(() => {
@@ -64,6 +67,28 @@ export default function Navbar() {
     }
   };
 
+  // Previously the navbar was hidden on admin and sales pages.
+  // Keep it rendered so the global navbar is visible across all routes.
+
+  // Simple navbar for home page
+  if (isHomePage && !user) {
+    return (
+      <header className="border-b border-slate-800 backdrop-blur-sm bg-slate-900/50 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
+            <img src="/Night_Blue-removebg-preview.png" alt="Bode CRM" className="h-10 w-auto" />
+          </Link>
+          <Link
+            href="/login"
+            className="text-slate-300 hover:text-white font-medium transition-colors"
+          >
+            Sign In
+          </Link>
+        </div>
+      </header>
+    );
+  }
+
   const navLinks: NavLink[] = user?.role === 'admin' 
     ? [
         { href: '/admin/dashboard', label: 'Dashboard' },
@@ -79,6 +104,8 @@ export default function Navbar() {
     : [
         { href: '/sales/dashboard', label: 'Dashboard' },
         { href: '/sales/leads', label: 'My Leads' },
+        { href: '/sales/my-monthly-kpis', label: 'My KPIs' },
+        { href: '/sales/device-id', label: 'Device ID' },
         ...(isTeamLeader ? [
           { href: '/sales/my-team', label: 'My Team' },
           { href: '/sales/team-report', label: 'Team Report' }
