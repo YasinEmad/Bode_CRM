@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Calendar, TrendingUp, Users, Download } from 'lucide-react';
+import { Loader, Calendar, TrendingUp, Users, Download, AlertCircle } from 'lucide-react';
+import { calculateEmployeeKPI, EmployeeMetrics, KPIScores } from '@/lib/kpiCalculator';
 
 interface EmployeeReportData {
   _id: string;
@@ -44,6 +45,8 @@ export default function MonthlyEmployeeReport() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [reportData, setReportData] = useState<EmployeeReportData[]>([]);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [kpiSettings, setKpiSettings] = useState<any>(null);
+  const [kpiLoadError, setKpiLoadError] = useState<string | null>(null);
 
   // Set default month to current month
   useEffect(() => {
@@ -64,11 +67,145 @@ export default function MonthlyEmployeeReport() {
   // Fetch report data when month/year changes
   useEffect(() => {
     if (selectedMonth && selectedYear && token) {
-      fetchReportData();
+      const loadData = async () => {
+        // Fetch KPI settings first
+        console.log('🔄 Starting data load sequence...');
+        const kpiData = await fetchKpiSettingsAndReturn();
+        // Then fetch report data with the KPI settings
+        await fetchReportDataWithKpi(kpiData);
+      };
+      loadData();
     }
   }, [selectedMonth, selectedYear, token]);
 
-  const fetchReportData = async () => {
+  const fetchKpiSettings = async () => {
+    try {
+      console.log('📊 Fetching KPI settings...');
+      const res = await fetch('/api/kpi-settings', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('❌ KPI API Error:', res.status, errorData);
+        setKpiLoadError(errorData.error || 'Failed to load KPI settings');
+        setKpiSettings(null);
+        return;
+      }
+
+      const data = await res.json();
+      console.log('✅ KPI settings received:', data.kpiSettings);
+      
+      // Validate KPI settings structure
+      if (!data.kpiSettings) {
+        console.error('❌ No kpiSettings object in response');
+        setKpiLoadError('Invalid KPI settings format');
+        return;
+      }
+
+      if (!Array.isArray(data.kpiSettings.indicators)) {
+        console.error('❌ Indicators is not an array');
+        setKpiLoadError('Invalid indicators format');
+        return;
+      }
+
+      if (data.kpiSettings.indicators.length === 0) {
+        console.error('❌ No indicators in settings');
+        setKpiLoadError('No indicators configured');
+        return;
+      }
+
+      // Validate all required indicators are present
+      const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
+      const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
+      const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
+
+      if (missingIndicators.length > 0) {
+        console.error('❌ Missing indicators:', missingIndicators);
+        setKpiLoadError(`Missing indicators: ${missingIndicators.join(', ')}`);
+        return;
+      }
+
+      // Validate total weight
+      const totalWeight = data.kpiSettings.indicators.reduce((sum: number, ind: any) => sum + ind.weight, 0);
+      if (Math.abs(totalWeight - 100) > 0.01) {
+        console.error('❌ Invalid total weight:', totalWeight);
+        setKpiLoadError(`Total weight must be 100%, got ${totalWeight.toFixed(2)}%`);
+        return;
+      }
+
+      console.log('✅ KPI settings validated successfully');
+      console.log('   - Indicators:', providedIndicators.join(', '));
+      console.log('   - Total Weight:', totalWeight.toFixed(2) + '%');
+      setKpiSettings(data.kpiSettings);
+      setKpiLoadError(null);
+    } catch (error) {
+      console.error('❌ Error fetching KPI settings:', error);
+      setKpiLoadError(error instanceof Error ? error.message : 'Failed to load KPI settings');
+      setKpiSettings(null);
+    }
+  };
+
+  // New function: Fetch KPI settings and return the data
+  const fetchKpiSettingsAndReturn = async (): Promise<any> => {
+    try {
+      console.log('📊 Fetching KPI settings...');
+      const res = await fetch('/api/kpi-settings', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('❌ KPI API Error:', res.status, errorData);
+        throw new Error(errorData.error || 'Failed to load KPI settings');
+      }
+
+      const data = await res.json();
+      console.log('✅ KPI settings received:', data.kpiSettings);
+      
+      // Validate KPI settings structure
+      if (!data.kpiSettings || !Array.isArray(data.kpiSettings.indicators) || data.kpiSettings.indicators.length === 0) {
+        console.error('❌ Invalid KPI settings structure');
+        throw new Error('Invalid KPI settings format');
+      }
+
+      // Validate all required indicators are present
+      const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
+      const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
+      const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
+
+      if (missingIndicators.length > 0) {
+        console.error('❌ Missing indicators:', missingIndicators);
+        throw new Error(`Missing indicators: ${missingIndicators.join(', ')}`);
+      }
+
+      // Validate total weight
+      const totalWeight = data.kpiSettings.indicators.reduce((sum: number, ind: any) => sum + ind.weight, 0);
+      if (Math.abs(totalWeight - 100) > 0.01) {
+        console.error('❌ Invalid total weight:', totalWeight);
+        throw new Error(`Total weight must be 100%, got ${totalWeight.toFixed(2)}%`);
+      }
+
+      console.log('✅ KPI settings validated successfully');
+      setKpiSettings(data.kpiSettings);
+      setKpiLoadError(null);
+      
+      return data.kpiSettings; // Return the KPI settings for use in report calculation
+    } catch (error) {
+      console.error('❌ Error fetching KPI settings:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load KPI settings';
+      setKpiLoadError(errorMsg);
+      setKpiSettings(null);
+      return null;
+    }
+  };
+
+  // New function: Fetch report data with KPI settings already available
+  const fetchReportDataWithKpi = async (kpiSettingsData: any) => {
     try {
       setLoadingReport(true);
 
@@ -240,6 +377,34 @@ export default function MonthlyEmployeeReport() {
           ? calculateTotal(leaderStats.assessments)
           : 0;
 
+        // Calculate KPI if settings are available (now guaranteed to have data)
+        let kpiPercentage = 0;
+        if (kpiSettingsData && kpiSettingsData.indicators && kpiSettingsData.indicators.length > 0) {
+          const metrics: EmployeeMetrics = {
+            attendancePercentage,
+            closedDealsCount: leadsStats.dealsCount,
+            callsCount,
+            meetingsCount,
+            assessmentsCount,
+          };
+
+          console.log(`\n📊 === KPI Calculation for ${emp.name} ===`);
+          console.log('🔹 Metrics:', metrics);
+          console.log('🔹 Available Indicators:', kpiSettingsData.indicators.map((ind: any) => `${ind.name} (target: ${ind.target}, weight: ${ind.weight})`));
+
+          const kpiScores: KPIScores = calculateEmployeeKPI(metrics, kpiSettingsData.indicators);
+          kpiPercentage = Math.round(kpiScores.total * 10) / 10; // Round to 1 decimal place
+          
+          // Debug logging
+          console.log('🔹 Calculated Scores:', kpiScores);
+          console.log(`✅ Final KPI Percentage: ${kpiPercentage}%`);
+          console.log('');
+        } else {
+          console.log(`⚠️ KPI Settings NOT available for ${emp.name}`);
+          console.log('   - kpiSettingsData:', !!kpiSettingsData);
+          console.log('   - indicators:', kpiSettingsData?.indicators);
+        }
+
         return {
           _id: emp._id,
           name: emp.name,
@@ -251,8 +416,7 @@ export default function MonthlyEmployeeReport() {
           callsCount,
           meetingsCount,
           assessmentsCount,
-          kpiPercentage: 0,
-
+          kpiPercentage,
         };
       });
 
@@ -401,14 +565,29 @@ export default function MonthlyEmployeeReport() {
           <div className="flex items-center justify-center py-12">
             <Loader className="animate-spin text-purple-500" size={40} />
           </div>
-        ) : reportData.length === 0 ? (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">
-            <p className="text-slate-400 text-lg">No employee data available</p>
-          </div>
         ) : (
           <>
-            {/* Report Table */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl overflow-x-auto border border-slate-700">
+            {/* KPI Load Error Warning */}
+            {kpiLoadError && (
+              <div className="mb-6 bg-amber-900/20 border border-amber-700 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h3 className="text-amber-200 font-semibold">KPI Settings Warning</h3>
+                  <p className="text-amber-300 text-sm mt-1">
+                    {kpiLoadError}. KPI percentages will not be calculated. Please configure KPI settings in System Settings.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {reportData.length === 0 ? (
+              <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">
+                <p className="text-slate-400 text-lg">No employee data available</p>
+              </div>
+            ) : (
+              <>
+                {/* Report Table */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl overflow-x-auto border border-slate-700">
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700">
                   <tr>
@@ -507,9 +686,21 @@ export default function MonthlyEmployeeReport() {
                         </span>
                       </td>
 
-                      {/* KPI Percentage (Empty) */}
+                      {/* KPI Percentage */}
                       <td className="px-6 py-4 text-center border-l border-slate-700 bg-orange-600/10">
-                        <span className="text-slate-400 font-semibold">—</span>
+                        {employee.kpiPercentage > 0 ? (
+                          <span className={`inline-block px-4 py-2 rounded-lg font-bold text-lg ${
+                            employee.kpiPercentage >= 80 
+                              ? 'bg-gradient-to-br from-emerald-600 to-emerald-500 text-white'
+                              : employee.kpiPercentage >= 60
+                              ? 'bg-gradient-to-br from-yellow-600 to-yellow-500 text-white'
+                              : 'bg-gradient-to-br from-red-600 to-red-500 text-white'
+                          }`}>
+                            {employee.kpiPercentage.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-semibold">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -571,6 +762,8 @@ export default function MonthlyEmployeeReport() {
                 </div>
               </div>
             </div>
+              </>
+            )}
           </>
         )}
       </div>
