@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -17,15 +17,22 @@ export default function Navbar() {
   const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
   const pathname = usePathname() || '';
   const [isTeamLeader, setIsTeamLeader] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isAuthPage = pathname === '/login';
 
-  // Check if user is team leader
+  // Check if user is team leader and fetch unread notes
   useEffect(() => {
     if (user?.role === 'sales' && token) {
       checkTeamLeaderStatus();
+      fetchUnreadNotes();
+      
+      // Set up interval to check for unread notes every 30 seconds
+      const interval = setInterval(fetchUnreadNotes, 30000);
+      return () => clearInterval(interval);
     } else {
       setIsTeamLeader(false);
+      setUnreadCount(0);
     }
   }, [user, token]);
 
@@ -39,6 +46,21 @@ export default function Navbar() {
     } catch (error) {
       console.error('Error checking team leader status:', error);
       setIsTeamLeader(false);
+    }
+  };
+
+  const fetchUnreadNotes = async () => {
+    try {
+      const res = await fetch('/api/notes', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const unread = data.notes?.filter((note: any) => !note.read).length || 0;
+        setUnreadCount(unread);
+      }
+    } catch (error) {
+      console.error('Error fetching unread notes:', error);
     }
   };
 
@@ -102,6 +124,22 @@ export default function Navbar() {
                   <p className="text-xs sm:text-sm font-medium">{user.name}</p>
                   <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                 </div>
+                {user.role === 'sales' && (
+                  <Link
+                    href="/sales/notes"
+                    className="relative flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/50 hover:scale-105"
+                  >
+                    <div className="relative">
+                      <Mail size={18} className="transition-transform duration-300" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-3 -right-3 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="hidden sm:inline">Notes</span>
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     logout();

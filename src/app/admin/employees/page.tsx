@@ -3,9 +3,10 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff } from 'lucide-react';
+import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { exportEmployeesToExcel } from '@/lib/exportExcel';
+import SendNoteModal from '@/components/SendNoteModal';
 
 interface Employee {
   _id: string;
@@ -32,6 +33,8 @@ export default function AdminEmployees() {
   const [addFormData, setAddFormData] = useState({ username: '', name: '', password: '', position: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [commissionRules, setCommissionRules] = useState<Array<{ position: string; percentage: number }>>([]);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [selectedEmployeeForNote, setSelectedEmployeeForNote] = useState<{ id: string; name: string } | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
@@ -89,6 +92,11 @@ export default function AdminEmployees() {
       position: emp.position || '',
       salary: emp.salary || 0,
     });
+  };
+
+  const handleOpenNoteModal = (empId: string, empName: string) => {
+    setSelectedEmployeeForNote({ id: empId, name: empName });
+    setShowNoteModal(true);
   };
 
   const handleSaveEmployee = async (empId: string) => {
@@ -324,13 +332,22 @@ export default function AdminEmployees() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleEditEmployee(emp)}
-                            className="inline-block bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white p-2 rounded-lg transition-all"
-                            title="Edit employee"
-                          >
-                            <Edit2 size={18} />
-                          </button>
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => handleOpenNoteModal(emp._id, emp.name)}
+                              className="inline-block bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white p-2 rounded-lg transition-all"
+                              title="Send note"
+                            >
+                              <MessageSquare size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleEditEmployee(emp)}
+                              className="inline-block bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white p-2 rounded-lg transition-all"
+                              title="Edit employee"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -564,6 +581,23 @@ export default function AdminEmployees() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Send Note Modal */}
+        {selectedEmployeeForNote && token && (
+          <SendNoteModal
+            isOpen={showNoteModal}
+            onClose={() => {
+              setShowNoteModal(false);
+              setSelectedEmployeeForNote(null);
+            }}
+            receiverId={selectedEmployeeForNote.id}
+            receiverName={selectedEmployeeForNote.name}
+            token={token}
+            onSuccess={() => {
+              addToast('Note sent successfully!', 'success');
+            }}
+          />
         )}
       </div>
     </div>

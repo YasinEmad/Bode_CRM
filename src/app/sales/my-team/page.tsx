@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { Loader, Eye, Users, Phone, Mail, TrendingUp, AlertCircle, BarChart3, X, ChevronDown } from 'lucide-react';
+import { Loader, Eye, Users, Phone, Mail, TrendingUp, AlertCircle, BarChart3, X, ChevronDown, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/Toast';
+import SendNoteModal from '@/components/SendNoteModal';
 
 interface TeamMember {
   id: string;
@@ -41,6 +42,8 @@ export default function MyTeamPage() {
   const [leadsFilter, setLeadsFilter] = useState<'all' | 'member'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'leads' | 'closed' | 'conversion'>('leads');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [selectedMemberForNote, setSelectedMemberForNote] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -60,7 +63,7 @@ export default function MyTeamPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to load team');
       setTeam(data.team);
       // Filter to ensure team leader is not included
-      const filteredMembers = (data.members || []).filter((m: TeamMember) => m.id !== user?._id);
+      const filteredMembers = (data.members || []).filter((m: TeamMember) => m.id !== (user as any)?._id);
       setMembers(filteredMembers);
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Failed to load team', 'error');
@@ -92,6 +95,11 @@ export default function MyTeamPage() {
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Failed to load leads', 'error');
     }
+  };
+
+  const handleOpenNoteModal = (memberId: string, memberName: string) => {
+    setSelectedMemberForNote({ id: memberId, name: memberName });
+    setShowNoteModal(true);
   };
 
   const viewAllTeamLeads = async () => {
@@ -256,12 +264,20 @@ export default function MyTeamPage() {
                   </div>
 
                   {/* Action Button */}
-                  <button 
-                    onClick={() => viewLeadsFor(member.id, member.name)} 
-                    className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm group/btn"
-                  >
-                    <Eye size={16} /> View Leads
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleOpenNoteModal(member.id, member.name)} 
+                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm"
+                    >
+                      <MessageSquare size={16} /> Send Note
+                    </button>
+                    <button 
+                      onClick={() => viewLeadsFor(member.id, member.name)} 
+                      className="flex-1 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm group/btn"
+                    >
+                      <Eye size={16} /> View Leads
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -316,12 +332,20 @@ export default function MyTeamPage() {
                     </div>
                   </div>
 
-                  <button 
-                    onClick={() => viewLeadsFor(member.id, member.name)} 
-                    className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm"
-                  >
-                    <Eye size={16} /> View Leads
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleOpenNoteModal(member.id, member.name)} 
+                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm"
+                    >
+                      <MessageSquare size={16} /> Send Note
+                    </button>
+                    <button 
+                      onClick={() => viewLeadsFor(member.id, member.name)} 
+                      className="flex-1 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm"
+                    >
+                      <Eye size={16} /> View Leads
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -420,6 +444,23 @@ export default function MyTeamPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Send Note Modal */}
+      {selectedMemberForNote && token && (
+        <SendNoteModal
+          isOpen={showNoteModal}
+          onClose={() => {
+            setShowNoteModal(false);
+            setSelectedMemberForNote(null);
+          }}
+          receiverId={selectedMemberForNote.id}
+          receiverName={selectedMemberForNote.name}
+          token={token}
+          onSuccess={() => {
+            addToast('Note sent successfully!', 'success');
+          }}
+        />
       )}
     </div>
   );
