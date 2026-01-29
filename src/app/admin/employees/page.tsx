@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare } from 'lucide-react';
+import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare, Lock } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { exportEmployeesToExcel } from '@/lib/exportExcel';
 import SendNoteModal from '@/components/SendNoteModal';
@@ -42,6 +42,10 @@ export default function AdminEmployees() {
     position: '',
     salary: 0,
   });
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordData, setResetPasswordData] = useState<{ id: string; name: string } | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -97,6 +101,53 @@ export default function AdminEmployees() {
   const handleOpenNoteModal = (empId: string, empName: string) => {
     setSelectedEmployeeForNote({ id: empId, name: empName });
     setShowNoteModal(true);
+  };
+
+  const handleOpenResetPasswordModal = (empId: string, empName: string) => {
+    setResetPasswordData({ id: empId, name: empName });
+    setResetPasswordInput('');
+    setShowResetPassword(false);
+    setShowResetPasswordModal(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordInput) {
+      addToast('Please enter a new password', 'error');
+      return;
+    }
+
+    const pwd = String(resetPasswordInput);
+    const strongPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    if (!strongPwdRegex.test(pwd)) {
+      addToast('Password must be at least 8 characters and include uppercase, lowercase, number and special character', 'error');
+      return;
+    }
+
+    if (!resetPasswordData) return;
+
+    const toastId = addToast('Resetting password...', 'loading');
+    try {
+      const res = await fetch(`/api/employees/${resetPasswordData.id}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newPassword: resetPasswordInput }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      updateToast(toastId, `✅ Password reset for ${resetPasswordData.name}!`, 'success');
+      setShowResetPasswordModal(false);
+      setResetPasswordData(null);
+      setResetPasswordInput('');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to reset password', 'error');
+    }
   };
 
   const handleSaveEmployee = async (empId: string) => {
@@ -339,6 +390,13 @@ export default function AdminEmployees() {
                               title="Send note"
                             >
                               <MessageSquare size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleOpenResetPasswordModal(emp._id, emp.name)}
+                              className="inline-block bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white p-2 rounded-lg transition-all"
+                              title="Reset password"
+                            >
+                              <Lock size={18} />
                             </button>
                             <button
                               onClick={() => handleEditEmployee(emp)}
@@ -598,6 +656,79 @@ export default function AdminEmployees() {
               addToast('Note sent successfully!', 'success');
             }}
           />
+        )}
+
+        {/* Reset Password Modal */}
+        {showResetPasswordModal && resetPasswordData && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-full p-2">
+                      <Lock size={20} className="text-white" />
+                    </div>
+                    Reset Password
+                  </h2>
+                  <button
+                    onClick={() => setShowResetPasswordModal(false)}
+                    className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-200">
+                    <strong>Employee:</strong> {resetPasswordData.name}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">New Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showResetPassword ? 'text' : 'password'}
+                      value={resetPasswordInput}
+                      onChange={(e) => setResetPasswordInput(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full pr-12 px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-white bg-slate-900 placeholder-slate-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetPassword(!showResetPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-white"
+                      aria-label={showResetPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showResetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Password must be at least 8 characters and include uppercase, lowercase, number and special character.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-6 border-t border-slate-600 bg-slate-900">
+                <button
+                  onClick={handleResetPassword}
+                  className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  <Lock size={18} />
+                  Reset Password
+                </button>
+                <button
+                  onClick={() => setShowResetPasswordModal(false)}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600 flex items-center justify-center gap-2"
+                >
+                  <X size={18} />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
