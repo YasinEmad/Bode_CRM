@@ -11,7 +11,7 @@ export interface AttendanceExportData {
 
 export interface LeadExportData {
   'Lead Name': string;
-  'Budget': number;
+  'Project': string;
   'Email': string;
   'Phone': string;
   'Status': string;

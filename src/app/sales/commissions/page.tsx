@@ -11,7 +11,7 @@ interface Commission {
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId?: { _id: string; name: string; budget: number } | null;
+  dealId?: { _id: string; name: string; project?: string } | null;
   rejectionNote?: string;
   createdAt?: string;
   approvalDate?: string;
@@ -214,15 +214,13 @@ export default function SalesCommissions() {
                   </div>
 
                   <div>
-                    <p className="text-sm text-slate-400 font-medium">💰 Deal Amount</p>
-                    <p className="text-lg font-semibold text-blue-400 mt-1">
-                      {commission.dealId?.budget ? `$${commission.dealId.budget.toLocaleString()}` : '—'}
-                    </p>
+                    <p className="text-sm text-slate-400 font-medium">🏷️ Project</p>
+                    <p className="text-lg font-semibold text-blue-400 mt-1">{commission.dealId?.project || '—'}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 font-medium">📊 Commission Rate</p>
-                    <p className="text-lg font-semibold text-amber-400 mt-1">{commission.percentage}%</p>
+                    <p className="text-lg font-semibold text-amber-400 mt-1">{commission.percentage ? `${commission.percentage}%` : '—'}</p>
                   </div>
 
                   <div>

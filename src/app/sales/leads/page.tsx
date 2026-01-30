@@ -9,7 +9,7 @@ import { Loader, Edit2, Mail, X, Save } from 'lucide-react';
 interface Lead {
   _id: string;
   name: string;
-  budget: number;
+  project?: string;
   phone: string;
   email?: string;
   status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
@@ -38,6 +38,9 @@ export default function SalesLeads() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editNotes, setEditNotes] = useState('');
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [closingLeadId, setClosingLeadId] = useState<string | null>(null);
+  const [closeFormData, setCloseFormData] = useState({ project: '', notes: '', proofImage: '' });
+  const [isSubmittingClose, setIsSubmittingClose] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'sales')) {
@@ -72,8 +75,19 @@ export default function SalesLeads() {
   };
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
-    setStatusUpdating(leadId);
+    if (newStatus === 'closed') {
+      // Open modal to collect project, notes, and proof image
+      const lead = leads.find((l) => l._id === leadId);
+      setClosingLeadId(leadId);
+      setCloseFormData({
+        project: lead?.project || '',
+        notes: lead?.notes || '',
+        proofImage: '',
+      });
+      return;
+    }
 
+    setStatusUpdating(leadId);
     try {
       const res = await fetch(`/api/leads/${leadId}`, {
         method: 'PUT',
@@ -88,17 +102,7 @@ export default function SalesLeads() {
       if (!res.ok) throw new Error(data.error || 'Failed to update status');
 
       setLeads(leads.map((l) => (l._id === leadId ? data.lead : l)));
-      
-      // Show specific message when status is changed to closed
-      if (newStatus === 'closed') {
-        const commission = Math.round((data.lead.budget * 0.05 + Number.EPSILON) * 100) / 100;
-        addToast(
-          `✅ Deal closed! Commission ($${commission.toLocaleString()}) submitted for admin approval`,
-          'success'
-        );
-      } else {
-        addToast('✅ Status updated!', 'success');
-      }
+      addToast('✅ Status updated!', 'success');
     } catch (error) {
       addToast(
         error instanceof Error ? error.message : 'Failed to update status',
@@ -106,6 +110,50 @@ export default function SalesLeads() {
       );
     } finally {
       setStatusUpdating(null);
+    }
+  };
+
+  const handleSubmitCloseLead = async () => {
+    if (!closingLeadId) return;
+
+    if (!closeFormData.project || !closeFormData.notes || !closeFormData.proofImage) {
+      addToast('Please fill in project, notes, and proof image', 'error');
+      return;
+    }
+
+    setIsSubmittingClose(true);
+    const toastId = addToast('Closing deal...', 'loading');
+
+    try {
+      const res = await fetch(`/api/leads/${closingLeadId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: 'closed',
+          project: closeFormData.project,
+          notes: closeFormData.notes,
+          proofImage: closeFormData.proofImage,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to close deal');
+
+      setLeads(leads.map((l) => (l._id === closingLeadId ? data.lead : l)));
+      setClosingLeadId(null);
+      setCloseFormData({ project: '', notes: '', proofImage: '' });
+      updateToast(toastId, '✅ Deal closed and sent to admin for approval', 'success');
+    } catch (error) {
+      updateToast(
+        toastId,
+        error instanceof Error ? error.message : 'Failed to close deal',
+        'error'
+      );
+    } finally {
+      setIsSubmittingClose(false);
     }
   };
 
@@ -176,7 +224,7 @@ export default function SalesLeads() {
                 <thead className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700">
                   <tr>
                     <th className="px-6 py-4 text-left font-bold text-white">Name</th>
-                    <th className="px-6 py-4 text-left font-bold text-white">Budget</th>
+                    <th className="px-6 py-4 text-left font-bold text-white">Project</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Email</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Phone</th>
                     <th className="px-6 py-4 text-left font-bold text-white">Source</th>
@@ -189,7 +237,7 @@ export default function SalesLeads() {
                   {leads.map((lead) => (
                     <tr key={lead._id} className="hover:bg-slate-700 transition">
                       <td className="px-6 py-4 font-semibold text-white">{lead.name}</td>
-                      <td className="px-6 py-4 text-slate-300">${lead.budget.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-slate-300">{lead.project || '-'}</td>
                       <td className="px-6 py-4 text-slate-300">{lead.email || '-'}</td>
                       <td className="px-6 py-4 text-slate-300">{lead.phone}</td>
                       <td className="px-6 py-4 text-slate-300 capitalize">{lead.source}</td>
@@ -294,7 +342,7 @@ export default function SalesLeads() {
               <div className="p-6 space-y-4">
                 <div className="bg-slate-700 p-4 rounded-lg border border-slate-600">
                   <p className="text-sm text-slate-300"><span className="font-semibold">Status:</span> <span className={`px-2 py-1 rounded text-xs font-medium ${(statusColors[editingLead.status]?.bg || 'bg-slate-200')} ${(statusColors[editingLead.status]?.text || 'text-slate-800')}`}>{editingLead.status.charAt(0).toUpperCase() + editingLead.status.slice(1)}</span></p>
-                  <p className="text-sm text-slate-300 mt-2"><span className="font-semibold">Budget:</span> ${editingLead.budget.toLocaleString()}</p>
+                  <p className="text-sm text-slate-300 mt-2"><span className="font-semibold">Project:</span> {editingLead.project || '-'}</p>
                 </div>
 
                 <div>
@@ -318,6 +366,74 @@ export default function SalesLeads() {
                   </button>
                   <button
                     onClick={() => setEditingLead(null)}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-semibold transition border border-slate-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Close Lead Modal */}
+        {closingLeadId && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
+              <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800">
+                <h2 className="text-2xl font-bold text-white">Close Deal</h2>
+                <button
+                  onClick={() => setClosingLeadId(null)}
+                  className="text-slate-400 hover:text-white transition"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Project Name *</label>
+                  <input
+                    type="text"
+                    placeholder="Enter project name"
+                    value={closeFormData.project}
+                    onChange={(e) => setCloseFormData({ ...closeFormData, project: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Notes *</label>
+                  <textarea
+                    placeholder="Add notes about this deal..."
+                    value={closeFormData.notes}
+                    onChange={(e) => setCloseFormData({ ...closeFormData, notes: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                    rows={4}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Proof Image (URL) *</label>
+                  <input
+                    type="text"
+                    placeholder="Paste image URL as proof of deal"
+                    value={closeFormData.proofImage}
+                    onChange={(e) => setCloseFormData({ ...closeFormData, proofImage: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={handleSubmitCloseLead}
+                    disabled={isSubmittingClose}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:bg-gray-600 text-white py-3 rounded-lg font-semibold transition"
+                  >
+                    {isSubmittingClose ? 'Closing...' : 'Close Deal'}
+                  </button>
+                  <button
+                    onClick={() => setClosingLeadId(null)}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-semibold transition border border-slate-600"
                   >
                     Cancel

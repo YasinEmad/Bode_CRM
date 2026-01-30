@@ -23,49 +23,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    await connectDB();
-
-    // Get all pending commissions
-    const pendingCommissions = await Commission.find({
-      status: 'pending',
-    }).populate('employeeId').populate('dealId');
-
-    // Get system settings
-    const settings = await SystemSettings.findOne();
-
-    let updatedCount = 0;
-
-    // Recalculate each commission based on current employee position
-    for (const commission of pendingCommissions) {
-      const employee = commission.employeeId as any;
-      const deal = commission.dealId as any;
-
-      if (!employee?.position || !settings?.commissionRules) {
-        continue;
-      }
-
-      // Find rule for current position
-      const rule = settings.commissionRules.find(
-        (r: any) => (r.position || '').toLowerCase() === (employee.position || '').toLowerCase()
-      );
-
-      if (rule) {
-        const newPercentage = rule.percentage;
-        const newAmount = (deal.budget || 0) * (newPercentage / 100);
-
-        await Commission.findByIdAndUpdate(commission._id, {
-          percentage: newPercentage,
-          amount: newAmount,
-        });
-
-        updatedCount++;
-      }
-    }
-
-    return NextResponse.json({
-      message: `Recalculated ${updatedCount} pending commissions based on current position rules`,
-      updatedCount,
-    });
+    // Automatic recalculation of commissions is disabled.
+    // The system must not auto-calculate commission amounts; admin should set values manually.
+    return NextResponse.json({ error: 'Automatic recalculation disabled' }, { status: 403 });
   } catch (error) {
     console.error('Error recalculating commissions:', error);
     return NextResponse.json({ error: 'Failed to recalculate commissions' }, { status: 500 });

@@ -11,7 +11,7 @@ interface Commission {
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId?: { _id: string; name: string; budget: number } | null;
+  dealId?: { _id: string; name: string; project?: string } | null;
   employeeId: { _id: string; name: string };
   rejectionReason?: string;
   createdAt?: string;
@@ -29,6 +29,8 @@ export default function AdminCommissions() {
   const [rejectNote, setRejectNote] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [proofCommission, setProofCommission] = useState<Commission | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvalAmount, setApprovalAmount] = useState('');
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -65,19 +67,25 @@ export default function AdminCommissions() {
     const toastId = addToast('Approving commission...', 'loading');
 
     try {
+      if (!approvalAmount || isNaN(Number(approvalAmount))) {
+        throw new Error('Please enter a valid commission amount');
+      }
+
       const res = await fetch(`/api/commissions/${commissionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: 'approved' }),
+        body: JSON.stringify({ status: 'approved', amount: Number(approvalAmount) }),
       });
 
       if (!res.ok) throw new Error('Failed to approve commission');
 
       const data = await res.json();
       setCommissions(commissions.map((c) => (c._id === commissionId ? data.commission : c)));
+      setApprovingId(null);
+      setApprovalAmount('');
       updateToast(toastId, 'Commission approved! Now waiting for payment.', 'success');
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Failed to approve', 'error');
@@ -199,8 +207,8 @@ export default function AdminCommissions() {
                   </div>
 
                   <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Deal Amount</p>
-                    <p className="text-lg font-bold text-blue-400">{commission.dealId?.budget ? `$${commission.dealId.budget.toLocaleString()}` : '—'}</p>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Project</p>
+                    <p className="text-lg font-bold text-blue-400">{commission.dealId?.project || '—'}</p>
                   </div>
 
                   <div>
@@ -210,7 +218,7 @@ export default function AdminCommissions() {
 
                   <div>
                     <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Commission Rate</p>
-                    <p className="text-lg font-bold text-amber-400">{commission.percentage}%</p>
+                    <p className="text-lg font-bold text-amber-400">{commission.percentage ? `${commission.percentage}%` : '—'}</p>
                   </div>
 
                   <div>
@@ -254,7 +262,7 @@ export default function AdminCommissions() {
                 {commission.status === 'pending' && (
                   <div className="flex gap-3 flex-wrap">
                     <button
-                      onClick={() => handleApprove(commission._id)}
+                      onClick={() => setApprovingId(commission._id)}
                       className="flex items-center gap-2 flex-1 min-w-40 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2 px-4 rounded-lg font-medium transition-all"
                     >
                       <CheckCircle size={18} />
@@ -373,29 +381,74 @@ export default function AdminCommissions() {
 
                 <button onClick={() => setProofCommission(null)} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold">Close</button>
 
-                <button
-                  onClick={async () => {
-                    try {
-                      await handleApprove(proofCommission._id);
-                      setProofCommission(null);
-                    } catch (err) {
-                      setProofCommission(null);
-                    }
-                  }}
-                  className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
-                >
-                  Approve
-                </button>
+                {proofCommission.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setApprovingId(proofCommission._id);
+                        setProofCommission(null);
+                      }}
+                      className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
+                    >
+                      Approve
+                    </button>
 
-                <button
-                  onClick={() => {
-                    setRejectingId(proofCommission._id);
-                    setProofCommission(null);
-                  }}
-                  className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
-                >
-                  Reject
-                </button>
+                    <button
+                      onClick={() => {
+                        setRejectingId(proofCommission._id);
+                        setProofCommission(null);
+                      }}
+                      className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Approve Commission Modal - Set Amount */}
+        {approvingId && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600">
+                <h2 className="text-2xl font-bold text-white">Approve Commission</h2>
+                <p className="text-slate-400 text-sm mt-1">Enter the commission amount to approve</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Commission Amount ($)</label>
+                  <input
+                    type="number"
+                    value={approvalAmount}
+                    onChange={(e) => setApprovalAmount(e.target.value)}
+                    placeholder="Enter amount..."
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white bg-slate-900 placeholder-slate-500"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => handleApprove(approvingId)}
+                    disabled={!approvalAmount || isNaN(Number(approvalAmount))}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-2 rounded-lg font-semibold transition-all"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      setApprovingId(null);
+                      setApprovalAmount('');
+                    }}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>

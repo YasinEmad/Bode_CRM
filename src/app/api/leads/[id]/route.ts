@@ -30,12 +30,14 @@ export async function PUT(
 
     await connectDB();
 
-    const { name, budget, phone, email, status, source, notes, assignedTo, proofImage } = await req.json();
+    const { name, project, phone, email, status, source, notes, assignedTo, proofImage } = await req.json();
 
-    // Only admin can edit name, budget, phone, source, assignedTo
+    // Only admin can edit name, project, phone, source, assignedTo
     // Sales can only edit status and notes for their assigned leads
     if (payload.role === 'sales') {
-      if (name || budget !== undefined || phone || source || assignedTo !== undefined) {
+      // Allow project field only when closing a lead (status === 'closed')
+      const isClosingDeal = status === 'closed';
+      if (name || (!isClosingDeal && project !== undefined) || phone || source || assignedTo !== undefined) {
         return NextResponse.json({ error: 'Sales can only update status and notes' }, { status: 403 });
       }
       // Verify lead is assigned to this sales person
@@ -54,7 +56,7 @@ export async function PUT(
     const updateData: any = {};
     if (name) updateData.name = name;
     if (email !== undefined) updateData.email = email;
-    if (budget !== undefined) updateData.budget = typeof budget === 'string' ? parseInt(budget) : budget;
+    if (project !== undefined) updateData.project = typeof project === 'string' ? project : project;
     if (phone) {
       // Prevent duplicate phone numbers when updating
       const existing = await Lead.findOne({ phone: phone });
@@ -101,50 +103,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    // Auto-create commission if status is changed to "closed" (admin approval) and no pending/approved commission exists
-    if (updateData.status === 'closed' || status === 'closed') {
-      if (updatedLead.assignedTo) {
+    // When sales marks a lead as closed (sent to admin), create a placeholder commission
+    // so admin can set the commission amount manually. Do NOT auto-calculate amounts.
+    if (updateData.status === 'closed_pending_approval' && updatedLead.assignedTo) {
       const existingCommission = await Commission.findOne({
         dealId: id,
         status: { $in: ['pending', 'approved'] },
       });
 
       if (!existingCommission) {
-        // Get employee's position and find commission percentage from settings
-        const employee = await User.findById(updatedLead.assignedTo);
-        const settings = await SystemSettings.findOne();
-        
-        let commissionPercentage = 5; // default fallback
-        
-        console.log(`[Commission] Lead ${id} marked as closed for employee ${employee?.name} (position: ${employee?.position})`);
-        console.log(`[Commission] Settings rules:`, settings?.commissionRules);
-        
-        if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
-          const normalizedPosition = (employee.position || '').toLowerCase().trim();
-          const rule = settings.commissionRules.find(
-            (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
-          );
-          if (rule && rule.percentage > 0) {
-            commissionPercentage = rule.percentage;
-            console.log(`[Commission] Found matching rule: ${rule.position} = ${rule.percentage}%`);
-          } else {
-            console.log(`[Commission] No matching rule found for position: ${employee.position}`);
-          }
-        } else {
-          console.log(`[Commission] Using default 5% - position missing or no rules configured`);
-        }
-        
-        const amount = (updatedLead.budget || 0) * (commissionPercentage / 100);
-        console.log(`[Commission] Creating commission: ${amount} = ${updatedLead.budget} * ${commissionPercentage}%`);
-        
         await Commission.create({
           dealId: id,
           employeeId: updatedLead.assignedTo,
-          amount,
-          percentage: commissionPercentage,
+          amount: 0,
           status: 'pending',
         });
-      }
       }
     }
 

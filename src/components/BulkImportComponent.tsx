@@ -7,7 +7,7 @@ import { useToast } from '@/components/Toast';
 interface ImportedLead {
   _id: string;
   name: string;
-  budget: number;
+  project?: string;
   phone: string;
   status: string;
   source: string;
@@ -171,7 +171,7 @@ export default function BulkImportComponent({
                   {result.leads.slice(0, 10).map((l: any) => (
                     <li key={l._id} className="flex items-center justify-between">
                       <span>{l.name}{l.email ? ` — ${l.email}` : ''}</span>
-                      <span className="text-slate-400 text-xs">${l.budget.toLocaleString()}</span>
+                      <span className="text-slate-400 text-xs">{l.project || '-'}</span>
                     </li>
                   ))}
                 </ul>

@@ -21,7 +21,7 @@ type LeadStatus =
 interface Lead {
   _id: string;
   name: string;
-  budget: number;
+  project?: string;
   phone: string;
   email?: string;
   status: LeadStatus;
@@ -29,6 +29,7 @@ interface Lead {
   notes: string;
   proofImage?: string;
   assignedTo?: { _id: string; name: string };
+  createdBy?: { _id: string; name: string };
 }
 
 interface Employee {
@@ -56,7 +57,7 @@ export default function AdminLeads() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [editFormData, setEditFormData] = useState({
     name: '',
-    budget: '',
+    project: '',
     phone: '',
     email: '',
     status: 'new' as LeadStatus,
@@ -66,7 +67,7 @@ export default function AdminLeads() {
   });
   const [formData, setFormData] = useState({
     name: '',
-    budget: '',
+    project: '',
     phone: '',
     email: '',
     status: 'new' as LeadStatus,
@@ -131,14 +132,14 @@ export default function AdminLeads() {
         },
         body: JSON.stringify({
           ...formData,
-          budget: formData.budget ? parseInt(formData.budget) : 0,
+          project: formData.project || '',
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create lead');
       setLeads([...leads, data.lead]);
-      setFormData({ name: '', budget: '', phone: '', email: '', status: 'new', source: 'other', notes: '', assignedTo: '' });
+      setFormData({ name: '', project: '', phone: '', email: '', status: 'new', source: 'other', notes: '', assignedTo: '' });
       setShowForm(false);
       updateToast(toastId, 'Lead created successfully!', 'success');
     } catch (error) {
@@ -270,7 +271,7 @@ export default function AdminLeads() {
     setEditingLead(lead);
     setEditFormData({
       name: lead.name,
-      budget: lead.budget.toString(),
+      project: lead.project || '',
       phone: lead.phone,
       email: lead.email || '',
       status: lead.status,
@@ -283,7 +284,7 @@ export default function AdminLeads() {
   const handleEditSubmit = async () => {
     if (!editingLead) return;
 
-    if (!editFormData.name || !editFormData.budget || !editFormData.phone) {
+    if (!editFormData.name || !editFormData.project || !editFormData.phone) {
       addToast('Please fill in all required fields', 'error');
       return;
     }
@@ -300,7 +301,7 @@ export default function AdminLeads() {
         },
         body: JSON.stringify({
           name: editFormData.name,
-          budget: parseInt(editFormData.budget),
+          project: editFormData.project,
           phone: editFormData.phone,
           email: editFormData.email,
           status: editFormData.status,
@@ -348,11 +349,12 @@ export default function AdminLeads() {
 
     const exportData = filteredLeads.map((lead) => ({
       'Lead Name': lead.name,
-      'Budget': lead.budget,
+      'Project': lead.project || '',
       'Email': lead.email || '',
       'Phone': lead.phone,
       'Status': lead.status,
       'Source': lead.source,
+      'Created By': lead.createdBy?.name || 'Admin',
       'Assigned To': lead.assignedTo?.name || 'Unassigned',
       'Notes': lead.notes || '',
     }));
@@ -412,7 +414,7 @@ export default function AdminLeads() {
     connected: leads.filter(l => l.status === 'connected').length,
     negotiation: leads.filter(l => l.status === 'negotiation').length,
     closed: leads.filter(l => l.status === 'closed').length,
-    totalBudget: leads.reduce((sum, l) => sum + l.budget, 0),
+    totalProjects: leads.filter((l) => Boolean(l.project && l.project.trim().length > 0)).length,
   };
 
   return (
@@ -546,12 +548,12 @@ export default function AdminLeads() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2">Budget *</label>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Project *</label>
                   <input
-                    type="number"
-                    placeholder="Enter budget amount"
-                    value={formData.budget}
-                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                    type="text"
+                    placeholder="Enter project name"
+                    value={formData.project}
+                    onChange={(e) => setFormData({ ...formData, project: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500 transition"
                     required
                   />
@@ -773,7 +775,7 @@ export default function AdminLeads() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h3 className="text-white font-semibold">{lead.name}</h3>
-                        <div className="text-slate-300 text-sm">${lead.budget.toLocaleString()}</div>
+                        <div className="text-slate-300 text-sm">{lead.project || '-'}</div>
                       </div>
                       <p className="text-slate-300 text-sm mt-1">{lead.phone} • {lead.email || '—'}</p>
                       <p className="text-slate-400 text-xs mt-2 truncate">{lead.notes}</p>
@@ -841,9 +843,10 @@ export default function AdminLeads() {
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Name</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Phone</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Email</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-200">Budget</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-200">Project</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Status</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Source</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-200">Created By</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Assigned To</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-200">Notes</th>
                     <th className="px-4 py-3 text-center font-semibold text-slate-200">Actions</th>
@@ -852,7 +855,7 @@ export default function AdminLeads() {
                 <tbody>
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center">
+                      <td colSpan={10} className="px-4 py-8 text-center">
                         <p className="text-slate-400">No leads match your filters</p>
                       </td>
                     </tr>
@@ -875,7 +878,7 @@ export default function AdminLeads() {
                         <td className="px-4 py-3 font-medium text-white">{lead.name}</td>
                         <td className="px-4 py-3 text-slate-300">{lead.phone}</td>
                         <td className="px-4 py-3 text-slate-300">{lead.email || '-'}</td>
-                        <td className="px-4 py-3 text-emerald-400 font-semibold">${lead.budget.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-emerald-400 font-semibold">{lead.project || '-'}</td>
                         <td className="px-4 py-3">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${
                             lead.status === 'new' ? 'bg-blue-500/20 text-blue-300' :
@@ -888,6 +891,15 @@ export default function AdminLeads() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-300 capitalize text-sm">{lead.source}</td>
+                        <td className="px-4 py-3">
+                          {lead.createdBy ? (
+                            <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-medium inline-block">
+                              ✏️ {lead.createdBy.name}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-xs">System</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           {lead.assignedTo ? (
                             <span className="bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium inline-block">
@@ -973,14 +985,14 @@ export default function AdminLeads() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-300 mb-2">Budget *</label>
-                    <input
-                      type="number"
-                      placeholder="Enter budget amount"
-                      value={editFormData.budget}
-                      onChange={(e) => setEditFormData({ ...editFormData, budget: e.target.value })}
-                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
-                    />
+                      <label className="block text-sm font-semibold text-slate-300 mb-2">Project *</label>
+                      <input
+                        type="text"
+                        placeholder="Enter project name"
+                        value={editFormData.project}
+                        onChange={(e) => setEditFormData({ ...editFormData, project: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                      />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Status</label>

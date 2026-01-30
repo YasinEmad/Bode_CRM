@@ -104,7 +104,7 @@ export default function MyDeviceIdPage() {
   const handleRefreshDeviceId = () => {
     const newDeviceId = generateDeviceId();
     setDeviceId(newDeviceId);
-    addToast('Device ID refreshed (not saved yet)', 'info');
+    addToast('Device ID refreshed (not saved yet)', 'warning');
   };
 
   if (loading) {

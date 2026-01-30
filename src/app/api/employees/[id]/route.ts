@@ -55,39 +55,8 @@ export async function PUT(
 
     console.log('Updated employee:', employee.toObject());
 
-    // If position was changed, apply commission rules to pending commissions
-    if (position !== undefined) {
-      const systemSettings = await SystemSettings.findOne();
-      if (systemSettings && systemSettings.commissionRules && systemSettings.commissionRules.length > 0) {
-        const commissionRule = systemSettings.commissionRules.find(
-          (rule: any) => (rule.position || '').toLowerCase() === (position || '').toLowerCase()
-        );
-
-        if (commissionRule) {
-          // Find all pending commissions for this employee
-          const pendingCommissions = await Commission.find({
-            employeeId: id,
-            status: 'pending'
-          }).populate('dealId');
-
-          // Update each pending commission with the new commission percentage
-          for (const commission of pendingCommissions) {
-            const dealAmount = (commission.dealId as any).budget || 0;
-            const newAmount = (dealAmount * commissionRule.percentage) / 100;
-            
-            await Commission.findByIdAndUpdate(
-              commission._id,
-              {
-                percentage: commissionRule.percentage,
-                amount: newAmount
-              }
-            );
-          }
-
-          console.log(`Updated ${pendingCommissions.length} pending commissions for employee ${id} with position ${position}`);
-        }
-      }
-    }
+    // Do not automatically update pending commissions when position changes.
+    // Admin is the only source of commission values.
 
     // Get leads and deals stats
     const leadsCount = await Lead.countDocuments({ assignedTo: id });

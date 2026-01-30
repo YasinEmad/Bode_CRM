@@ -27,25 +27,33 @@ export async function GET(req: NextRequest) {
     const status = req.nextUrl.searchParams.get('status');
 
     let query: any = {};
-    if (userId) {
-      try {
-        const { Types } = await import('mongoose');
-        query.assignedTo = new Types.ObjectId(userId);
-      } catch {
-        query.assignedTo = userId;
+    
+    // Admin sees all leads, or filtered by userId
+    if (payload.role === 'admin') {
+      if (userId) {
+        try {
+          const { Types } = await import('mongoose');
+          query.assignedTo = new Types.ObjectId(userId);
+        } catch {
+          query.assignedTo = userId;
+        }
       }
     }
+    // Sales users see only leads assigned to them
+    else if (payload.role === 'sales') {
+      try {
+        const { Types } = await import('mongoose');
+        query.assignedTo = new Types.ObjectId(payload.userId);
+      } catch {
+        query.assignedTo = payload.userId;
+      }
+    }
+
     if (status) query.status = status;
 
     const leads = await Lead.find(query)
       .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 });
-
-    try {
-      console.log('[Leads API] Returning leads emails:', leads.slice(0, 10).map((l: any) => l.email));
-    } catch (e) {
-      // ignore
-    }
 
     return NextResponse.json({ leads });
   } catch (error) {
@@ -62,22 +70,16 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = verifyToken(token);
-    if (!payload || (payload.role !== 'admin' && payload.role !== 'sales')) {
+    if (!payload || payload.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     await connectDB();
 
-    const { name, budget, phone, email, status, source, notes, assignedTo } = await req.json();
+    const { name, project, phone, email, status, source, notes, assignedTo } = await req.json();
 
-    if (!name || !budget || !phone) {
+    if (!name || !project || !phone) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Validate budget is a number
-    const budgetNum = typeof budget === 'string' ? parseInt(budget) : budget;
-    if (isNaN(budgetNum)) {
-      return NextResponse.json({ error: 'Budget must be a valid number' }, { status: 400 });
     }
 
     // Convert assignedTo to ObjectId if it's a valid string
@@ -99,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     const lead = await Lead.create({
       name,
-      budget: budgetNum,
+      project: project || '',
       phone,
       email: email || '',
       status: status || 'new',
@@ -107,12 +109,6 @@ export async function POST(req: NextRequest) {
       notes: notes || '',
       assignedTo: assignedToId,
     });
-
-    try {
-      console.log('[Leads API] Created lead email:', lead.email);
-    } catch (e) {
-      // ignore
-    }
 
     return NextResponse.json({ lead }, { status: 201 });
   } catch (error) {

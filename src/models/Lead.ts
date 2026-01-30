@@ -5,7 +5,7 @@ export type LeadSource = 'website' | 'referral' | 'phone' | 'email' | 'facebook'
 
 export interface ILead extends Document {
   name: string;
-  budget: number;
+  project?: string;
   phone: string;
   email?: string;
   status: LeadStatus;
@@ -23,9 +23,9 @@ const LeadSchema = new Schema<ILead>(
       type: String,
       required: true,
     },
-    budget: {
-      type: Number,
-      required: true,
+    project: {
+      type: String,
+      default: '',
     },
     phone: {
       type: String,

@@ -9,11 +9,14 @@ interface LeadCardProps {
   email: string;
   phone: string;
   property: string;
+  project?: string;
   status: string;
   notes?: string;
   value?: number;
   onStatusChange?: (status: string, extra?: { proofImage?: string; notes?: string }) => void;
   onNotesChange?: (notes: string) => void;
+  assignableMembers?: { _id: string; name: string }[];
+  onAssign?: (employeeId: string | null) => Promise<void> | void;
 }
 
 const statusColors: Record<string, { bg: string; text: string; border: string; label: string; icon: string }> = {
@@ -29,18 +32,23 @@ export default function LeadCard({
   email,
   phone,
   property,
+  project = '',
   status,
   notes = '',
   value = 0,
   onStatusChange,
   onNotesChange,
+  assignableMembers,
+  onAssign,
 }: LeadCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [editNotes, setEditNotes] = useState(notes);
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [proofImageData, setProofImageData] = useState<string | null>(null);
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
-  
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const statusColor = statusColors[status] || { bg: 'from-slate-600 to-slate-700', text: 'text-slate-100', border: 'border-slate-500', label: status, icon: '•' };
 
@@ -144,6 +152,42 @@ export default function LeadCard({
         </button>
       </div>
 
+      {/* Assignment controls (visible for team leaders via props) */}
+      {assignableMembers && assignableMembers.length > 0 && (
+        <div className="mb-4 flex gap-2 items-center">
+          <select
+            value={selectedAssignee}
+            onChange={(e) => setSelectedAssignee(e.target.value)}
+            className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm"
+          >
+            <option value="">-- Assign to --</option>
+            {assignableMembers.map((m) => (
+              <option key={m._id} value={m._id}>{m.name}</option>
+            ))}
+            <option value="__unassign">Unassign</option>
+          </select>
+          <button
+            onClick={async () => {
+              if (!onAssign) return;
+              setIsAssigning(true);
+              try {
+                const empId = selectedAssignee === '__unassign' ? null : selectedAssignee || null;
+                await onAssign(empId);
+                setSelectedAssignee('');
+              } catch (err) {
+                console.error('Assign failed', err);
+              } finally {
+                setIsAssigning(false);
+              }
+            }}
+            className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold disabled:opacity-50"
+            disabled={isAssigning}
+          >
+            {isAssigning ? 'Assigning...' : 'Assign'}
+          </button>
+        </div>
+      )}
+
       {/* Expanded Section */}
       {isExpanded && (
         <div className="border-t border-slate-600 pt-4 mt-4 space-y-4">
@@ -201,34 +245,56 @@ export default function LeadCard({
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
           <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg border border-slate-700">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white">أضف دليل الإغلاق</h3>
-              <button onClick={() => setShowCloseModal(false)} className="text-slate-400">إغلاق</button>
+              <h3 className="text-lg font-bold text-white">Close Deal</h3>
+              <button onClick={() => setShowCloseModal(false)} className="text-slate-400"><X size={20} /></button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Upload Image (contract/transfer)</label>
+                <label className="block text-sm text-slate-300 mb-2">Project Name</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => setProofImageData(reader.result as string);
-                    reader.readAsDataURL(file);
-                  }}
-                  className="w-full text-sm text-white"
+                  type="text"
+                  placeholder="Project name"
+                  value={project}
+                  disabled
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 opacity-75 cursor-not-allowed"
                 />
-                {proofImageData && <img src={proofImageData} alt="proof" className="mt-2 max-h-40 object-contain rounded" />}
               </div>
 
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Notes</label>
+                <label className="block text-sm text-slate-300 mb-2">Proof Image *</label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setProofImageFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setProofImagePreview(event.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 file:bg-blue-600 file:border-0 file:text-white file:px-3 file:py-1 file:rounded file:cursor-pointer"
+                  />
+                </div>
+                {proofImagePreview && (
+                  <div className="mt-3">
+                    <p className="text-xs text-slate-400 mb-2">Preview:</p>
+                    <img src={proofImagePreview} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">Notes *</label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
                   rows={4}
                 />
               </div>
@@ -236,24 +302,32 @@ export default function LeadCard({
               <div className="flex gap-2">
                 <button
                   onClick={async () => {
-                    if (!proofImageData || !editNotes) return;
+                    if (!proofImageFile || !editNotes) return;
                     try {
                       setIsSubmittingClose(true);
-                      await onStatusChange?.('closed', { proofImage: proofImageData, notes: editNotes });
-                      setShowCloseModal(false);
-                      setIsExpanded(false);
+                      // Convert image to base64
+                      const reader = new FileReader();
+                      reader.onload = async (event) => {
+                        const imageData = event.target?.result as string;
+                        await onStatusChange?.('closed', { proofImage: imageData, notes: editNotes });
+                        setShowCloseModal(false);
+                        setIsExpanded(false);
+                        setProofImageFile(null);
+                        setProofImagePreview(null);
+                      };
+                      reader.readAsDataURL(proofImageFile);
                     } catch (err) {
                       console.error(err);
                     } finally {
                       setIsSubmittingClose(false);
                     }
                   }}
-                  disabled={!proofImageData || !editNotes || isSubmittingClose}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 rounded-lg font-semibold disabled:opacity-50"
+                  disabled={!proofImageFile || !editNotes || isSubmittingClose}
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-2 rounded-lg font-semibold disabled:opacity-50 transition"
                 >
-                  {isSubmittingClose ? 'Sending...' : 'حفظ وإرسال'}
+                  {isSubmittingClose ? 'Closing...' : 'Close Deal'}
                 </button>
-                <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-700 text-white py-2 rounded-lg">Cancel</button>
+                <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-700 text-white py-2 rounded-lg transition hover:bg-slate-600">Cancel</button>
               </div>
             </div>
           </div>

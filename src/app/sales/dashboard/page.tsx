@@ -12,15 +12,22 @@ interface Lead {
   email: string;
   phone: string;
   property: string;
+  project?: string;
   status: string;
   notes: string;
   value?: number;
+}
+
+interface Employee {
+  _id: string;
+  name: string;
 }
 
 export default function SalesDashboard() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Employee[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     connected: 0,
@@ -38,6 +45,19 @@ export default function SalesDashboard() {
   useEffect(() => {
     if (token && user) {
       fetchLeads();
+      // attempt to fetch team members (will succeed only for team leaders)
+      (async () => {
+        try {
+          const res = await fetch('/api/teams/my-members', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          setTeamMembers(Array.isArray(data.members) ? data.members : []);
+        } catch (err) {
+          // ignore
+        }
+      })();
     }
   }, [token, user]);
 
@@ -63,11 +83,12 @@ export default function SalesDashboard() {
     }
   };
 
-  const handleStatusChange = async (leadId: string, newStatus: string, extra?: { proofImage?: string; notes?: string }) => {
+  const handleStatusChange = async (leadId: string, newStatus: string, extra?: { proofImage?: string; notes?: string; project?: string }) => {
     try {
       const body: any = { status: newStatus };
       if (extra?.notes !== undefined) body.notes = extra.notes;
       if (extra?.proofImage !== undefined) body.proofImage = extra.proofImage;
+      if (extra?.project !== undefined) body.project = extra.project;
 
       const res = await fetch(`/api/leads/${leadId}`, {
         method: 'PUT',
@@ -192,9 +213,31 @@ export default function SalesDashboard() {
                 email={lead.email}
                 phone={lead.phone}
                 property={lead.property}
+                project={lead.project}
                 status={lead.status}
                 notes={lead.notes}
                 value={lead.value}
+                // if user is a team leader, pass assignable members and assign handler
+                assignableMembers={teamMembers}
+                onAssign={async (employeeId: string | null) => {
+                  try {
+                    const res = await fetch('/api/leads/assign', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ leadId: lead._id, employeeId }),
+                    });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({}));
+                      throw new Error(err.error || 'Failed to assign');
+                    }
+                    const data = await res.json();
+                    setLeads((prev) => prev.map((l) => (l._id === lead._id ? data.lead : l)));
+                    // Refresh leads after assignment to ensure assigned members can see their new leads
+                    setTimeout(() => fetchLeads(), 500);
+                  } catch (err) {
+                    console.error('Assign error:', err);
+                  }
+                }}
                 onStatusChange={(status, extra) => handleStatusChange(lead._id, status, extra)}
                 onNotesChange={(notes) => handleNotesChange(lead._id, notes)}
               />

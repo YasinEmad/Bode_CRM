@@ -34,7 +34,6 @@ const CommissionSchema = new Schema<ICommission>(
     },
     percentage: {
       type: Number,
-      required: true,
     },
     status: {
       type: String,

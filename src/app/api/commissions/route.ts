@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     const commissions = await Commission.find(query)
-      .populate('dealId', 'name budget proofImage notes')
+      .populate('dealId', 'name project proofImage notes')
       .populate('employeeId', 'name')
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });
@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Allow both sales and admin to create commissions
-    if (!['sales', 'admin'].includes(payload.role)) {
-      return NextResponse.json({ error: 'Sales or admin access required' }, { status: 403 });
+    // Only admin can create commission entries and must provide an amount
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required to create commission' }, { status: 403 });
     }
 
     await connectDB();
 
-    const { dealId, employeeId, percentage: percentageFromBody } = await req.json();
+    const { dealId, employeeId, amount, percentage: percentageFromBody } = await req.json();
 
     // Verify the lead exists and belongs to the employee
     const lead = await Lead.findById(dealId);
@@ -77,48 +77,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     }
 
-    // If sales is submitting, verify it's their own lead
-    if (payload.role === 'sales' && lead.assignedTo?.toString() !== payload.userId) {
-      return NextResponse.json({ error: 'You can only submit commission for your own leads' }, { status: 403 });
+    // Admin must provide `amount`. Do not auto-calculate from lead/project or position.
+    if (amount === undefined || amount === null || isNaN(Number(amount))) {
+      return NextResponse.json({ error: 'Amount is required and must be numeric' }, { status: 400 });
     }
-
-    // Determine commission percentage
-    let percentage = percentageFromBody;
-    
-    // If percentage not provided, fetch from commission rules based on employee's position
-    if (percentage === undefined) {
-      const employee = await User.findById(employeeId);
-      const settings = await SystemSettings.findOne();
-      
-      percentage = 5; // default fallback
-      
-      console.log(`[Commission] Creating commission for deal ${dealId}, employee ${employee?.name} (position: ${employee?.position})`);
-      console.log(`[Commission] Available rules:`, settings?.commissionRules);
-      
-      if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
-        const normalizedPosition = (employee.position || '').toLowerCase().trim();
-        const rule = settings.commissionRules.find(
-          (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
-        );
-        if (rule && rule.percentage > 0) {
-          percentage = rule.percentage;
-          console.log(`[Commission] Applied rule: ${rule.position} = ${rule.percentage}%`);
-        } else {
-          console.log(`[Commission] No rule found for position: ${employee.position} (normalized: ${normalizedPosition})`);
-          console.log(`[Commission] Available positions:`, settings.commissionRules.map((r: any) => r.position));
-        }
-      } else {
-        console.log(`[Commission] Using default 5% fallback`);
-      }
-    }
-
-    const amount = (lead.budget || 0) * (percentage / 100);
 
     const commission = await Commission.create({
       dealId,
       employeeId,
-      amount,
-      percentage,
+      amount: Number(amount),
+      percentage: percentageFromBody !== undefined ? Number(percentageFromBody) : undefined,
       status: 'pending',
     });
 

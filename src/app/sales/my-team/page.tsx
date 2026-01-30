@@ -44,6 +44,8 @@ export default function MyTeamPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedMemberForNote, setSelectedMemberForNote] = useState<{ id: string; name: string } | null>(null);
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [newAssigneeId, setNewAssigneeId] = useState<string>('');
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -100,6 +102,49 @@ export default function MyTeamPage() {
   const handleOpenNoteModal = (memberId: string, memberName: string) => {
     setSelectedMemberForNote({ id: memberId, name: memberName });
     setShowNoteModal(true);
+  };
+
+  const handleAssignLead = async (leadId: string, newMemberId: string | null) => {
+    try {
+      const res = await fetch('/api/leads/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, employeeId: newMemberId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to assign lead');
+      }
+      const data = await res.json();
+      // Update the lead in selectedLeads
+      if (selectedLeads) {
+        const updated = selectedLeads.map((l) =>
+          l._id === leadId
+            ? {
+                ...l,
+                assignedTo: newMemberId
+                  ? {
+                      _id: newMemberId,
+                      name:
+                        newMemberId === user?.id
+                          ? user?.name || 'Unknown'
+                          : members.find((m) => m.id === newMemberId)?.name || 'Unknown',
+                    }
+                  : undefined,
+              }
+            : l
+        );
+        setSelectedLeads(updated);
+      }
+      setEditingLeadId(null);
+      setNewAssigneeId('');
+      addToast('Lead assigned successfully!', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to assign lead', 'error');
+    }
   };
 
   const viewAllTeamLeads = async () => {
@@ -427,14 +472,80 @@ export default function MyTeamPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
+                      <div className="text-right flex-shrink-0 flex flex-col gap-2 items-end">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-semibold border ${statusInfo.bg} ${statusInfo.text} border-opacity-30`}>
                           {statusInfo.label}
                         </span>
-                        {leadsFilter === 'all' && lead.assignedTo && (
-                          <div className="text-xs text-slate-400 mt-2 text-right">
-                            Assigned to: <span className="text-slate-300 font-medium">{lead.assignedTo.name}</span>
-                          </div>
+                        
+                        {/* Assignment Editor */}
+                        {leadsFilter === 'all' && (
+                          <>
+                            {editingLeadId === lead._id ? (
+                              <div className="flex gap-2 items-center">
+                                <select
+                                  value={newAssigneeId}
+                                  onChange={(e) => setNewAssigneeId(e.target.value)}
+                                  className="px-2 py-1 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
+                                >
+                                  <option value="">Unassign</option>
+                                  <option value={user?.id}>{user?.name} (You)</option>
+                                  {members.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                      {m.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() => handleAssignLead(lead._id, newAssigneeId || null)}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingLeadId(null);
+                                    setNewAssigneeId('');
+                                  }}
+                                  className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-400 flex flex-col sm:flex-row gap-2 items-end">
+                                <div>
+                                  Assigned to:{' '}
+                                  <span className="text-slate-300 font-medium">
+                                    {lead.assignedTo?.name || 'Unassigned'}
+                                  </span>
+                                </div>
+                                {lead.status !== 'closed' && (
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => handleAssignLead(lead._id, user?.id || null)}
+                                      className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
+                                    >
+                                      Assign to Me
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingLeadId(lead._id);
+                                        setNewAssigneeId(lead.assignedTo?._id || '');
+                                      }}
+                                      className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold transition-colors"
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                )}
+                                {lead.status === 'closed' && (
+                                  <div className="px-2 py-1 bg-slate-700/50 text-slate-400 rounded text-xs font-semibold">
+                                    Closed • Locked
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

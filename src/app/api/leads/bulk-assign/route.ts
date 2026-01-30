@@ -41,56 +41,7 @@ export async function PUT(req: NextRequest) {
       { assignedTo: employeeId || null }
     );
 
-    // If employeeId is set, get the employee and settings to determine commission percentage
-    if (employeeId) {
-      const employee = await User.findById(employeeId);
-      const settings = await SystemSettings.findOne();
-      
-      let commissionPercentage = 5; // default fallback
-      
-      console.log(`[BulkAssign] Assigning ${leadIds.length} leads to ${employee?.name} (position: ${employee?.position})`);
-      console.log(`[BulkAssign] Available commission rules:`, settings?.commissionRules);
-      
-      if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
-        const normalizedPosition = (employee.position || '').toLowerCase().trim();
-        const rule = settings.commissionRules.find(
-          (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
-        );
-        if (rule && rule.percentage > 0) {
-          commissionPercentage = rule.percentage;
-          console.log(`[BulkAssign] Using commission rate: ${rule.percentage}%`);
-        } else {
-          console.log(`[BulkAssign] No matching rule found, using default 5%`);
-        }
-      } else {
-        console.log(`[BulkAssign] No position or rules configured, using default 5%`);
-      }
-
-      // Get all the leads that were just assigned and have status "closed"
-      const assignedLeads = await Lead.find({
-        _id: { $in: leadIds },
-        status: 'closed',
-      });
-
-      // Create commissions for closed leads that don't have pending/approved commissions
-      for (const lead of assignedLeads) {
-        const existingCommission = await Commission.findOne({
-          dealId: lead._id,
-          status: { $in: ['pending', 'approved'] },
-        });
-
-        if (!existingCommission) {
-          const amount = (lead.budget || 0) * (commissionPercentage / 100);
-          await Commission.create({
-            dealId: lead._id,
-            employeeId: employeeId,
-            amount,
-            percentage: commissionPercentage,
-            status: 'pending',
-          });
-        }
-      }
-    }
+    // Do not auto-create commissions when assigning leads. Admin must set commission values manually.
 
     return NextResponse.json(
       {

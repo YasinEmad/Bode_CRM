@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
       // Validate required fields (case-insensitive)
       const name = row.name || row.Name || row.NAME || '';
-      const budget = row.budget || row.Budget || row.BUDGET || 0;
+      const project = row.project || row.Project || row.PROJECT || '';
       const phone = row.phone || row.Phone || row.PHONE || '';
       const status = row.status || row.Status || row.STATUS || 'new';
       const source = row.source || row.Source || row.SOURCE || 'other';
@@ -82,10 +82,10 @@ export async function POST(req: NextRequest) {
         email = email.toLowerCase();
       }
 
-      if (!name || !budget || !phone) {
+      if (!name || !project || !phone) {
         errors.push({
           row: rowNum,
-          error: 'Missing required fields (name, budget, phone)',
+          error: 'Missing required fields (name, project, phone)',
         });
         return;
       }
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
       leadsToInsert.push({
         name: String(name).trim(),
-        budget: isNaN(Number(budget)) ? 0 : Number(budget),
+        project: String(project).trim(),
         phone: String(phone).trim(),
         status: finalStatus,
         email: email,
@@ -143,51 +143,10 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       // ignore
     }
+    // Note: Do not auto-create commissions during bulk import. Admin must create/set commission amounts manually.
 
-    // Get system settings for commission rules
-    const settings = await SystemSettings.findOne();
-
-    // Create commissions for closed leads with assigned employees
+    // There is currently no automatic commission creation during bulk import.
     const commissionsToCreate: any[] = [];
-    
-    for (const lead of insertedLeads) {
-      if (lead.status === 'closed' && lead.assignedTo) {
-        const employee = await User.findById(lead.assignedTo);
-        
-        let commissionPercentage = 5; // default fallback
-        
-        console.log(`[BulkImport] Creating commission for closed lead "${lead.name}" assigned to ${employee?.name} (position: ${employee?.position})`);
-        
-        if (employee?.position && settings?.commissionRules && settings.commissionRules.length > 0) {
-          const normalizedPosition = (employee.position || '').toLowerCase().trim();
-          const rule = settings.commissionRules.find(
-            (r: any) => (r.position || '').toLowerCase().trim() === normalizedPosition
-          );
-          if (rule && rule.percentage > 0) {
-            commissionPercentage = rule.percentage;
-            console.log(`[BulkImport] Applied rule: ${rule.position} = ${rule.percentage}%`);
-          } else {
-            console.log(`[BulkImport] No matching rule, using default 5%`);
-          }
-        } else {
-          console.log(`[BulkImport] Using default 5% - no position or rules`);
-        }
-
-        const amount = (lead.budget || 0) * (commissionPercentage / 100);
-        commissionsToCreate.push({
-          dealId: lead._id,
-          employeeId: lead.assignedTo,
-          amount,
-          percentage: commissionPercentage,
-          status: 'pending',
-        });
-      }
-    }
-
-    // Bulk create commissions if any
-    if (commissionsToCreate.length > 0) {
-      await Commission.insertMany(commissionsToCreate);
-    }
 
     // Combine validation errors and duplicate errors
     const combinedErrors = [...errors, ...dupErrors];

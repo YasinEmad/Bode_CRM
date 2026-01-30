@@ -28,20 +28,23 @@ export async function PUT(
 
     await connectDB();
 
-    const { status, rejectionReason, rejectionNote } = await req.json();
+    const { status, rejectionReason, rejectionNote, amount } = await req.json();
 
-    const commission = await Commission.findByIdAndUpdate(
-      id,
-      {
-        status,
-        approvedBy: status === 'approved' ? payload.userId : undefined,
-        approvalDate: status === 'approved' ? new Date() : undefined,
-        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-        rejectionNote: status === 'rejected' ? rejectionNote : undefined,
-      },
-      { new: true }
-    )
-      .populate('dealId', 'name budget proofImage notes')
+    const updateFields: any = {
+      status,
+      approvedBy: status === 'approved' ? payload.userId : undefined,
+      approvalDate: status === 'approved' ? new Date() : undefined,
+      rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+      rejectionNote: status === 'rejected' ? rejectionNote : undefined,
+    };
+
+    // Allow admin to set amount when approving or updating
+    if (amount !== undefined && amount !== null && !isNaN(Number(amount))) {
+      updateFields.amount = Number(amount);
+    }
+
+    const commission = await Commission.findByIdAndUpdate(id, updateFields, { new: true })
+      .populate('dealId', 'name project proofImage notes')
       .populate('employeeId', 'name');
 
     if (!commission) {

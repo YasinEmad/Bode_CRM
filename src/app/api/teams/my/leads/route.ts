@@ -21,13 +21,16 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const team = await Team.findOne({ leader: payload.userId }).lean();
+    // For team leaders, get the team and all leads assigned to team members
+    const team = await Team.findOne({ leader: payload.userId }).populate('members', '_id name');
     if (!team) return NextResponse.json({ error: 'Team not found or you are not a team leader' }, { status: 404 });
 
-    const members = await User.find({ teamId: team._id }).select('_id').lean();
-    const memberIds = members.map((m: any) => m._id);
-
-    const leads = await Lead.find({ assignedTo: { $in: memberIds } }).populate('assignedTo', 'name position').sort({ createdAt: -1 }).lean();
+    // Get all leads assigned to any member of this team
+    const memberIds = team.members.map((m: any) => m._id);
+    const leads = await Lead.find({ assignedTo: { $in: memberIds } })
+      .populate('assignedTo', 'name position')
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json({ leads });
   } catch (error) {
