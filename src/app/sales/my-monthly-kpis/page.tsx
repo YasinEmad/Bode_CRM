@@ -18,6 +18,7 @@ interface MyKPIData {
   callsCount: number;
   meetingsCount: number;
   assessmentsCount: number;
+  requestsCount: number;
   kpiPercentage: number;
   kpiBreakdown?: {
     attendance: number;
@@ -25,6 +26,7 @@ interface MyKPIData {
     calls: number;
     meetings: number;
     assessments: number;
+    requests: number;
   };
 }
 
@@ -109,6 +111,7 @@ export default function MyMonthlyKPIs() {
       }
 
       // Validate all required indicators are present
+      // requests is optional for backward compatibility
       const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
@@ -240,10 +243,11 @@ export default function MyMonthlyKPIs() {
         attendancePercentage = Math.round((presentDays / daysInMonth) * 100);
       }
 
-      // Get calls, meetings, and assessments
+      // Get calls, meetings, assessments, and requests
       const callsCount = performanceData.performance?.callsCount || 0;
       const meetingsCount = performanceData.performance?.meetingsCount || 0;
       const assessmentsCount = performanceData.performance?.assessmentsCount || 0;
+      const requestsCount = performanceData.performance?.requestsCount || 0;
 
       // Calculate KPI
       let kpiPercentage = 0;
@@ -253,6 +257,7 @@ export default function MyMonthlyKPIs() {
         calls: 0,
         meetings: 0,
         assessments: 0,
+        requests: 0,
       };
 
       if (kpiSettingsData) {
@@ -262,6 +267,7 @@ export default function MyMonthlyKPIs() {
           callsCount,
           meetingsCount,
           assessmentsCount,
+          requestsCount,
         };
 
         console.log(`📊 Calculating KPI for ${userData.user.name}:`, metrics);
@@ -276,6 +282,7 @@ export default function MyMonthlyKPIs() {
           kpiBreakdown.calls = result.calls;
           kpiBreakdown.meetings = result.meetings;
           kpiBreakdown.assessments = result.assessments;
+          kpiBreakdown.requests = result.requests;
         }
 
         console.log(`✅ Final KPI Percentage: ${kpiPercentage}%`);
@@ -294,6 +301,7 @@ export default function MyMonthlyKPIs() {
         callsCount,
         meetingsCount,
         assessmentsCount,
+        requestsCount,
         kpiPercentage,
         kpiBreakdown,
       });
@@ -324,6 +332,7 @@ export default function MyMonthlyKPIs() {
       ['Calls', kpiData.callsCount],
       ['Meetings', kpiData.meetingsCount],
       ['Assessments', kpiData.assessmentsCount],
+      ['Requests', kpiData.requestsCount],
       ['KPI Score', `${kpiData.kpiPercentage.toFixed(1)}%`],
     ];
 
@@ -561,6 +570,20 @@ export default function MyMonthlyKPIs() {
                     <div className="flex items-baseline gap-2">
                       <p className="text-4xl font-bold text-white">{kpiData.assessmentsCount}</p>
                       <span className="text-slate-400 text-sm">Completed</span>
+                    </div>
+                  </div>
+
+                  {/* Requests */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-slate-300 font-semibold">Requests</h3>
+                      <div className="bg-orange-600/20 p-2 rounded-lg">
+                        <Target size={20} className="text-orange-400" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-4xl font-bold text-white">{kpiData.requestsCount}</p>
+                      <span className="text-slate-400 text-sm">Handled</span>
                     </div>
                   </div>
                 </div>

@@ -441,7 +441,42 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ attendances });
+    // Also compute whether the user has already marked attendance for the current shift
+    // Fetch settings to determine shift boundaries
+    let settings = await SystemSettings.findOne();
+    if (!settings) {
+      settings = await SystemSettings.create({ attendanceTime: '09:00', officeLatitude: 0, officeLongitude: 0, officeName: 'Main Office', attendanceRadius: 500 });
+    }
+
+    // Determine today's shift date as in POST
+    const today = new Date();
+    const shiftStartParts = (settings.attendanceTime || '18:00').trim().split(':');
+    let shiftStartHours = parseInt(shiftStartParts[0] || '18', 10);
+    let shiftStartMinutes = parseInt(shiftStartParts[1] || '0', 10);
+    if (isNaN(shiftStartHours)) shiftStartHours = 18;
+    if (isNaN(shiftStartMinutes)) shiftStartMinutes = 0;
+    const shiftDuration = settings.shiftDuration || 9;
+
+    const shiftStartTimeInMinutes = shiftStartHours * 60 + shiftStartMinutes;
+    const shiftDurationInMinutes = shiftDuration * 60;
+    const currentTimeInMinutes = today.getHours() * 60 + today.getMinutes();
+
+    let shiftDate = new Date(today);
+    if (currentTimeInMinutes < shiftStartTimeInMinutes && shiftStartTimeInMinutes + shiftDurationInMinutes > 24 * 60) {
+      shiftDate.setDate(shiftDate.getDate() - 1);
+    }
+
+    const shiftDateStart = new Date(shiftDate);
+    shiftDateStart.setHours(0, 0, 0, 0);
+    const shiftDateEnd = new Date(shiftDateStart);
+    shiftDateEnd.setDate(shiftDateEnd.getDate() + 1);
+
+    const currentShiftAttendance = await Attendance.findOne({
+      userId,
+      date: { $gte: shiftDateStart, $lt: shiftDateEnd },
+    });
+
+    return NextResponse.json({ attendances, currentShiftAttendance, hasMarkedToday: !!currentShiftAttendance });
   } catch (error) {
     console.error('Error fetching attendance:', error);
     return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });

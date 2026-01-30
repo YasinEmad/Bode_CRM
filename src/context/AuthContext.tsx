@@ -54,19 +54,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('[checkAuth] Found token in localStorage, verifying...');
-      const res = await fetch('/api/auth/me', {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-        },
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        console.log('[checkAuth] Session valid, user:', data.user.username);
-        setUser(data.user);
-        setToken(token);
-      } else {
-        console.log('[checkAuth] Session invalid, clearing...');
+      
+      // Set timeout لـ 5 seconds - لو أخذت وقت أكتر، نعتبرها فشلت
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+          },
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[checkAuth] Session valid, user:', data.user.username);
+          setUser(data.user);
+          setToken(token);
+        } else {
+          console.log('[checkAuth] Session invalid, clearing...');
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('token');
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('CheckAuth fetch error:', fetchError);
         setUser(null);
         setToken(null);
         localStorage.removeItem('token');

@@ -28,6 +28,12 @@ interface PerformanceData {
     week3: number;
     week4: number;
   };
+  requests: {
+    week1: number;
+    week2: number;
+    week3: number;
+    week4: number;
+  };
 }
 
 const months = [
@@ -110,6 +116,7 @@ export default function TeamReport() {
         calls: perf.calls,
         assessments: perf.assessments,
         meetings: perf.meetings,
+        requests: perf.requests || { week1: 0, week2: 0, week3: 0, week4: 0 },
       }));
 
       setTeamData(formattedData);
@@ -123,7 +130,7 @@ export default function TeamReport() {
 
   const updateCellValue = async (
     employeeData: PerformanceData,
-    category: 'calls' | 'assessments' | 'meetings',
+    category: 'calls' | 'assessments' | 'meetings' | 'requests',
     week: 'week1' | 'week2' | 'week3' | 'week4',
     newValue: number
   ) => {
@@ -183,7 +190,7 @@ export default function TeamReport() {
 
   const handleInputChange = (
     employeeIndex: number,
-    category: 'calls' | 'assessments' | 'meetings',
+    category: 'calls' | 'assessments' | 'meetings' | 'requests',
     week: 'week1' | 'week2' | 'week3' | 'week4',
     value: string
   ) => {
@@ -307,6 +314,11 @@ export default function TeamReport() {
                     <th colSpan={5} className="px-6 py-4 text-center text-sm font-bold text-white border-l border-slate-700 bg-purple-600/20">
                       Meetings
                     </th>
+
+                    {/* Requests Section */}
+                    <th colSpan={5} className="px-6 py-4 text-center text-sm font-bold text-white border-l border-slate-700 bg-orange-600/20">
+                      Requests
+                    </th>
                   </tr>
 
                   {/* Week Headers */}
@@ -361,6 +373,23 @@ export default function TeamReport() {
                       W4
                     </th>
                     <th className="px-3 py-2 text-center text-xs font-bold text-purple-300 border-l border-slate-700 bg-purple-600/30">
+                      Total
+                    </th>
+
+                    {/* Requests Weeks */}
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-slate-300 border-l border-slate-700 bg-orange-600/20">
+                      W1
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-slate-300 border-l border-slate-700 bg-orange-600/20">
+                      W2
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-slate-300 border-l border-slate-700 bg-orange-600/20">
+                      W3
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-slate-300 border-l border-slate-700 bg-orange-600/20">
+                      W4
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-bold text-orange-300 border-l border-slate-700 bg-orange-600/30">
                       Total
                     </th>
                   </tr>
@@ -527,6 +556,57 @@ export default function TeamReport() {
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-purple-600/30">
                         <span className="inline-block bg-gradient-to-br from-purple-600 to-purple-500 text-white px-3 py-1 rounded font-bold text-sm">
                           {calculateTotal(employee.meetings)}
+                        </span>
+                      </td>
+
+                      {/* Requests Section */}
+                      <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
+                        <input
+                          type="number"
+                          min="0"
+                          value={employee.requests.week1}
+                          onChange={(e) =>
+                            handleInputChange(empIndex, 'requests', 'week1', e.target.value)
+                          }
+                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </td>
+                      <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
+                        <input
+                          type="number"
+                          min="0"
+                          value={employee.requests.week2}
+                          onChange={(e) =>
+                            handleInputChange(empIndex, 'requests', 'week2', e.target.value)
+                          }
+                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </td>
+                      <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
+                        <input
+                          type="number"
+                          min="0"
+                          value={employee.requests.week3}
+                          onChange={(e) =>
+                            handleInputChange(empIndex, 'requests', 'week3', e.target.value)
+                          }
+                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </td>
+                      <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
+                        <input
+                          type="number"
+                          min="0"
+                          value={employee.requests.week4}
+                          onChange={(e) =>
+                            handleInputChange(empIndex, 'requests', 'week4', e.target.value)
+                          }
+                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </td>
+                      <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/30">
+                        <span className="inline-block bg-gradient-to-br from-orange-600 to-orange-500 text-white px-3 py-1 rounded font-bold text-sm">
+                          {calculateTotal(employee.requests)}
                         </span>
                       </td>
                     </tr>

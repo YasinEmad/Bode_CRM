@@ -18,6 +18,7 @@ interface EmployeeReportData {
   callsCount: number;
   meetingsCount: number;
   assessmentsCount: number;
+  requestsCount: number;
   kpiPercentage: number;
 }
 
@@ -118,6 +119,7 @@ export default function MonthlyEmployeeReport() {
       }
 
       // Validate all required indicators are present
+      // requests is optional for backward compatibility
       const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
@@ -174,6 +176,7 @@ export default function MonthlyEmployeeReport() {
       }
 
       // Validate all required indicators are present
+      // requests is optional for backward compatibility
       const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
@@ -357,7 +360,7 @@ export default function MonthlyEmployeeReport() {
           ? Math.round((attendanceStats.presentDays / currentDaysInMonth) * 100)
           : 0;
 
-        // Get calls, meetings, assessments from team performance (team members)
+        // Get calls, meetings, assessments, requests from team performance (team members)
         // If not found, check team leader performance (for team leaders)
         const callsCount = performanceStats
           ? calculateTotal(performanceStats.calls)
@@ -377,6 +380,12 @@ export default function MonthlyEmployeeReport() {
           ? calculateTotal(leaderStats.assessments)
           : 0;
 
+        const requestsCount = performanceStats
+          ? calculateTotal(performanceStats.requests)
+          : leaderStats
+          ? calculateTotal(leaderStats.requests)
+          : 0;
+
         // Calculate KPI if settings are available (now guaranteed to have data)
         let kpiPercentage = 0;
         if (kpiSettingsData && kpiSettingsData.indicators && kpiSettingsData.indicators.length > 0) {
@@ -386,6 +395,7 @@ export default function MonthlyEmployeeReport() {
             callsCount,
             meetingsCount,
             assessmentsCount,
+            requestsCount,
           };
 
           console.log(`\n📊 === KPI Calculation for ${emp.name} ===`);
@@ -416,6 +426,7 @@ export default function MonthlyEmployeeReport() {
           callsCount,
           meetingsCount,
           assessmentsCount,
+          requestsCount,
           kpiPercentage,
         };
       });
@@ -446,6 +457,7 @@ export default function MonthlyEmployeeReport() {
       'Calls',
       'Meetings',
       'Assessments',
+      'Requests',
       'KPI %',
     ];
 
@@ -459,6 +471,7 @@ export default function MonthlyEmployeeReport() {
       emp.callsCount,
       emp.meetingsCount,
       emp.assessmentsCount,
+      emp.requestsCount,
       `${emp.kpiPercentage}%`,
     ]);
 
@@ -619,6 +632,9 @@ export default function MonthlyEmployeeReport() {
                       Assessments
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-orange-300 border-l border-slate-700 bg-orange-600/10">
+                      Requests
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-orange-300 border-l border-slate-700 bg-orange-600/10">
                       KPI %
                     </th>
                   </tr>
@@ -683,6 +699,13 @@ export default function MonthlyEmployeeReport() {
                       <td className="px-6 py-4 text-center border-l border-slate-700 bg-purple-600/10">
                         <span className="inline-block bg-gradient-to-br from-purple-600 to-purple-500 text-white px-4 py-2 rounded-lg font-bold text-lg">
                           {employee.assessmentsCount}
+                        </span>
+                      </td>
+
+                      {/* Requests Count */}
+                      <td className="px-6 py-4 text-center border-l border-slate-700 bg-orange-600/10">
+                        <span className="inline-block bg-gradient-to-br from-orange-600 to-orange-500 text-white px-4 py-2 rounded-lg font-bold text-lg">
+                          {employee.requestsCount}
                         </span>
                       </td>
 

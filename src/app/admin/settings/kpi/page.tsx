@@ -44,6 +44,11 @@ const indicatorLabels: Record<string, { ar: string; en: string; description: str
     en: 'Assessments',
     description: 'Number of assessments',
   },
+  requests: {
+    ar: 'عدد الطلبات',
+    en: 'Requests',
+    description: 'Number of requests',
+  },
 };
 
 export default function KPISettingsPage() {
@@ -320,12 +325,13 @@ export default function KPISettingsPage() {
                       {indicator.name === 'calls' && '(عدد)'}
                       {indicator.name === 'meetings' && '(عدد)'}
                       {indicator.name === 'assessments' && '(عدد)'}
+                      {indicator.name === 'requests' && '(عدد)'}
                     </label>
                     <input
                       type="number"
-                      value={indicator.target}
+                      value={isNaN(indicator.target) ? '' : indicator.target}
                       onChange={(e) =>
-                        handleUpdateIndicator(indicator.name, 'target', parseFloat(e.target.value))
+                        handleUpdateIndicator(indicator.name, 'target', parseFloat(e.target.value) || 0)
                       }
                       placeholder="Enter target value"
                       className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -336,6 +342,7 @@ export default function KPISettingsPage() {
                       {indicator.name === 'calls' && 'Example: 20'}
                       {indicator.name === 'meetings' && 'Example: 5'}
                       {indicator.name === 'assessments' && 'Example: 3'}
+                      {indicator.name === 'requests' && 'Example: 10'}
                     </p>
                   </div>
 
@@ -347,9 +354,9 @@ export default function KPISettingsPage() {
                     <div className="relative">
                       <input
                         type="number"
-                        value={indicator.weight}
+                        value={isNaN(indicator.weight) ? '' : indicator.weight}
                         onChange={(e) =>
-                          handleUpdateIndicator(indicator.name, 'weight', parseFloat(e.target.value))
+                          handleUpdateIndicator(indicator.name, 'weight', parseFloat(e.target.value) || 0)
                         }
                         placeholder="Enter weight percentage"
                         min="0"

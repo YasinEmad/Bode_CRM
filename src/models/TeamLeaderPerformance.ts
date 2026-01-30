@@ -21,6 +21,12 @@ export interface ITeamLeaderPerformance extends Document {
     week3: number;
     week4: number;
   };
+  requests: {
+    week1: number;
+    week2: number;
+    week3: number;
+    week4: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +79,24 @@ const TeamLeaderPerformanceSchema = new Schema<ITeamLeaderPerformance>(
       },
     },
     meetings: {
+      week1: {
+        type: Number,
+        default: 0,
+      },
+      week2: {
+        type: Number,
+        default: 0,
+      },
+      week3: {
+        type: Number,
+        default: 0,
+      },
+      week4: {
+        type: Number,
+        default: 0,
+      },
+    },
+    requests: {
       week1: {
         type: Number,
         default: 0,

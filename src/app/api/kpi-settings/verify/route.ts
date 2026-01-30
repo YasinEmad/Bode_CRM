@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
     const calculatedWeight = indicatorDetails.reduce((sum: number, ind: any) => sum + ind.weight, 0);
 
     // Verify all required indicators
+    // requests is optional for backward compatibility
     const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
     const providedIndicators = indicatorDetails.map((ind: any) => ind.name);
     const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));

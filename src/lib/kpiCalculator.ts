@@ -15,6 +15,7 @@ export interface EmployeeMetrics {
   callsCount: number;
   meetingsCount: number;
   assessmentsCount: number;
+  requestsCount: number;
 }
 
 export interface KPIScores {
@@ -23,6 +24,7 @@ export interface KPIScores {
   calls: number;
   meetings: number;
   assessments: number;
+  requests: number;
   total: number;
 }
 
@@ -80,6 +82,7 @@ export function calculateEmployeeKPI(
     calls: 0,
     meetings: 0,
     assessments: 0,
+    requests: 0,
     total: 0,
   };
 
@@ -156,8 +159,21 @@ export function calculateEmployeeKPI(
     console.warn('⚠️ Assessments indicator not found');
   }
 
+  const requestsInd = indicatorMap.get('requests');
+  if (requestsInd) {
+    scores.requests = calculateIndicatorScore(
+      metrics.requestsCount,
+      requestsInd.target,
+      requestsInd.weight,
+      false
+    );
+    console.log(`📊 Requests: ${metrics.requestsCount} / target: ${requestsInd.target} = ${scores.requests.toFixed(2)}`);
+  } else {
+    console.warn('⚠️ Requests indicator not found');
+  }
+
   // Calculate total KPI
-  scores.total = scores.attendance + scores.deals + scores.calls + scores.meetings + scores.assessments;
+  scores.total = scores.attendance + scores.deals + scores.calls + scores.meetings + scores.assessments + scores.requests;
 
   // Cap total at 100 (shouldn't happen if weights are correct, but just in case)
   scores.total = Math.min(scores.total, 100);
@@ -251,6 +267,20 @@ export function getKPIBreakdown(
       target: assessmentsInd.target,
       achievement: achievement.toFixed(2),
       weight: assessmentsInd.weight,
+      score: score.toFixed(2),
+    };
+  }
+
+  // Requests
+  const requestsInd = indicatorMap.get('requests');
+  if (requestsInd) {
+    const achievement = calculateAchievementPercentage(metrics.requestsCount, requestsInd.target, false);
+    const score = (achievement / 100) * requestsInd.weight;
+    breakdown.indicatorCalculations.requests = {
+      actual: metrics.requestsCount,
+      target: requestsInd.target,
+      achievement: achievement.toFixed(2),
+      weight: requestsInd.weight,
       score: score.toFixed(2),
     };
   }

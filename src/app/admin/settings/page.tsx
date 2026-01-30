@@ -14,7 +14,6 @@ interface SystemSettings {
   attendanceRadius: number;
   attendanceTime: string;
   allowedEarlyMinutes?: number;
-  commissionRules: Array<{ position: string; percentage: number }>;
 }
 
 export default function AdminSettings() {
@@ -132,9 +131,9 @@ export default function AdminSettings() {
     const toastId = addToast('Saving settings...', 'loading');
 
     try {
-      // Filter out rules with 0 percentage
-      const filteredRules = settings.commissionRules.filter(rule => rule.percentage > 0);
-      
+      // Exclude deprecated commissionRules from settings payload
+      const { commissionRules, ...settingsWithoutCommission } = settings as any;
+
       // Sanitize attendanceTime
       let attendanceTime = settings.attendanceTime;
       if (attendanceTime) {
@@ -149,10 +148,9 @@ export default function AdminSettings() {
       if (isNaN(allowedEarly) || allowedEarly < 0) allowedEarly = 60;
 
       const bodyToSend = { 
-        ...settings, 
+        ...settingsWithoutCommission,
         attendanceTime,
         allowedEarlyMinutes: allowedEarly,
-        commissionRules: filteredRules 
       };
 
       const res = await fetch('/api/settings', {
@@ -260,7 +258,7 @@ export default function AdminSettings() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">System Settings</h1>
-          <p className="text-slate-400">Configure office location, attendance, and commission rules</p>
+          <p className="text-slate-400">Configure office location and attendance</p>
         </div>
 
         <div className="space-y-8">
@@ -492,70 +490,7 @@ export default function AdminSettings() {
             )}
           </section>
 
-          {/* Commission Rules */}
-          <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
-             {/* ... Same Commission Code ... */}
-              <button
-              className="w-full flex items-center justify-between px-6 py-4"
-              onClick={() => setOpenSection(openSection === 'commission' ? null : 'commission')}
-            >
-              <div>
-                <h2 className="text-lg font-bold text-white">Commission Rules by Position</h2>
-              </div>
-              <ChevronDown className={`text-slate-300 transition-transform ${openSection === 'commission' ? 'rotate-180' : ''}`} />
-            </button>
-
-            {openSection === 'commission' && (
-              <div className="px-6 pb-6 pt-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {[
-                    { position: 'Senior', key: 'senior' },
-                    { position: 'Fresh', key: 'fresh' },
-                    { position: 'Team Lead', key: 'teamlead' },
-                    { position: 'Mid', key: 'mid' },
-                  ].map(({ position, key }) => {
-                    const rule = settings.commissionRules?.find(
-                      (r: any) => (r.position || '').toLowerCase() === position.toLowerCase()
-                    );
-                    const percentage = rule?.percentage || 0;
-
-                    return (
-                      <div key={key} className="bg-slate-900 p-6 rounded-lg border border-slate-700">
-                        <label className="block text-sm font-semibold text-slate-300 mb-3">
-                          {position} Position
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="0"
-                            step="0.1"
-                            min="0"
-                            max="100"
-                            value={percentage}
-                            onChange={(e) => {
-                              const newPercentage = parseFloat(e.target.value) || 0;
-                              let newRules = [...(settings.commissionRules || [])];
-                              const existingIndex = newRules.findIndex(
-                                (r: any) => (r.position || '').toLowerCase() === position.toLowerCase()
-                              );
-                              if (existingIndex >= 0) {
-                                newRules[existingIndex].percentage = newPercentage;
-                              } else {
-                                newRules = [...newRules, { position, percentage: newPercentage }];
-                              }
-                              setSettings({ ...settings, commissionRules: newRules });
-                            }}
-                            className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 transition"
-                          />
-                          <span className="text-white text-lg font-semibold">%</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </section>
+          {/* Commission Rules removed — deprecated in admin settings */}
 
           {/* Save Button */}
           <div className="space-y-3">

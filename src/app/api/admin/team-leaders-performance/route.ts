@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
           calls: { week1: 0, week2: 0, week3: 0, week4: 0 },
           assessments: { week1: 0, week2: 0, week3: 0, week4: 0 },
           meetings: { week1: 0, week2: 0, week3: 0, week4: 0 },
+          requests: { week1: 0, week2: 0, week3: 0, week4: 0 },
         };
       })
     );
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { userId, month, calls, assessments, meetings } = await req.json();
+    const { userId, month, calls, assessments, meetings, requests } = await req.json();
 
     if (!userId || !month) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -123,6 +124,7 @@ export async function POST(req: NextRequest) {
         ...(calls && { calls }),
         ...(assessments && { assessments }),
         ...(meetings && { meetings }),
+        ...(requests && { requests }),
       },
       { upsert: true, new: true }
     );

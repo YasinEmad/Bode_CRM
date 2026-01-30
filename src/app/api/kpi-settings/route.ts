@@ -43,14 +43,36 @@ export async function GET(req: NextRequest) {
       console.log('🔵 Creating default KPI settings...');
       kpiSettings = await KPISetting.create({
         indicators: [
-          { name: 'attendance', target: 95, weight: 12.5 },
-          { name: 'deals', target: 2, weight: 50 },
-          { name: 'calls', target: 20, weight: 12.5 },
-          { name: 'meetings', target: 5, weight: 12.5 },
-          { name: 'assessments', target: 3, weight: 12.5 },
+          { name: 'attendance', target: 95, weight: 10 },
+          { name: 'deals', target: 2, weight: 20 },
+          { name: 'calls', target: 20, weight: 15 },
+          { name: 'meetings', target: 5, weight: 15 },
+          { name: 'assessments', target: 3, weight: 20 },
+          { name: 'requests', target: 10, weight: 20 },
         ],
       });
       console.log('✅ Created default settings');
+    } else {
+      // If settings exist but missing 'requests', add it
+      const hasRequests = kpiSettings.indicators.some((ind: any) => ind.name === 'requests');
+      if (!hasRequests) {
+        console.log('🔵 Adding missing requests indicator...');
+        // Add requests with 20% weight, reducing other weights proportionally
+        kpiSettings.indicators.push({ name: 'requests', target: 10, weight: 20 });
+        
+        // Normalize other weights to maintain 100% total
+        const currentTotal = kpiSettings.indicators.reduce((sum: number, ind: any) => sum + ind.weight, 0);
+        if (currentTotal !== 100) {
+          const scale = 80 / (currentTotal - 20); // Keep requests at 20%, scale others
+          kpiSettings.indicators = kpiSettings.indicators.map((ind: any) => {
+            if (ind.name === 'requests') return ind;
+            return { ...ind, weight: Math.round((ind.weight * scale) * 100) / 100 };
+          });
+        }
+        
+        await kpiSettings.save();
+        console.log('✅ Added requests indicator');
+      }
     }
 
     console.log('✅ Returning KPI settings');
@@ -91,12 +113,14 @@ export async function PUT(req: NextRequest) {
     }
 
     // Check if all required indicators are present
+    // requests is optional for backward compatibility
     const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
+    const validIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments', 'requests'];
     const providedIndicators = indicators.map((ind: any) => ind.name);
     const missingIndicators = requiredIndicators.filter((ind) => !providedIndicators.includes(ind));
 
     if (missingIndicators.length > 0) {
-      console.log('❌ Missing indicators:', missingIndicators);
+      console.log('❌ Missing required indicators:', missingIndicators);
       return NextResponse.json(
         { error: `Missing required indicators: ${missingIndicators.join(', ')}` },
         { status: 400 }
@@ -105,7 +129,7 @@ export async function PUT(req: NextRequest) {
 
     // Validate each indicator
     for (const indicator of indicators) {
-      if (!indicator.name || !requiredIndicators.includes(indicator.name)) {
+      if (!indicator.name || !validIndicators.includes(indicator.name)) {
         console.log('❌ Invalid indicator name:', indicator.name);
         return NextResponse.json({ error: `Invalid indicator name: ${indicator.name}` }, { status: 400 });
       }
@@ -145,14 +169,21 @@ export async function PUT(req: NextRequest) {
     console.log('🟡 Finding existing KPI settings...');
     let kpiSettings = await KPISetting.findOne();
     
+    // Ensure all values are valid numbers
+    const sanitizedIndicators = indicators.map((ind: any) => ({
+      name: ind.name,
+      target: Number(ind.target) || 0,
+      weight: Number(ind.weight) || 0,
+    }));
+    
     if (!kpiSettings) {
       console.log('🟡 Creating new KPI settings...');
-      kpiSettings = await KPISetting.create({ indicators });
+      kpiSettings = await KPISetting.create({ indicators: sanitizedIndicators });
       console.log('✅ New KPI settings created with ID:', kpiSettings._id);
     } else {
       console.log('🟡 Updating existing KPI settings...');
       console.log('   Current ID:', kpiSettings._id);
-      kpiSettings.indicators = indicators;
+      kpiSettings.indicators = sanitizedIndicators;
     }
 
     // Set total weight

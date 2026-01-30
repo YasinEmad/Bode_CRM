@@ -44,7 +44,7 @@ export default function SalesAttendance() {
       });
       const data = await res.json();
       const records = Array.isArray(data.attendances) ? data.attendances : [];
-      
+
       console.log('🔍 FETCHED ATTENDANCE RECORDS:', {
         count: records.length,
         firstRecord: records.length > 0 ? {
@@ -55,24 +55,16 @@ export default function SalesAttendance() {
           lateMinutes: records[0].lateMinutes,
         } : null,
       });
-      
+
       setAttendances(records);
 
-      // Check if already marked today OR yesterday
-      // (Early morning check-ins are recorded for the previous day)
-      const today = new Date();
-      const todayString = today.toDateString();
-      
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayString = yesterday.toDateString();
-
-      // Find record for today or yesterday
-      const todayRecord = records.find((r: any) => {
-        const recordDate = new Date(r.date).toDateString();
-        return recordDate === todayString || recordDate === yesterdayString;
-      });
-      setTodayAttendance(todayRecord || null);
+      // Prefer server-provided flag indicating whether the user already marked for the current shift.
+      // The API returns `hasMarkedToday` and optionally `currentShiftAttendance`.
+      if (data && data.hasMarkedToday) {
+        setTodayAttendance(data.currentShiftAttendance || null);
+      } else {
+        setTodayAttendance(null);
+      }
     } catch (error) {
       console.error('Error fetching attendance:', error);
     } finally {

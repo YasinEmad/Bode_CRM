@@ -3,14 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/Toast';
 import { Loader, ArrowRight } from 'lucide-react';
 import Lottie from 'lottie-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
   const { addToast, updateToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -34,9 +32,31 @@ export default function LoginPage() {
     const toastId = addToast('Logging in...', 'loading');
 
     try {
-      await login(formData.username, formData.password);
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Login failed');
+      }
+
+      const data = await res.json();
+      
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
       updateToast(toastId, 'Login successful!', 'success');
-      router.push('/');
+      
+      // Redirect to appropriate dashboard based on role
+      const redirectPath = data.user.role === 'admin' ? '/admin/dashboard' : '/sales/dashboard';
+      router.push(redirectPath);
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Login failed', 'error');
     } finally {

@@ -301,8 +301,8 @@ export default function AdminEmployees() {
               {commissionRules && commissionRules.length > 0 ? (
                 commissionRules
                   .filter(rule => rule.percentage > 0 && rule.position)
-                  .map((rule, index) => (
-                    <div key={index} className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-6 text-white text-center border border-blue-500 shadow-lg">
+                  .map((rule) => (
+                    <div key={rule.position} className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-6 text-white text-center border border-blue-500 shadow-lg">
                       <p className="text-sm font-medium text-blue-100 capitalize mb-2">{rule.position}</p>
                       <p className="text-3xl font-bold">{rule.percentage}%</p>
                       <p className="text-xs text-blue-200 mt-2">Commission Rate</p>
