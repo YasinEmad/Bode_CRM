@@ -39,7 +39,7 @@ export default function SalesLeads() {
   const [editNotes, setEditNotes] = useState('');
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
   const [closingLeadId, setClosingLeadId] = useState<string | null>(null);
-  const [closeFormData, setCloseFormData] = useState({ project: '', notes: '', proofImage: '' });
+  const [closeFormData, setCloseFormData] = useState({ project: '', info: '', proofImage: '' });
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
 
   useEffect(() => {
@@ -80,10 +80,10 @@ export default function SalesLeads() {
       const lead = leads.find((l) => l._id === leadId);
       setClosingLeadId(leadId);
       setCloseFormData({
-        project: lead?.project || '',
-        notes: lead?.notes || '',
-        proofImage: '',
-      });
+          project: lead?.project || '',
+          info: '',
+          proofImage: '',
+        });
       return;
     }
 
@@ -116,8 +116,8 @@ export default function SalesLeads() {
   const handleSubmitCloseLead = async () => {
     if (!closingLeadId) return;
 
-    if (!closeFormData.project || !closeFormData.notes || !closeFormData.proofImage) {
-      addToast('Please fill in project, notes, and proof image', 'error');
+      if (!closeFormData.project || !closeFormData.info || !closeFormData.proofImage) {
+        addToast('Please fill in project, info, and proof image', 'error');
       return;
     }
 
@@ -134,7 +134,7 @@ export default function SalesLeads() {
         body: JSON.stringify({
           status: 'closed',
           project: closeFormData.project,
-          notes: closeFormData.notes,
+          info: closeFormData.info,
           proofImage: closeFormData.proofImage,
         }),
       });
@@ -379,18 +379,18 @@ export default function SalesLeads() {
         {/* Close Lead Modal */}
         {closingLeadId && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
-              <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700 flex flex-col max-h-[85vh]">
+              <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800">
                 <h2 className="text-2xl font-bold text-white">Close Deal</h2>
                 <button
                   onClick={() => setClosingLeadId(null)}
-                  className="text-slate-400 hover:text-white transition"
+                  className="text-slate-400 hover:text-white transition p-2"
                 >
                   <X size={24} />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-4 overflow-y-auto space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">Project Name *</label>
                   <input
@@ -403,11 +403,11 @@ export default function SalesLeads() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">Notes *</label>
+                  <label className="block text-sm font-semibold text-white mb-2">Info *</label>
                   <textarea
-                    placeholder="Add notes about this deal..."
-                    value={closeFormData.notes}
-                    onChange={(e) => setCloseFormData({ ...closeFormData, notes: e.target.value })}
+                    placeholder="Add info about this deal..."
+                    value={closeFormData.info}
+                    onChange={(e) => setCloseFormData({ ...closeFormData, info: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
                     rows={4}
                   />
@@ -423,22 +423,22 @@ export default function SalesLeads() {
                     className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
                   />
                 </div>
+              </div>
 
-                <div className="flex gap-4 pt-4">
-                  <button
-                    onClick={handleSubmitCloseLead}
-                    disabled={isSubmittingClose}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:bg-gray-600 text-white py-3 rounded-lg font-semibold transition"
-                  >
-                    {isSubmittingClose ? 'Closing...' : 'Close Deal'}
-                  </button>
-                  <button
-                    onClick={() => setClosingLeadId(null)}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-semibold transition border border-slate-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <div className="p-4 border-t border-slate-700 bg-slate-900 flex gap-3 flex-col sm:flex-row">
+                <button
+                  onClick={handleSubmitCloseLead}
+                  disabled={isSubmittingClose}
+                  className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition"
+                >
+                  {isSubmittingClose ? 'Closing...' : 'Close Deal'}
+                </button>
+                <button
+                  onClick={() => setClosingLeadId(null)}
+                  className="w-full sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-semibold transition border border-slate-600"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

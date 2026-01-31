@@ -30,7 +30,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { name, project, phone, email, status, source, notes, assignedTo, proofImage } = await req.json();
+    const { name, project, phone, email, status, source, notes, info, assignedTo, proofImage } = await req.json();
 
     // Only admin can edit name, project, phone, source, assignedTo
     // Sales can only edit status and notes for their assigned leads
@@ -65,21 +65,27 @@ export async function PUT(
       }
       updateData.phone = phone;
     }
-    // Handle sales attempting to mark closed: require proofImage + notes
+    // Handle sales attempting to mark closed: require proofImage + info (use `info` instead of `notes`)
     if (status) {
       if (payload.role === 'sales' && status === 'closed') {
-        if (!proofImage || !notes) {
-          return NextResponse.json({ error: 'Proof image and notes are required to close a lead' }, { status: 400 });
+        if (!proofImage || !info) {
+          return NextResponse.json({ error: 'Proof image and info are required to close a lead' }, { status: 400 });
         }
         updateData.proofImage = proofImage;
-        updateData.notes = notes;
+        updateData.info = info;
         updateData.status = 'closed_pending_approval';
       } else {
         updateData.status = status;
       }
     }
     if (source) updateData.source = source;
-    if (notes !== undefined) updateData.notes = notes;
+    // Apply notes only when not performing a sales close operation.
+    if (notes !== undefined) {
+      // If sales user is trying to close, ignore notes field for that operation to avoid overwriting old notes.
+      if (!(payload.role === 'sales' && status === 'closed')) {
+        updateData.notes = notes;
+      }
+    }
     if (proofImage !== undefined) updateData.proofImage = proofImage;
     if (assignedTo !== undefined) {
       if (assignedTo) {

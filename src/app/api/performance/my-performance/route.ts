@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import TeamPerformance from '@/models/TeamPerformance';
+import TeamLeaderPerformance from '@/models/TeamLeaderPerformance';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -35,12 +36,49 @@ export async function GET(req: NextRequest) {
     });
 
     if (!performance) {
-      // Return default performance data if not found
+      // Try falling back to team leader performance (for users who are leaders)
+      const leaderPerf = await TeamLeaderPerformance.findOne({ userId: payload.userId, month });
+      if (leaderPerf) {
+        const callsCount = (
+          (leaderPerf.calls?.week1 || 0) +
+          (leaderPerf.calls?.week2 || 0) +
+          (leaderPerf.calls?.week3 || 0) +
+          (leaderPerf.calls?.week4 || 0)
+        );
+
+        const meetingsCount = (
+          (leaderPerf.meetings?.week1 || 0) +
+          (leaderPerf.meetings?.week2 || 0) +
+          (leaderPerf.meetings?.week3 || 0) +
+          (leaderPerf.meetings?.week4 || 0)
+        );
+
+        const assessmentsCount = (
+          (leaderPerf.assessments?.week1 || 0) +
+          (leaderPerf.assessments?.week2 || 0) +
+          (leaderPerf.assessments?.week3 || 0) +
+          (leaderPerf.assessments?.week4 || 0)
+        );
+
+        const requestsCount = (
+          (leaderPerf.requests?.week1 || 0) +
+          (leaderPerf.requests?.week2 || 0) +
+          (leaderPerf.requests?.week3 || 0) +
+          (leaderPerf.requests?.week4 || 0)
+        );
+
+        return NextResponse.json({
+          performance: { callsCount, meetingsCount, assessmentsCount, requestsCount },
+        });
+      }
+
+      // Return default performance data if not found anywhere
       return NextResponse.json({
         performance: {
           callsCount: 0,
           meetingsCount: 0,
           assessmentsCount: 0,
+          requestsCount: 0,
         },
       });
     }
@@ -67,11 +105,19 @@ export async function GET(req: NextRequest) {
       (performance.assessments?.week4 || 0)
     );
 
+    const requestsCount = (
+      (performance.requests?.week1 || 0) +
+      (performance.requests?.week2 || 0) +
+      (performance.requests?.week3 || 0) +
+      (performance.requests?.week4 || 0)
+    );
+
     return NextResponse.json({
       performance: {
         callsCount,
         meetingsCount,
         assessmentsCount,
+        requestsCount,
       },
     });
   } catch (error) {

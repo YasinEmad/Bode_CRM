@@ -3,8 +3,10 @@ import { connectDB } from '@/lib/mongodb';
 import Attendance from '@/models/Attendance';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
+import { calculateDistance } from '@/lib/geolocation';
 import { verifyToken } from '@/lib/auth';
 import { compareDeviceIds } from '@/lib/deviceId';
+import { isValidCoordinate, ACCURACY_THRESHOLDS } from '@/lib/geolocation';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -12,17 +14,7 @@ function extractToken(req: NextRequest): string | null {
   return authHeader.slice(7);
 }
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3; // Earth's radius in meters
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,11 +30,31 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const { latitude, longitude, deviceId } = await req.json();
+    const body = await req.json();
+    let { latitude, longitude, deviceId, accuracy } = body;
 
-    if (!latitude || !longitude) {
+    // Normalize incoming coordinates to numbers and fixed precision
+    const parsedLat = Number.parseFloat(String(latitude));
+    const parsedLon = Number.parseFloat(String(longitude));
+
+    if (Number.isNaN(parsedLat) || Number.isNaN(parsedLon)) {
       return NextResponse.json(
-        { error: 'Invalid location data' },
+        { error: 'Invalid location coordinates. Please ensure you have GPS enabled and try again.' },
+        { status: 400 }
+      );
+    }
+
+    // Round to consistent precision (7 decimal places)
+    const normalizedLat = Number(parsedLat.toFixed(7));
+    const normalizedLon = Number(parsedLon.toFixed(7));
+
+    latitude = normalizedLat;
+    longitude = normalizedLon;
+
+    // Validate coordinate format and values
+    if (!isValidCoordinate(latitude, longitude)) {
+      return NextResponse.json(
+        { error: 'Invalid location coordinates. Please ensure you have GPS enabled and try again.' },
         { status: 400 }
       );
     }
@@ -98,21 +110,69 @@ export async function POST(req: NextRequest) {
 
     // Get shift duration (default 9 hours)
     const shiftDuration = settings.shiftDuration || 9;
+    
+    // Get min GPS accuracy threshold (default 100 meters for real-world conditions)
+    const minGpsAccuracy = (settings as any).minGpsAccuracy || 100;
 
     console.log('Settings loaded:', {
       shiftStartTime: settings.attendanceTime,
       shiftDuration: shiftDuration,
       attendanceRadius: settings.attendanceRadius,
+      minGpsAccuracy: minGpsAccuracy,
       officeLocation: {
         lat: settings.officeLatitude,
         lon: settings.officeLongitude,
       },
     });
 
-    // Validate office location is configured
-    if (settings.officeLatitude === 0 && settings.officeLongitude === 0) {
+    // Validate office location is configured with valid coordinates
+    if (!isValidCoordinate(settings.officeLatitude, settings.officeLongitude)) {
       return NextResponse.json(
-        { error: 'Office location not configured. Please configure it in settings.' },
+        { error: 'Office location not properly configured. Admin must set valid coordinates in settings.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate GPS accuracy if provided
+    console.log('GPS Accuracy Check:', {
+      userAccuracy: accuracy,
+      minThreshold: minGpsAccuracy,
+      passed: !accuracy || accuracy <= minGpsAccuracy,
+    });
+
+    if (accuracy !== undefined && accuracy !== null && accuracy > minGpsAccuracy) {
+      console.error('GPS accuracy check failed:', {
+        accuracy: accuracy,
+        minGpsAccuracy: minGpsAccuracy,
+        difference: accuracy - minGpsAccuracy,
+      });
+
+      // Provide more helpful error message based on how poor the accuracy is
+      let errorMessage = `GPS accuracy (${Math.round(accuracy)}m) exceeds acceptable threshold (${minGpsAccuracy}m). `;
+      let suggestion = 'Try moving to an open area or wait for better GPS signal. Admin can adjust threshold in Settings.';
+      
+      // If accuracy is extremely poor (> 1000m), give more specific guidance
+      if (accuracy > 1000) {
+        errorMessage = `Your GPS signal is extremely weak (${Math.round(accuracy)}m accuracy). `;
+        suggestion = 'This usually means you\'re indoors or in a location with poor GPS coverage. Please move to an open area with a clear view of the sky (away from buildings and trees) and try again.';
+      } else if (accuracy > 500) {
+        errorMessage = `Your GPS signal is very weak (${Math.round(accuracy)}m accuracy). `;
+        suggestion = 'Try moving to a more open area or wait a few moments for the GPS to lock onto more satellites.';
+      }
+
+      return NextResponse.json(
+        {
+          error: errorMessage + suggestion,
+          currentAccuracy: Math.round(accuracy),
+          requiredAccuracy: minGpsAccuracy,
+          reason: 'LOW_GPS_ACCURACY',
+          suggestion: suggestion,
+          diagnostic: {
+            accuracy: Math.round(accuracy),
+            threshold: minGpsAccuracy,
+            condition: accuracy > 1000 ? 'SEVERE' : accuracy > 500 ? 'POOR' : 'MARGINAL',
+          }
+        },
         { status: 400 }
       );
     }

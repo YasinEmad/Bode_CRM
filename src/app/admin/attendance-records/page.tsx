@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, Users, CheckCircle, Clock, Download } from 'lucide-react';
+import { countWorkdaysInMonth, countDaysInMonth } from '@/lib/workdays';
 import { exportAttendanceToExcel } from '@/lib/exportExcel';
 
 interface AttendanceRecord {
@@ -164,7 +165,10 @@ export default function AttendanceRecords() {
   }
 
   const selectedMonthName = months.find(m => m.value === selectedMonth)?.name;
-  const currentDaysInMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+  // Show full calendar days in month for the attendance table
+  const currentDaysInMonth = selectedYear && selectedMonth
+    ? countDaysInMonth(parseInt(selectedYear), parseInt(selectedMonth) - 1)
+    : 0;
   const daysArray = Array.from({ length: currentDaysInMonth }, (_, i) => i + 1);
 
   // Group records by employee for easier lookup

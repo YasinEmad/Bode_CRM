@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, MapPin, Save, ChevronDown, Map, Crosshair, BarChart3, ArrowRight } from 'lucide-react';
+import { isValidCoordinate, formatAccuracy, ACCURACY_THRESHOLDS } from '@/lib/geolocation';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface SystemSettings {
   _id?: string;
@@ -14,12 +16,14 @@ interface SystemSettings {
   attendanceRadius: number;
   attendanceTime: string;
   allowedEarlyMinutes?: number;
+  minGpsAccuracy?: number;
 }
 
 export default function AdminSettings() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast, updateToast } = useToast();
+  const { getLocation } = useGeolocation();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -41,6 +45,9 @@ export default function AdminSettings() {
     }
     if ((settings.allowedEarlyMinutes ?? 0) < 0) {
       validationErrors.push('Allowed early minutes must be 0 or more');
+    }
+    if ((settings.minGpsAccuracy ?? 100) <= 0 || (settings.minGpsAccuracy ?? 100) > 500) {
+      validationErrors.push('GPS accuracy threshold must be between 1 and 500 meters');
     }
   }
   const isValid = validationErrors.length === 0;
@@ -175,7 +182,7 @@ export default function AdminSettings() {
   };
 
   // --- IMPROVED GEOLOCATION LOGIC ---
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = async () => {
     if (!navigator.geolocation) {
       addToast('Geolocation not supported by your browser', 'error');
       return;
@@ -184,51 +191,38 @@ export default function AdminSettings() {
     setIsLocating(true);
     const toastId = addToast('Acquiring high-precision location...', 'loading');
 
-    const options = {
-      enableHighAccuracy: true, // Forces GPS use
-      timeout: 15000,           // Wait up to 15s for satellite lock
-      maximumAge: 0             // Do not use cached position
-    };
+    try {
+      // استخدم الـ hook الموحد للحصول على الموقع
+      // GPS only mode (بدون WiFi)
+      const result = await getLocation({
+        minAccuracyThreshold: 100, // GPS accuracy threshold
+        requireHighAccuracy: true, // GPS فقط
+        timeout: 60000, // 60 ثانية
+        allowInvalidCoordinates: false,
+      });
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (settings) {
-          const { latitude, longitude, accuracy } = position.coords;
-          
-          setSettings({
-            ...settings,
-            officeLatitude: latitude,
-            officeLongitude: longitude,
-          });
+      if (settings) {
+        setSettings({
+          ...settings,
+          officeLatitude: Number(result.latitude.toFixed(7)),
+          officeLongitude: Number(result.longitude.toFixed(7)),
+        });
 
-          // Log accuracy for debugging (lower is better)
-          console.log(`Location captured with accuracy: ${accuracy} meters`);
-          
-          let msg = 'Location updated!';
-          if (accuracy > 100) {
-            msg += ` (Warning: Low accuracy ~${Math.round(accuracy)}m)`;
-          } else {
-             msg += ` (High accuracy: ~${Math.round(accuracy)}m)`;
-          }
-          
-          updateToast(toastId, msg, 'success');
-        } else {
-          updateToast(toastId, 'Settings not loaded', 'error');
-        }
-        setIsLocating(false);
-      },
-      (error) => {
-        let errorMsg = error.message;
-        switch(error.code) {
-          case error.PERMISSION_DENIED: errorMsg = "User denied location access."; break;
-          case error.POSITION_UNAVAILABLE: errorMsg = "Location information is unavailable."; break;
-          case error.TIMEOUT: errorMsg = "The request to get user location timed out."; break;
-        }
-        updateToast(toastId, `Error: ${errorMsg}`, 'error');
-        setIsLocating(false);
-      },
-      options // Pass the high accuracy options here
-    );
+        // Log accuracy for debugging
+        console.log(`Location captured with accuracy: ${result.accuracy} meters`);
+        console.log(`Accuracy level: ${formatAccuracy(result.accuracy)}`);
+
+        let msg = `📍 Location updated! Accuracy: ${formatAccuracy(result.accuracy)}`;
+        updateToast(toastId, msg, 'success');
+      } else {
+        updateToast(toastId, 'Settings not loaded', 'error');
+      }
+      setIsLocating(false);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to get location';
+      updateToast(toastId, `Error: ${errorMsg}`, 'error');
+      setIsLocating(false);
+    }
   };
 
   const openGoogleMaps = () => {
@@ -371,6 +365,19 @@ export default function AdminSettings() {
                         onChange={(e) => setSettings({ ...settings, allowedEarlyMinutes: parseInt(e.target.value) })}
                         className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-2">Min GPS Accuracy (meters) *</label>
+                      <p className="text-xs text-slate-400 mb-2">How accurate GPS must be. Lower = stricter. Default: 100m</p>
+                      <input
+                        type="number"
+                        value={settings.minGpsAccuracy ?? 100}
+                        onChange={(e) => setSettings({ ...settings, minGpsAccuracy: parseInt(e.target.value) })}
+                        min="10"
+                        max="500"
+                        className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Range: 10-500m</p>
                     </div>
                   </div>
                 </div>

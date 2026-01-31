@@ -46,6 +46,12 @@ export default function AdminEmployees() {
   const [resetPasswordData, setResetPasswordData] = useState<{ id: string; name: string } | null>(null);
   const [resetPasswordInput, setResetPasswordInput] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showAdminAuthModal, setShowAdminAuthModal] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminSaving, setAdminSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -147,6 +153,70 @@ export default function AdminEmployees() {
       setResetPasswordInput('');
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Failed to reset password', 'error');
+    }
+  };
+
+  const openAdminAuthModal = async () => {
+    setShowAdminAuthModal(true);
+    setAdminLoading(true);
+    try {
+      const res = await fetch('/api/admin/auth', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch admin info');
+      }
+      const data = await res.json();
+      setAdminUsername(data.admin?.username || '');
+      setAdminPassword('');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to load admin info', 'error');
+      setShowAdminAuthModal(false);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const handleSaveAdminAuth = async () => {
+    if (!adminUsername || adminUsername.trim().length < 3) {
+      addToast('Username must be at least 3 characters', 'error');
+      return;
+    }
+
+    if (adminPassword) {
+      const pwd = String(adminPassword);
+      const strongPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+      if (!strongPwdRegex.test(pwd)) {
+        addToast('Password must be at least 8 characters and include uppercase, lowercase, number and special character', 'error');
+        return;
+      }
+    }
+
+    setAdminSaving(true);
+    const toastId = addToast('Saving admin credentials...', 'loading');
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username: adminUsername, password: adminPassword || undefined }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update admin');
+      }
+
+      updateToast(toastId, '✅ Admin credentials updated!', 'success');
+      setShowAdminAuthModal(false);
+      setAdminPassword('');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to update admin', 'error');
+    } finally {
+      setAdminSaving(false);
     }
   };
 
@@ -288,6 +358,12 @@ export default function AdminEmployees() {
                 className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg"
               >
                 Add Employee
+              </button>
+              <button
+                onClick={() => openAdminAuthModal()}
+                className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg"
+              >
+                Admin Authentication
               </button>
             </div>
           </div>
@@ -634,6 +710,84 @@ export default function AdminEmployees() {
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold border border-slate-600"
                 >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Authentication Modal */}
+        {showAdminAuthModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-full p-2">
+                      <Lock size={20} className="text-white" />
+                    </div>
+                    Admin Authentication
+                  </h2>
+                  <button
+                    onClick={() => setShowAdminAuthModal(false)}
+                    className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Admin Username *</label>
+                  <input
+                    type="text"
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-white bg-slate-900 placeholder-slate-500"
+                    disabled={adminLoading || adminSaving}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">New Password (leave blank to keep current)</label>
+                  <div className="relative">
+                    <input
+                      type={showAdminPassword ? 'text' : 'password'}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full pr-12 px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-white bg-slate-900 placeholder-slate-500"
+                      disabled={adminLoading || adminSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-white"
+                      aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">Password must be at least 8 characters and include uppercase, lowercase, number and special character.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-6 border-t border-slate-600 bg-slate-900">
+                <button
+                  onClick={() => handleSaveAdminAuth()}
+                  disabled={adminSaving || adminLoading}
+                  className="flex-1 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  {adminSaving ? <Loader size={18} className="animate-spin" /> : <Save size={18} />}
+                  Save
+                </button>
+                <button
+                  onClick={() => setShowAdminAuthModal(false)}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600 flex items-center justify-center gap-2"
+                >
+                  <X size={18} />
                   Cancel
                 </button>
               </div>

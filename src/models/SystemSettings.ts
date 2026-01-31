@@ -8,6 +8,7 @@ export interface ISystemSettings extends Document {
   attendanceTime: string; // HH:mm format, e.g., "18:00" (shift start time)
   allowedEarlyMinutes: number; // how many minutes before shift start employees may check in
   shiftDuration: number; // in hours, e.g., 9
+  minGpsAccuracy: number; // minimum acceptable GPS accuracy in meters (default 50)
   commissionRules: {
     position: string;
     percentage: number;
@@ -45,6 +46,10 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     shiftDuration: {
       type: Number,
       default: 9, // Default 9 hours
+    },
+    minGpsAccuracy: {
+      type: Number,
+      default: 100, // Default 100 meters - practical for real-world urban conditions
     },
     commissionRules: [
       {

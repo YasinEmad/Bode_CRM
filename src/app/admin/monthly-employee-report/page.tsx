@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, TrendingUp, Users, Download, AlertCircle } from 'lucide-react';
 import { calculateEmployeeKPI, EmployeeMetrics, KPIScores } from '@/lib/kpiCalculator';
+import { countWorkdaysInMonth } from '@/lib/workdays';
 
 interface EmployeeReportData {
   _id: string;
@@ -329,7 +330,8 @@ export default function MonthlyEmployeeReport() {
       });
 
       // Calculate attendance percentage for each employee
-      const currentDaysInMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+      // currentDaysInMonth now represents working days in the month (Friday excluded)
+      const currentDaysInMonth = countWorkdaysInMonth(parseInt(selectedYear), parseInt(selectedMonth) - 1);
       const attendanceByEmployee = new Map<string, { presentDays: number; lateMinutes: number }>();
 
       attendanceData.records?.forEach((record: any) => {

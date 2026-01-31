@@ -13,7 +13,7 @@ interface LeadCardProps {
   status: string;
   notes?: string;
   value?: number;
-  onStatusChange?: (status: string, extra?: { proofImage?: string; notes?: string }) => void;
+  onStatusChange?: (status: string, extra?: { proofImage?: string; info?: string; notes?: string }) => void;
   onNotesChange?: (notes: string) => void;
   assignableMembers?: { _id: string; name: string }[];
   onAssign?: (employeeId: string | null) => Promise<void> | void;
@@ -43,6 +43,7 @@ export default function LeadCard({
 }: LeadCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [editNotes, setEditNotes] = useState(notes);
+  const [closeInfo, setCloseInfo] = useState('');
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [proofImageFile, setProofImageFile] = useState<File | null>(null);
   const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
@@ -243,13 +244,13 @@ export default function LeadCard({
 
       {showCloseModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg border border-slate-700">
-            <div className="flex justify-between items-center mb-4">
+          <div className="bg-slate-800 rounded-xl w-full max-w-lg border border-slate-700 flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
               <h3 className="text-lg font-bold text-white">Close Deal</h3>
-              <button onClick={() => setShowCloseModal(false)} className="text-slate-400"><X size={20} /></button>
+              <button onClick={() => setShowCloseModal(false)} className="text-slate-400 p-2"><X size={20} /></button>
             </div>
 
-            <div className="space-y-4">
+            <div className="p-4 overflow-y-auto space-y-4">
               <div>
                 <label className="block text-sm text-slate-300 mb-2">Project Name</label>
                 <input
@@ -284,51 +285,52 @@ export default function LeadCard({
                 {proofImagePreview && (
                   <div className="mt-3">
                     <p className="text-xs text-slate-400 mb-2">Preview:</p>
-                    <img src={proofImagePreview} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                    <img src={proofImagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Notes *</label>
+                <label className="block text-sm text-slate-300 mb-2">Info *</label>
                 <textarea
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
+                  value={closeInfo}
+                  onChange={(e) => setCloseInfo(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
                   rows={4}
                 />
               </div>
+            </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={async () => {
-                    if (!proofImageFile || !editNotes) return;
-                    try {
-                      setIsSubmittingClose(true);
-                      // Convert image to base64
-                      const reader = new FileReader();
-                      reader.onload = async (event) => {
-                        const imageData = event.target?.result as string;
-                        await onStatusChange?.('closed', { proofImage: imageData, notes: editNotes });
-                        setShowCloseModal(false);
-                        setIsExpanded(false);
-                        setProofImageFile(null);
-                        setProofImagePreview(null);
-                      };
-                      reader.readAsDataURL(proofImageFile);
-                    } catch (err) {
-                      console.error(err);
-                    } finally {
-                      setIsSubmittingClose(false);
-                    }
-                  }}
-                  disabled={!proofImageFile || !editNotes || isSubmittingClose}
-                  className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-2 rounded-lg font-semibold disabled:opacity-50 transition"
-                >
-                  {isSubmittingClose ? 'Closing...' : 'Close Deal'}
-                </button>
-                <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-700 text-white py-2 rounded-lg transition hover:bg-slate-600">Cancel</button>
-              </div>
+            <div className="p-4 border-t border-slate-700 bg-slate-900 flex gap-3 flex-col sm:flex-row">
+              <button
+                onClick={async () => {
+                  if (!proofImageFile || !closeInfo) return;
+                  try {
+                    setIsSubmittingClose(true);
+                    // Convert image to base64
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                      const imageData = event.target?.result as string;
+                      await onStatusChange?.('closed', { proofImage: imageData, info: closeInfo });
+                      setShowCloseModal(false);
+                      setIsExpanded(false);
+                      setProofImageFile(null);
+                      setProofImagePreview(null);
+                    };
+                    reader.readAsDataURL(proofImageFile);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setIsSubmittingClose(false);
+                  }
+                }}
+                disabled={!proofImageFile || !closeInfo || isSubmittingClose}
+                className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-3 rounded-lg font-semibold disabled:opacity-50 transition"
+              >
+                {isSubmittingClose ? 'Closing...' : 'Close Deal'}
+              </button>
+
+              <button onClick={() => setShowCloseModal(false)} className="w-full sm:flex-1 bg-slate-700 text-white py-3 rounded-lg transition hover:bg-slate-600">Cancel</button>
             </div>
           </div>
         </div>

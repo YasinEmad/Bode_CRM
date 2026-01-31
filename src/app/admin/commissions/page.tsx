@@ -359,8 +359,8 @@ export default function AdminCommissions() {
                 )}
 
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Notes</h3>
-                  <p className="text-slate-200 whitespace-pre-wrap">{proofCommission.dealId && 'notes' in proofCommission.dealId ? (proofCommission.dealId as any).notes : 'No notes provided'}</p>
+                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Info</h3>
+                  <p className="text-slate-200 whitespace-pre-wrap">{proofCommission.dealId && 'info' in proofCommission.dealId ? (proofCommission.dealId as any).info : 'No info provided'}</p>
                 </div>
               </div>
 

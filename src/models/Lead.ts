@@ -12,6 +12,7 @@ export interface ILead extends Document {
   source: LeadSource;
   assignedTo?: mongoose.Types.ObjectId;
   notes: string;
+  info?: string; // New field for closing-specific information
   proofImage?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +51,10 @@ const LeadSchema = new Schema<ILead>(
       ref: 'User',
     },
     notes: {
+      type: String,
+      default: '',
+    },
+    info: {
       type: String,
       default: '',
     },

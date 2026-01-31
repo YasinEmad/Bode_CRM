@@ -66,8 +66,25 @@ export async function PUT(req: NextRequest) {
 
     await connectDB();
 
-    const { officeLatitude, officeLongitude, officeName, attendanceRadius, attendanceTime, commissionRules } =
-      await req.json();
+    const body = await req.json();
+    let { officeLatitude, officeLongitude, officeName, attendanceRadius, attendanceTime, commissionRules, minGpsAccuracy } = body;
+
+    // Normalize and validate coordinates to consistent numeric format
+    if (officeLatitude !== undefined && officeLatitude !== null) {
+      const parsedLat = Number.parseFloat(String(officeLatitude));
+      if (Number.isNaN(parsedLat)) {
+        return NextResponse.json({ error: 'Invalid office latitude' }, { status: 400 });
+      }
+      officeLatitude = Number(parsedLat.toFixed(7));
+    }
+
+    if (officeLongitude !== undefined && officeLongitude !== null) {
+      const parsedLon = Number.parseFloat(String(officeLongitude));
+      if (Number.isNaN(parsedLon)) {
+        return NextResponse.json({ error: 'Invalid office longitude' }, { status: 400 });
+      }
+      officeLongitude = Number(parsedLon.toFixed(7));
+    }
 
     console.log('🔍 API RECEIVED:', {
       officeLatitude,
@@ -102,9 +119,13 @@ export async function PUT(req: NextRequest) {
     settings.officeLatitude = officeLatitude;
     settings.officeLongitude = officeLongitude;
     settings.officeName = officeName;
-    settings.attendanceRadius = attendanceRadius;
+    settings.attendanceRadius = Number.parseInt(String(attendanceRadius)) || settings.attendanceRadius || 500;
     settings.attendanceTime = attendanceTime?.trim() || '09:00';
     settings.commissionRules = commissionRules;
+    if (minGpsAccuracy !== undefined && minGpsAccuracy !== null) {
+      const parsedMin = Number.parseInt(String(minGpsAccuracy));
+      if (!Number.isNaN(parsedMin)) settings.minGpsAccuracy = parsedMin;
+    }
 
     await settings.save();
 

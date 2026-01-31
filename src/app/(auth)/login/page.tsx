@@ -46,6 +46,10 @@ export default function LoginPage() {
 
       const data = await res.json();
       
+      // Clear old data first
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
       // Store token in localStorage
       if (data.token) {
         localStorage.setItem('token', data.token);
@@ -54,9 +58,14 @@ export default function LoginPage() {
       
       updateToast(toastId, 'Login successful!', 'success');
       
-      // Redirect to appropriate dashboard based on role
+      // Force page reload to clear any stale state
+      // Use window.location instead of router.push to force full page load
       const redirectPath = data.user.role === 'admin' ? '/admin/dashboard' : '/sales/dashboard';
-      router.push(redirectPath);
+      
+      // Small delay to ensure localStorage is written before reload
+      setTimeout(() => {
+        window.location.href = redirectPath;
+      }, 500);
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Login failed', 'error');
     } finally {
@@ -94,11 +103,6 @@ export default function LoginPage() {
           <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8 w-full relative overflow-hidden">
             {/* Form header with logo */}
             <div className="mb-8">
-              <div className="flex justify-center mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-                  <span className="font-bold text-white text-xl">BC</span>
-                </div>
-              </div>
               <h2 className="text-2xl text-white font-bold text-center">Welcome back</h2>
               <p className="text-center text-slate-300 text-sm mt-2">Sign in to your account</p>
             </div>

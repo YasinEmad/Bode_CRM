@@ -83,11 +83,12 @@ export default function SalesDashboard() {
     }
   };
 
-  const handleStatusChange = async (leadId: string, newStatus: string, extra?: { proofImage?: string; notes?: string; project?: string }) => {
+  const handleStatusChange = async (leadId: string, newStatus: string, extra?: { proofImage?: string; info?: string; notes?: string; project?: string }) => {
     try {
       const body: any = { status: newStatus };
       if (extra?.notes !== undefined) body.notes = extra.notes;
       if (extra?.proofImage !== undefined) body.proofImage = extra.proofImage;
+      if (extra?.info !== undefined) body.info = extra.info;
       if (extra?.project !== undefined) body.project = extra.project;
 
       const res = await fetch(`/api/leads/${leadId}`, {

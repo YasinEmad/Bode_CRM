@@ -8,26 +8,32 @@ export default function Home() {
 
   useEffect(() => {
     // Check if user is logged in
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    const checkAndRedirect = () => {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
 
-    if (!token || !user) {
-      // Not logged in, go to login
-      router.push('/login');
-    } else {
-      // Logged in, parse user and redirect to appropriate dashboard
-      try {
-        const userData = JSON.parse(user);
-        if (userData.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else {
-          router.push('/sales/dashboard');
-        }
-      } catch {
-        // Invalid user data, go to login
+      if (!token || !user) {
+        // Not logged in, go to login
         router.push('/login');
+      } else {
+        // Logged in, parse user and redirect to appropriate dashboard
+        try {
+          const userData = JSON.parse(user);
+          if (userData.role === 'admin') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/sales/dashboard');
+          }
+        } catch {
+          // Invalid user data, go to login
+          router.push('/login');
+        }
       }
-    }
+    };
+
+    // Small delay to ensure localStorage is ready
+    const timer = setTimeout(checkAndRedirect, 100);
+    return () => clearTimeout(timer);
   }, [router]);
 
   return (

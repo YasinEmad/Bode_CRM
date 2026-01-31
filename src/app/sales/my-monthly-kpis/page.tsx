@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, TrendingUp, AlertCircle, Download, Target } from 'lucide-react';
 import { calculateEmployeeKPI, EmployeeMetrics, KPIScores } from '@/lib/kpiCalculator';
+import { countWorkdaysInMonth } from '@/lib/workdays';
 
 interface MyKPIData {
   _id: string;
@@ -233,8 +234,8 @@ export default function MyMonthlyKPIs() {
       const employeeAttendance = attendanceData.attendances || [];
 
       if (employeeAttendance.length > 0) {
-        // Get the actual number of days in the month
-        const daysInMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+        // Get the actual number of working days in the month (exclude Friday by default)
+        const daysInMonth = countWorkdaysInMonth(parseInt(selectedYear), parseInt(selectedMonth) - 1);
         
         // Count check-in records (each = 1 day present)
         const presentDays = employeeAttendance.length;

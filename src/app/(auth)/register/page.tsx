@@ -34,7 +34,7 @@ export default function RegisterPage() {
         <div className="relative mx-auto md:mx-0">
           <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl p-8 w-full max-w-md">
             <div className="mb-3 flex justify-center">
-              <img src="/Night_Blue-removebg-preview.png" alt="Bode CRM" className="h-14" />
+              <img src="/Off White.png" alt="Bode CRM" className="h-14" />
             </div>
             <h2 className="text-2xl text-slate-100 font-semibold text-center mb-2">Registration Disabled</h2>
             <p className="text-center text-slate-300 mb-6">Sign up has been disabled. Please ask an admin to create your account.</p>

@@ -55,9 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('[checkAuth] Found token in localStorage, verifying...');
       
-      // Set timeout لـ 5 seconds - لو أخذت وقت أكتر، نعتبرها فشلت
+      // Set timeout لـ 3 seconds - أقصر من قبل
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       
       try {
         const res = await fetch('/api/auth/me', {
@@ -84,9 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (fetchError) {
         clearTimeout(timeoutId);
         console.error('CheckAuth fetch error:', fetchError);
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
+        // Don't clear token on error - just mark loading as done
+        // User will be redirected if needed by protected routes
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            setUser(JSON.parse(userData));
+            setToken(token);
+          } catch {
+            setUser(null);
+            setToken(null);
+          }
+        }
       }
     } catch (error) {
       console.error('CheckAuth error:', error);
