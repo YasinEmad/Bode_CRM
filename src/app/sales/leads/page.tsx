@@ -282,7 +282,104 @@ export default function SalesLeads() {
           </div>
         ) : (
           <div className="bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
-            <div className="overflow-x-auto">
+            {/* Mobile cards (visible on small screens) */}
+            <div className="block sm:hidden p-4 space-y-4">
+              {leads.map((lead) => (
+                <div key={lead._id} className="bg-slate-900/40 border border-slate-700 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-white font-semibold text-lg">{lead.name}</div>
+                          <div className="text-slate-400 text-sm">{lead.project || '-'}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-slate-300">{lead.source}</div>
+                          <div className="mt-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[lead.status]?.bg || 'bg-slate-200'} ${statusColors[lead.status]?.text || 'text-slate-800'}`}>
+                              {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-slate-300 text-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="truncate">{lead.email || '-'}</div>
+                          <div className="ml-2 font-semibold">{lead.phone}</div>
+                        </div>
+                        <p className="mt-2 text-slate-300 text-sm line-clamp-3">{lead.notes || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => {
+                        try {
+                          const digits = (lead.phone || '').toString().replace(/\D/g, '');
+                          const normalized = digits.startsWith('0') ? digits.replace(/^0+/, '') : digits;
+                          if (!normalized) return;
+                          const url = `https://wa.me/${normalized}`;
+                          window.open(url, '_blank');
+                        } catch (err) {
+                          console.error('Failed to open WhatsApp:', err);
+                        }
+                      }}
+                      className="flex-1 bg-emerald-600/90 text-white py-2 rounded-md text-sm"
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => {
+                        try {
+                          const email = lead.email || '';
+                          if (!email) {
+                            addToast('No client email available', 'error');
+                            return;
+                          }
+                          const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
+                          window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+                        } catch (err) {
+                          try {
+                            window.location.href = `mailto:${lead.email}`;
+                          } catch (err2) {
+                            console.error('Failed to open mail client:', err2);
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-blue-600/90 text-white py-2 rounded-md text-sm"
+                    >
+                      Email
+                    </button>
+                    <button
+                      onClick={() => handleEditLead(lead)}
+                      className="flex-1 bg-amber-600/90 text-white py-2 rounded-md text-sm"
+                    >
+                      Edit
+                    </button>
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="text-xs text-slate-400 mb-1 block">Status</label>
+                    <select
+                      value={lead.status}
+                      onChange={(e) => handleStatusChange(lead._id, e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-sm bg-slate-700 text-white"
+                    >
+                      <option value="new" disabled={lead.status === 'closed'}>New</option>
+                      <option value="connected">Connected</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="closed">Closed</option>
+                      <option value="lost">Lost</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Table (hidden on small screens) */}
+            <div className="overflow-x-auto hidden sm:block">
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700">
                   <tr>

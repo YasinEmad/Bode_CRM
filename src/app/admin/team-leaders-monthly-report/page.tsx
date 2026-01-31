@@ -273,9 +273,74 @@ export default function TeamLeadersMonthlyReport() {
           </div>
         ) : (
           <>
-            {/* Team Leaders Performance Table */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl overflow-x-auto border border-slate-700">
-              <table className="w-full">
+              {/* Mobile Cards (visible on small screens) */}
+              <div className="block sm:hidden p-4 space-y-4">
+                {leaderData.map((leader, leaderIndex) => (
+                  <div key={leader.userId} className="bg-slate-900/40 border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-white font-bold">{leader.leaderName}</div>
+                        <div className="text-slate-400 text-sm">{selectedMonthName} {selectedYear}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-slate-300">Calls: <span className="font-semibold text-white">{calculateTotal(leader.calls)}</span></div>
+                        <div className="text-sm text-slate-300">Assessments: <span className="font-semibold text-white">{calculateTotal(leader.assessments)}</span></div>
+                        <div className="text-sm text-slate-300">Meetings: <span className="font-semibold text-white">{calculateTotal(leader.meetings)}</span></div>
+                        <div className="text-sm text-slate-300">Requests: <span className="font-semibold text-white">{calculateTotal(leader.requests)}</span></div>
+                      </div>
+                    </div>
+
+                    <details className="mt-3 text-sm">
+                      <summary className="cursor-pointer text-slate-300">View / Edit weekly details</summary>
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="bg-blue-800/20 p-3 rounded">
+                          <div className="text-xs text-slate-300 mb-2">Calls (W1-W4)</div>
+                          <div className="flex gap-2 items-center">
+                            <input type="number" min="0" value={leader.calls.week1} onChange={(e) => handleInputChange(leaderIndex, 'calls', 'week1', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.calls.week2} onChange={(e) => handleInputChange(leaderIndex, 'calls', 'week2', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.calls.week3} onChange={(e) => handleInputChange(leaderIndex, 'calls', 'week3', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.calls.week4} onChange={(e) => handleInputChange(leaderIndex, 'calls', 'week4', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                          </div>
+                        </div>
+
+                        <div className="bg-emerald-800/20 p-3 rounded">
+                          <div className="text-xs text-slate-300 mb-2">Assessments (W1-W4)</div>
+                          <div className="flex gap-2 items-center">
+                            <input type="number" min="0" value={leader.assessments.week1} onChange={(e) => handleInputChange(leaderIndex, 'assessments', 'week1', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.assessments.week2} onChange={(e) => handleInputChange(leaderIndex, 'assessments', 'week2', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.assessments.week3} onChange={(e) => handleInputChange(leaderIndex, 'assessments', 'week3', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.assessments.week4} onChange={(e) => handleInputChange(leaderIndex, 'assessments', 'week4', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                          </div>
+                        </div>
+
+                        <div className="bg-purple-800/20 p-3 rounded">
+                          <div className="text-xs text-slate-300 mb-2">Meetings (W1-W4)</div>
+                          <div className="flex gap-2 items-center">
+                            <input type="number" min="0" value={leader.meetings.week1} onChange={(e) => handleInputChange(leaderIndex, 'meetings', 'week1', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.meetings.week2} onChange={(e) => handleInputChange(leaderIndex, 'meetings', 'week2', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.meetings.week3} onChange={(e) => handleInputChange(leaderIndex, 'meetings', 'week3', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.meetings.week4} onChange={(e) => handleInputChange(leaderIndex, 'meetings', 'week4', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                          </div>
+                        </div>
+
+                        <div className="bg-orange-800/20 p-3 rounded">
+                          <div className="text-xs text-slate-300 mb-2">Requests (W1-W4)</div>
+                          <div className="flex gap-2 items-center">
+                            <input type="number" min="0" value={leader.requests.week1} onChange={(e) => handleInputChange(leaderIndex, 'requests', 'week1', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.requests.week2} onChange={(e) => handleInputChange(leaderIndex, 'requests', 'week2', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.requests.week3} onChange={(e) => handleInputChange(leaderIndex, 'requests', 'week3', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                            <input type="number" min="0" value={leader.requests.week4} onChange={(e) => handleInputChange(leaderIndex, 'requests', 'week4', e.target.value)} className="w-full sm:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center" />
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                ))}
+              </div>
+
+              {/* Team Leaders Performance Table (hidden on small screens) */}
+              <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl overflow-x-auto hidden sm:block border border-slate-700">
+                <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">
@@ -397,7 +462,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'calls', 'week1', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-blue-600/10">
@@ -408,7 +473,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'calls', 'week2', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-blue-600/10">
@@ -419,7 +484,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'calls', 'week3', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-blue-600/10">
@@ -430,7 +495,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'calls', 'week4', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-blue-600/30">
@@ -448,7 +513,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'assessments', 'week1', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-emerald-600/10">
@@ -459,7 +524,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'assessments', 'week2', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-emerald-600/10">
@@ -470,7 +535,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'assessments', 'week3', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-emerald-600/10">
@@ -481,7 +546,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'assessments', 'week4', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-emerald-600/30">
@@ -499,7 +564,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'meetings', 'week1', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-purple-600/10">
@@ -510,7 +575,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'meetings', 'week2', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-purple-600/10">
@@ -521,7 +586,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'meetings', 'week3', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-purple-600/10">
@@ -532,7 +597,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'meetings', 'week4', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-purple-600/30">
@@ -550,7 +615,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'requests', 'week1', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
@@ -561,7 +626,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'requests', 'week2', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
@@ -572,7 +637,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'requests', 'week3', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/10">
@@ -583,7 +648,7 @@ export default function TeamLeadersMonthlyReport() {
                           onChange={(e) =>
                             handleInputChange(leaderIndex, 'requests', 'week4', e.target.value)
                           }
-                          className="w-12 px-2 py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="mx-auto w-full sm:w-12 md:w-14 px-3 py-2 sm:px-2 sm:py-1 bg-slate-700 border border-slate-600 text-white rounded text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </td>
                       <td className="px-3 py-4 text-center border-l border-slate-700 bg-orange-600/30">

@@ -315,18 +315,22 @@ export default function MonthlyEmployeeReport() {
         }
       });
 
-      // Create map of team performance data by userId
+      // Create map of team performance data by userId (guard when userId is missing)
       const performanceByEmployee = new Map<string, any>();
       performanceData.performances?.forEach((perf: any) => {
-        const employeeId = perf.userId._id || perf.userId;
-        performanceByEmployee.set(employeeId, perf);
+        const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
+        if (employeeId) {
+          performanceByEmployee.set(employeeId, perf);
+        }
       });
 
-      // Create map of team leader performance data by userId
+      // Create map of team leader performance data by userId (guard when userId is missing)
       const leaderPerformanceByEmployee = new Map<string, any>();
       leaderPerformanceData.performances?.forEach((perf: any) => {
-        const employeeId = perf.userId._id || perf.userId;
-        leaderPerformanceByEmployee.set(employeeId, perf);
+        const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
+        if (employeeId) {
+          leaderPerformanceByEmployee.set(employeeId, perf);
+        }
       });
 
       // Calculate attendance percentage for each employee
@@ -335,7 +339,8 @@ export default function MonthlyEmployeeReport() {
       const attendanceByEmployee = new Map<string, { presentDays: number; lateMinutes: number }>();
 
       attendanceData.records?.forEach((record: any) => {
-        const employeeId = record.userId._id;
+        const employeeId = record.userId && typeof record.userId === 'object' ? record.userId._id : record.userId || null;
+        if (!employeeId) return; // skip records with missing user
         if (!attendanceByEmployee.has(employeeId)) {
           attendanceByEmployee.set(employeeId, { presentDays: 0, lateMinutes: 0 });
         }

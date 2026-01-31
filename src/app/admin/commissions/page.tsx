@@ -13,7 +13,7 @@ interface Commission {
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   dealId?: { _id: string; name: string; project?: string; phone?: string } | null;
-  employeeId: { _id: string; name: string };
+  employeeId?: { _id: string; name: string } | null;
   rejectionReason?: string;
   createdAt?: string;
   approvalDate?: string;
@@ -242,7 +242,7 @@ export default function AdminCommissions() {
 
                   <div>
                     <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Employee</p>
-                    <p className="text-lg font-bold text-white">{commission.employeeId.name}</p>
+                    <p className="text-lg font-bold text-white">{commission.employeeId && commission.employeeId.name ? commission.employeeId.name : 'Unknown'}</p>
                   </div>
 
                   <div>

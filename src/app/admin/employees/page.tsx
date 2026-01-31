@@ -485,6 +485,10 @@ export default function AdminEmployees() {
 
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => handleOpenNoteModal(emp._id, emp.name)} className="flex-1 bg-green-600/90 text-white py-2 rounded-md text-sm">Note</button>
+                      <button onClick={() => handleOpenResetPasswordModal(emp._id, emp.name)} className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 rounded-md text-sm flex items-center justify-center gap-2">
+                        <Lock size={16} />
+                        Reset
+                      </button>
                       <button onClick={() => handleEditEmployee(emp)} className="flex-1 bg-amber-600/90 text-white py-2 rounded-md text-sm">Edit</button>
                       <button onClick={() => setDeleteCandidate({ id: emp._id, name: emp.name })} className="flex-1 bg-rose-600/90 text-white py-2 rounded-md text-sm">Delete</button>
                     </div>
@@ -1051,37 +1055,52 @@ export default function AdminEmployees() {
 
         {/* Delete Confirmation Modal */}
         {deleteCandidate && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-lg w-full border border-slate-700">
-              <div className="p-6 border-b border-slate-600">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-white">Confirm Delete</h2>
-                  <button
-                    onClick={() => setDeleteCandidate(null)}
-                    className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded-lg"
-                  >
-                    <X size={24} />
-                  </button>
+          <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 overflow-hidden">
+              <div className="p-6 flex items-start gap-4 border-b border-slate-600">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-rose-600/20 flex items-center justify-center">
+                    <Trash2 size={20} className="text-rose-400" />
+                  </div>
                 </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold text-rose-300">Delete Employee</h2>
+                  <p className="text-slate-400 text-sm mt-1">This action will permanently remove the employee and related assignments.</p>
+                </div>
+                <button
+                  onClick={() => setDeleteCandidate(null)}
+                  className="text-slate-400 hover:text-white transition-colors p-1"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
               <div className="p-6 space-y-4">
-                <p className="text-slate-300">Are you sure you want to permanently delete <strong className="text-white">{deleteCandidate.name || 'this employee'}</strong>? This action cannot be undone.</p>
-                <p className="text-sm text-slate-400">All related assignments will be removed and the user will be deleted from the database.</p>
+                <p className="text-slate-200">Are you sure you want to permanently delete <strong className="text-white">{deleteCandidate.name || 'this employee'}</strong>?</p>
+                <div className="text-sm text-slate-400">This cannot be undone. All related assignments and records will be removed from the system immediately.</div>
+                <div className="rounded-md bg-rose-900/10 border border-rose-800 p-3 text-sm text-rose-200">
+                  <strong className="text-rose-200">Warning:</strong> Deleted users cannot be recovered.
+                </div>
               </div>
 
-              <div className="flex gap-3 p-6 border-t border-slate-600 bg-slate-900">
+              <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-slate-600 bg-slate-900">
                 <button
                   onClick={() => performDeleteEmployee()}
                   disabled={deleting}
-                  className="flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
                 >
-                  {deleting ? 'Deleting...' : 'Delete Permanently'}
+                  {deleting ? 'Deleting...' : (
+                    <>
+                      <Trash2 size={16} />
+                      Delete Permanently
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => setDeleteCandidate(null)}
                   disabled={deleting}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600"
+                  className="w-full sm:w-auto flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600"
                 >
                   Cancel
                 </button>

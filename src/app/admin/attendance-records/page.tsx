@@ -10,10 +10,10 @@ import { exportAttendanceToExcel } from '@/lib/exportExcel';
 
 interface AttendanceRecord {
   _id: string;
-  userId: {
+  userId?: {
     _id: string;
     name: string;
-  };
+  } | null;
   date: string;
   checkInTime: string;
   isLate: boolean;
@@ -90,10 +90,14 @@ export default function AttendanceRecords() {
       const data = await response.json();
       setAttendanceRecords(data.records || []);
       
-      // Extract unique employees
+      // Extract unique employees (guard when userId is missing)
       const employeeMap = new Map<string, string>();
       data.records?.forEach((record: AttendanceRecord) => {
-        employeeMap.set(record.userId._id, record.userId.name);
+        const uid = record.userId && typeof record.userId === 'object' ? record.userId._id : null;
+        const name = record.userId && typeof record.userId === 'object' ? record.userId.name : (record as any).userName || 'Unknown';
+        if (uid) {
+          employeeMap.set(uid, name);
+        }
       });
       setEmployees(employeeMap);
     } catch (error) {
@@ -137,7 +141,7 @@ export default function AttendanceRecords() {
     }
 
     const exportData = attendanceRecords.map((record) => ({
-      'Employee Name': record.userId.name,
+      'Employee Name': record.userId && typeof record.userId === 'object' && record.userId.name ? record.userId.name : (record as any).userName || 'Unknown',
       'Date': new Date(record.date).toLocaleDateString('en-US'),
       'Check-In Time': new Date(record.checkInTime).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -176,11 +180,13 @@ export default function AttendanceRecords() {
   attendanceRecords.forEach((record) => {
     const date = new Date(record.date);
     const day = date.getDate();
-    
-    if (!recordsByEmployee.has(record.userId._id)) {
-      recordsByEmployee.set(record.userId._id, new Map());
+    const uid = record.userId && typeof record.userId === 'object' ? record.userId._id : null;
+    if (!uid) return; // skip records without user reference
+
+    if (!recordsByEmployee.has(uid)) {
+      recordsByEmployee.set(uid, new Map());
     }
-    recordsByEmployee.get(record.userId._id)!.set(day, record);
+    recordsByEmployee.get(uid)!.set(day, record);
   });
 
   return (
