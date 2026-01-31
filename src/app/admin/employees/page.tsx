@@ -392,24 +392,24 @@ export default function AdminEmployees() {
               <h1 className="text-5xl font-bold text-white mb-2">Sales Employees</h1>
               <p className="text-slate-400">Manage employee details, positions, and salaries</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <button
               onClick={handleExportToExcel}
               disabled={employees.length === 0}
-              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-emerald-500/50"
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-emerald-500/50"
             >
               <Download size={20} />
               Export to Excel
             </button>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg"
+                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-all shadow-lg"
               >
                 Add Employee
               </button>
               <button
                 onClick={() => openAdminAuthModal()}
-                className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg"
+                className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-all shadow-lg"
               >
                 Admin Authentication
               </button>
@@ -449,8 +449,52 @@ export default function AdminEmployees() {
           </div>
         ) : (
           <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
-            {/* Table */}
-            <div className="overflow-x-auto">
+            {/* Mobile Cards (visible on small screens) */}
+            <div className="block sm:hidden p-4 space-y-4">
+              {employees.map((emp) => {
+                if (!emp || !emp._id) return null;
+                const commissionRate = getCommissionPercentage(emp.position || '');
+                const conversionRate = emp.leadsCount && emp.leadsCount > 0
+                  ? ((emp.closedDealsCount || 0) / emp.leadsCount * 100).toFixed(1)
+                  : '0';
+
+                return (
+                  <div key={emp._id} className="bg-slate-900/40 border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="text-white font-bold text-lg">{emp.name}</div>
+                        <div className="text-slate-400 text-sm">{(emp as any).username || (emp as any).email || '—'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-white font-semibold">${(emp.salary || 0).toLocaleString()}</div>
+                        <div className="text-slate-400 text-sm">{emp.position || '—'}{commissionRate > 0 ? ` • ${commissionRate}%` : ''}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="text-xs text-slate-400">Leads
+                        <div className="text-white font-semibold">{emp.leadsCount || 0}</div>
+                      </div>
+                      <div className="text-xs text-slate-400">Closed
+                        <div className="text-white font-semibold">{emp.closedDealsCount || 0}</div>
+                      </div>
+                      <div className="text-xs text-slate-400">Conv.
+                        <div className="text-white font-semibold">{conversionRate}%</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex gap-2">
+                      <button onClick={() => handleOpenNoteModal(emp._id, emp.name)} className="flex-1 bg-green-600/90 text-white py-2 rounded-md text-sm">Note</button>
+                      <button onClick={() => handleEditEmployee(emp)} className="flex-1 bg-amber-600/90 text-white py-2 rounded-md text-sm">Edit</button>
+                      <button onClick={() => setDeleteCandidate({ id: emp._id, name: emp.name })} className="flex-1 bg-rose-600/90 text-white py-2 rounded-md text-sm">Delete</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Table (hidden on small screens) */}
+            <div className="overflow-x-auto hidden sm:block">
               <table className="w-full">
                 <thead>
                   <tr className="bg-slate-900 border-b border-slate-600">
