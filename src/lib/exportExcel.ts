@@ -190,3 +190,61 @@ export function exportEmployeesToExcel(
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+export interface CommissionExportData {
+  'Deal Name': string;
+  'Project': string;
+  'Commission Rate': string;
+  'Commission Amount': number;
+  'Status': string;
+  'Submitted': string;
+  'Approved Date': string;
+  'Rejection Note': string;
+}
+
+export function exportCommissionsToExcel(
+  data: CommissionExportData[],
+  filename: string = 'commissions.xlsx'
+) {
+  const ws = utils.json_to_sheet(data);
+
+  const colWidths = [30, 25, 18, 18, 15, 18, 18, 30];
+  ws['!cols'] = colWidths.map((width) => ({ wch: width }));
+
+  const headerStyle = {
+    fill: { fgColor: { rgb: 'FF1F2937' } },
+    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'FF000000' } },
+      bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+      left: { style: 'thin', color: { rgb: 'FF000000' } },
+      right: { style: 'thin', color: { rgb: 'FF000000' } },
+    },
+  };
+
+  const headerRange = utils.decode_range(ws['!ref'] || 'A1');
+  for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+    const cellAddress = utils.encode_col(col) + '1';
+    if (ws[cellAddress]) {
+      ws[cellAddress].s = headerStyle;
+    }
+  }
+
+  const wb = utils.book_new();
+  utils.book_append_sheet(wb, ws, 'Commissions');
+
+  const timestamp = new Date().toISOString().split('T')[0];
+  const finalFilename = filename.replace('.xlsx', '') + '_' + timestamp + '.xlsx';
+
+  const blob = new Blob([Buffer.from(write(wb, { bookType: 'xlsx', type: 'binary' }), 'binary')],
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = finalFilename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

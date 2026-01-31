@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { CheckCircle, XCircle, Loader, Clock, AlertCircle } from 'lucide-react';
+import { exportCommissionsToExcel } from '@/lib/exportExcel';
 
 interface Commission {
   _id: string;
@@ -78,6 +79,26 @@ export default function SalesCommissions() {
     } finally {
       setLoadingData(false);
     }
+  };
+
+  const handleExport = () => {
+    if (!commissions || commissions.length === 0) {
+      addToast('No commissions to export', 'warning');
+      return;
+    }
+
+    const exportData = commissions.map((c) => ({
+      'Deal Name': c.dealId?.name || 'Unknown Deal',
+      'Project': c.dealId?.project || '—',
+      'Commission Rate': c.percentage ? `${c.percentage}%` : '—',
+      'Commission Amount': c.amount,
+      'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
+      'Submitted': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
+      'Approved Date': c.approvalDate ? new Date(c.approvalDate).toLocaleString() : '',
+      'Rejection Note': c.rejectionNote || '',
+    }));
+
+    exportCommissionsToExcel(exportData);
   };
 
   const calculateTotals = () => {
@@ -180,6 +201,12 @@ export default function SalesCommissions() {
                 {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All'}
               </button>
             ))}
+            <button
+              onClick={handleExport}
+              className="ml-2 px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600"
+            >
+              Export Excel
+            </button>
           </div>
         </div>
 
