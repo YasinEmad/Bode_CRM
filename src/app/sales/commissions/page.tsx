@@ -90,7 +90,6 @@ export default function SalesCommissions() {
     const exportData = commissions.map((c) => ({
       'Deal Name': c.dealId?.name || 'Unknown Deal',
       'Project': c.dealId?.project || '—',
-      'Commission Rate': c.percentage ? `${c.percentage}%` : '—',
       'Commission Amount': c.amount,
       'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
       'Submitted': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
@@ -246,12 +245,7 @@ export default function SalesCommissions() {
                   </div>
 
                   <div>
-                    <p className="text-sm text-slate-400 font-medium">📊 Commission Rate</p>
-                    <p className="text-lg font-semibold text-amber-400 mt-1">{commission.percentage ? `${commission.percentage}%` : '—'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-400 font-medium">💵 Commission Amount</p>
+                    <p className="text-sm text-slate-400 font-medium"> Commission Amount</p>
                     <p className="text-lg font-semibold text-emerald-400 mt-1">
                       ${commission.amount.toLocaleString()}
                     </p>

@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
         callsCount: 15,
         meetingsCount: 4,
         assessmentsCount: 2,
+        requestsCount: 1,
       };
 
       console.log('   Test metrics:', metrics);

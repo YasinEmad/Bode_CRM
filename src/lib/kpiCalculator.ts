@@ -72,6 +72,7 @@ export function calculateEmployeeKPI(
       calls: 0,
       meetings: 0,
       assessments: 0,
+      requests: 0,
       total: 0,
     };
   }

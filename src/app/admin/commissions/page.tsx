@@ -12,7 +12,7 @@ interface Commission {
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId?: { _id: string; name: string; project?: string } | null;
+  dealId?: { _id: string; name: string; project?: string; phone?: string } | null;
   employeeId: { _id: string; name: string };
   rejectionReason?: string;
   createdAt?: string;
@@ -73,8 +73,8 @@ export default function AdminCommissions() {
     const exportData = commissions.map((c) => ({
       'Deal Name': c.dealId?.name || 'Unknown Deal',
       'Project': c.dealId?.project || '—',
+      'Client Phone': c.dealId?.phone || '—',
       'Employee': c.employeeId?.name || '—',
-      'Commission Rate': c.percentage ? `${c.percentage}%` : '—',
       'Commission Amount': c.amount,
       'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
       'Submitted': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
@@ -245,8 +245,8 @@ export default function AdminCommissions() {
                   </div>
 
                   <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Commission Rate</p>
-                    <p className="text-lg font-bold text-amber-400">{commission.percentage ? `${commission.percentage}%` : '—'}</p>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Client Phone</p>
+                    <p className="text-lg font-bold text-emerald-400">{commission.dealId?.phone || '—'}</p>
                   </div>
 
                   <div>

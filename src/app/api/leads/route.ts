@@ -70,16 +70,21 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Allow both admin and sales users to create leads
+    if (payload.role !== 'admin' && payload.role !== 'sales') {
+      return NextResponse.json({ error: 'Admin or sales access required' }, { status: 403 });
     }
 
     await connectDB();
 
     const { name, project, phone, email, status, source, notes, assignedTo } = await req.json();
 
-    if (!name || !project || !phone) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!name || !phone) {
+      return NextResponse.json({ error: 'Missing required fields (name and phone)' }, { status: 400 });
     }
 
     // Convert assignedTo to ObjectId if it's a valid string
@@ -90,6 +95,14 @@ export async function POST(req: NextRequest) {
         assignedToId = new Types.ObjectId(assignedTo);
       } catch {
         return NextResponse.json({ error: 'Invalid assignedTo ID' }, { status: 400 });
+      }
+    } else if (payload.role === 'sales') {
+      // Auto-assign to the sales user who created the lead
+      try {
+        const { Types } = await import('mongoose');
+        assignedToId = new Types.ObjectId(payload.userId);
+      } catch {
+        return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
       }
     }
 
