@@ -72,27 +72,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check device ID - if user has a saved device ID, it must match
-    // التحقق من جهاز الموظف
-    if (user.deviceId) {
-      // جهاز مسجل مسبقاً - قارن البصمات
-      if (!compareDeviceIds(user.deviceId, deviceId)) {
+    // Check device ID - support multiple allowed device IDs (deviceIds array) or legacy deviceId
+    const registeredIds: string[] = Array.isArray((user as any).deviceIds) && (user as any).deviceIds.length > 0
+      ? (user as any).deviceIds
+      : user.deviceId ? [user.deviceId] : [];
+
+    if (registeredIds.length > 0) {
+      const matchFound = registeredIds.some((rid) => compareDeviceIds(rid, deviceId));
+      if (!matchFound) {
         return NextResponse.json(
-          { 
-            error: 'Device mismatch detected. You registered with a different device. Please contact your admin to update your device ID.',
+          {
+            error: 'Device mismatch detected. You are using an unregistered device. Please contact your admin to update your device IDs.',
             reason: 'DEVICE_MISMATCH',
-            registeredDevice: user.deviceId.substring(0, 10) + '...',
+            registeredDeviceSample: registeredIds[0] ? String(registeredIds[0]).substring(0, 10) + '...' : null,
             currentDevice: deviceId.substring(0, 10) + '...',
           },
           { status: 403 }
         );
       }
-      // البصمات متطابقة - السماح بالحضور
+      // matched - allow
     } else {
-      // أول مرة - احفظ البصمة الجديدة في قاعدة البيانات
-      user.deviceId = deviceId;
+      // First time: register this device into user's deviceIds array
+      if (!Array.isArray((user as any).deviceIds)) (user as any).deviceIds = [];
+      (user as any).deviceIds.push(deviceId);
       await user.save();
-      console.log(`Device registered for user ${user.name}: ${deviceId.substring(0, 15)}...`);
+      console.log(`Device registered for user ${user.name}: ${deviceId.substring(0, 15)}... (auto)`);
     }
 
     const settings = await SystemSettings.findOne();

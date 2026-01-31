@@ -54,6 +54,41 @@ export async function DELETE(
   }
 }
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const token = extractToken(req);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== 'admin') return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+    await connectDB();
+
+    const { id } = await params;
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+    const emp = await User.findById(id).select('_id username name email phone position salary createdAt deviceId deviceIds');
+    if (!emp) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+
+    const leadsCount = await Lead.countDocuments({ assignedTo: id });
+    const closedDealsCount = await Lead.countDocuments({ assignedTo: id, status: 'closed' });
+
+    const employeeData = {
+      ...emp.toObject(),
+      leadsCount,
+      closedDealsCount,
+    };
+
+    return NextResponse.json({ employee: employeeData });
+  } catch (err) {
+    console.error('Error fetching employee:', err);
+    return NextResponse.json({ error: 'Failed to fetch employee' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

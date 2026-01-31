@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
         role: user.role,
         position: user.position || '',
         teamId: user.teamId ? String(user.teamId) : null,
+        deviceId: user.deviceId || null,
+        deviceIds: Array.isArray(user.deviceIds) ? user.deviceIds : (user.deviceId ? [user.deviceId] : []),
       },
     });
   } catch (error) {

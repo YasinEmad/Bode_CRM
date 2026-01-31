@@ -9,7 +9,8 @@ export interface IUser extends Document {
   phone?: string;
   position?: string; // e.g., 'Sales Junior', 'Sales Senior', 'Team Leader'
   salary?: number; // Monthly salary
-  deviceId?: string; // Device ID for check-in verification
+  deviceId?: string; // Legacy single Device ID for check-in verification
+  deviceIds?: string[]; // Allowed device IDs (multiple devices)
   teamId?: mongoose.Types.ObjectId | null; // Reference to team
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +56,10 @@ const UserSchema = new Schema<IUser>(
     deviceId: {
       type: String,
       default: null,
+    },
+    deviceIds: {
+      type: [String],
+      default: [],
     },
     teamId: {
       type: mongoose.Schema.Types.ObjectId,

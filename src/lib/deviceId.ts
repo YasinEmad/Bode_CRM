@@ -30,17 +30,46 @@ function createDeviceFingerprint(): string {
 }
 
 /**
- * الحصول على معرف الجهاز الحالي
+ * الحصول على معرف الجهاز الحالي (مع caching في localStorage)
  */
 export function getDeviceId(): string {
-  return generateDeviceId();
+  // Check if we're in browser environment
+  if (typeof window === 'undefined') {
+    const newId = generateDeviceId();
+    console.log('[getDeviceId] Server-side generation:', newId.substring(0, 20) + '...');
+    return newId;
+  }
+
+  // Get cached device ID from localStorage
+  const cachedDeviceId = localStorage.getItem('bode_device_id');
+  
+  if (cachedDeviceId) {
+    console.log('[getDeviceId] Retrieved from localStorage:', cachedDeviceId.substring(0, 20) + '...');
+    return cachedDeviceId;
+  }
+
+  // Generate new device ID and cache it
+  const newDeviceId = generateDeviceId();
+  console.log('[getDeviceId] Generated new ID:', newDeviceId.substring(0, 20) + '...');
+  console.log('[getDeviceId] Saving to localStorage...');
+  
+  try {
+    localStorage.setItem('bode_device_id', newDeviceId);
+    console.log('[getDeviceId] Successfully saved to localStorage');
+  } catch (error) {
+    console.error('[getDeviceId] Failed to save to localStorage:', error);
+  }
+  
+  return newDeviceId;
 }
 
 /**
- * إعادة تعيين معرف الجهاز
+ * إعادة تعيين معرف الجهاز (للاستخدام لما الموظف يجيب جهاز جديد)
  */
 export function resetDeviceId(): void {
-  // No local storage to clear - device ID is managed by backend
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bode_device_id');
+  }
 }
 
 /**

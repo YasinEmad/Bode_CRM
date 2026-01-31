@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare, Lock, Trash2 } from 'lucide-react';
+import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare, Lock, Trash2, Smartphone } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { exportEmployeesToExcel } from '@/lib/exportExcel';
 import SendNoteModal from '@/components/SendNoteModal';
@@ -490,6 +490,9 @@ export default function AdminEmployees() {
                         Reset
                       </button>
                       <button onClick={() => handleEditEmployee(emp)} className="flex-1 bg-amber-600/90 text-white py-2 rounded-md text-sm">Edit</button>
+                      <button onClick={() => router.push(`/admin/employees/${emp._id}/devices`)} className="flex-1 bg-cyan-600/90 text-white py-2 rounded-md text-sm flex items-center justify-center gap-2">
+                        <Smartphone size={16} /> Devices
+                      </button>
                       <button onClick={() => setDeleteCandidate({ id: emp._id, name: emp.name })} className="flex-1 bg-rose-600/90 text-white py-2 rounded-md text-sm">Delete</button>
                     </div>
                   </div>
@@ -578,6 +581,13 @@ export default function AdminEmployees() {
                               title="Edit employee"
                             >
                               <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => router.push(`/admin/employees/${emp._id}/devices`)}
+                              className="inline-block bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white p-2 rounded-lg transition-all"
+                              title="Manage devices"
+                            >
+                              <Smartphone size={18} />
                             </button>
                             <button
                               onClick={() => setDeleteCandidate({ id: emp._id, name: emp.name })}

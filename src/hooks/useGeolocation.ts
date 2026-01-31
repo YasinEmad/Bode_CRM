@@ -16,9 +16,18 @@ export interface UseGeolocationReturn {
 
 /**
  * Custom hook for unified geolocation acquisition
- * Uses GPS-only mode for accurate outdoor positioning
- * Ensures consistent location settings across all pages
- * Provides consistent timeout, accuracy thresholds, and error handling
+ * Uses GPS with WiFi/Cellular fallback for accurate positioning
+ * Ensures consistent location settings across all pages (Admin Settings & Employee Attendance)
+ * 
+ * UNIFIED APPROACH:
+ * - All pages (admin, sales) use identical geolocation method
+ * - GPS with WiFi/Cellular fallback (requireHighAccuracy: false) for better accuracy in weak signal areas
+ * - Default 60-second timeout for location lock
+ * - Uses admin-configured minGpsAccuracy threshold (default 100m)
+ * 
+ * This ensures admin and employee capture coordinates using the same method,
+ * making comparisons and distance calculations reliable. WiFi fallback helps in areas
+ * with poor GPS coverage (indoors, dense urban areas, etc).
  */
 export function useGeolocation() {
   const isLoadingRef = useRef(false);

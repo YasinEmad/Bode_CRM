@@ -154,10 +154,16 @@ export default function AdminSettings() {
       let allowedEarly = parseInt(String(settings.allowedEarlyMinutes ?? 60), 10);
       if (isNaN(allowedEarly) || allowedEarly < 0) allowedEarly = 60;
 
+      // Sanitize office coordinates to ensure we send numbers or null
+      const sanitizedLat = Number.isFinite(Number(settings.officeLatitude)) ? Number(settings.officeLatitude) : null;
+      const sanitizedLon = Number.isFinite(Number(settings.officeLongitude)) ? Number(settings.officeLongitude) : null;
+
       const bodyToSend = { 
         ...settingsWithoutCommission,
         attendanceTime,
         allowedEarlyMinutes: allowedEarly,
+        officeLatitude: sanitizedLat,
+        officeLongitude: sanitizedLon,
       };
 
       const res = await fetch('/api/settings', {
@@ -169,7 +175,12 @@ export default function AdminSettings() {
         body: JSON.stringify(bodyToSend),
       });
 
-      if (!res.ok) throw new Error('Failed to save settings');
+      if (!res.ok) {
+        const errorData = await res.json();
+        const errorMsg = errorData.error || 'Failed to save settings';
+        console.error('API Error:', { status: res.status, error: errorMsg, details: errorData });
+        throw new Error(errorMsg);
+      }
 
       const data = await res.json();
       setSettings(data.settings);
@@ -192,28 +203,44 @@ export default function AdminSettings() {
     const toastId = addToast('Acquiring high-precision location...', 'loading');
 
     try {
-      // استخدم الـ hook الموحد للحصول على الموقع
-      // GPS only mode (بدون WiFi)
+      // UNIFIED GEOLOCATION ACQUISITION: Admin and Employee use identical method
+      // - Allow WiFi/Cellular fallback (requireHighAccuracy: false) for better accuracy
+      // - 60-second timeout for location lock
+      // - Use admin-configured minGpsAccuracy threshold or default 100m
+      const threshold = settings?.minGpsAccuracy ?? 100;
       const result = await getLocation({
-        minAccuracyThreshold: 100, // GPS accuracy threshold
-        requireHighAccuracy: true, // GPS فقط
-        timeout: 60000, // 60 ثانية
+        minAccuracyThreshold: threshold,
+        requireHighAccuracy: false,
+        timeout: 60000,
         allowInvalidCoordinates: false,
       });
 
       if (settings) {
-        setSettings({
-          ...settings,
-          officeLatitude: Number(result.latitude.toFixed(7)),
-          officeLongitude: Number(result.longitude.toFixed(7)),
-        });
+        // Validate accuracy: reject if extremely poor (>10km error margin)
+        if (result.accuracy > 10000) {
+          updateToast(toastId, `⚠️ Location accuracy is extremely poor (${Math.round(result.accuracy)}m). This location is not reliable. Please try in a different area with better GPS/WiFi signal.`, 'error');
+          setIsLocating(false);
+          return;
+        }
 
-        // Log accuracy for debugging
-        console.log(`Location captured with accuracy: ${result.accuracy} meters`);
-        console.log(`Accuracy level: ${formatAccuracy(result.accuracy)}`);
+        // Warn if accuracy is poor (>1000m)
+        if (result.accuracy > 1000) {
+          console.warn(`⚠️ Poor accuracy: ${Math.round(result.accuracy)}m. Location may not be reliable.`);
+          updateToast(toastId, `⚠️ Accuracy is poor (${Math.round(result.accuracy)}m). Consider retrying in a location with better GPS/WiFi signal.`, 'warning');
+        } else {
+          // Good accuracy
+          setSettings({
+            ...settings,
+            officeLatitude: Number(result.latitude.toFixed(7)),
+            officeLongitude: Number(result.longitude.toFixed(7)),
+          });
 
-        let msg = `📍 Location updated! Accuracy: ${formatAccuracy(result.accuracy)}`;
-        updateToast(toastId, msg, 'success');
+          console.log(`Location captured with accuracy: ${result.accuracy} meters`);
+          console.log(`Accuracy level: ${formatAccuracy(result.accuracy)}`);
+
+          let msg = `📍 Location updated! Accuracy: ${formatAccuracy(result.accuracy)}`;
+          updateToast(toastId, msg, 'success');
+        }
       } else {
         updateToast(toastId, 'Settings not loaded', 'error');
       }

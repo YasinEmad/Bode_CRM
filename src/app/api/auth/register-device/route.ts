@@ -1,56 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
-import { verifyToken } from '@/lib/auth';
-
-function extractToken(req: NextRequest): string | null {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  return authHeader.slice(7);
-}
+import { verifyToken, extractTokenFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const token = extractToken(req);
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const token = extractTokenFromRequest(req as any);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     await connectDB();
 
-    const { deviceId } = await req.json();
-    if (!deviceId) {
-      return NextResponse.json({ error: 'Device ID is required' }, { status: 400 });
+    const body = await req.json();
+    const { deviceId } = body || {};
+    if (!deviceId || typeof deviceId !== 'string') {
+      return NextResponse.json({ error: 'deviceId is required' }, { status: 400 });
     }
 
-    // Update user's device ID
-    const user = await User.findByIdAndUpdate(
-      payload.userId,
-      { deviceId },
-      { new: true }
-    ).select('_id username name email deviceId');
+    const user = await User.findById(payload.userId);
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    // Ensure deviceIds array exists
+    if (!Array.isArray((user as any).deviceIds)) (user as any).deviceIds = [];
+
+    // If device already exists in array, return ok
+    if ((user as any).deviceIds.includes(deviceId)) {
+      return NextResponse.json({ ok: true, message: 'Device already registered', user: { id: String(user._id), deviceIds: user.deviceIds } });
     }
 
-    console.log(`✅ Device registered for user ${user.name}: ${deviceId}`);
+    // Add to list of allowed device IDs
+    (user as any).deviceIds.push(deviceId);
+    await user.save();
 
-    return NextResponse.json({
-      message: 'Device registered successfully',
-      user: {
-        _id: user._id,
-        name: user.name,
-        deviceId: user.deviceId,
-      },
-    });
+    return NextResponse.json({ ok: true, message: 'Device registered', user: { id: String(user._id), deviceIds: user.deviceIds } });
   } catch (error) {
-    console.error('Error registering device:', error);
+    console.error('Error in register-device:', error);
     return NextResponse.json({ error: 'Failed to register device' }, { status: 500 });
   }
 }

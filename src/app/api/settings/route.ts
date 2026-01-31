@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import SystemSettings from '@/models/SystemSettings';
+import { calculateDistance } from '@/lib/geolocation';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -84,6 +85,18 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid office longitude' }, { status: 400 });
       }
       officeLongitude = Number(parsedLon.toFixed(7));
+    }
+
+    // Validate ranges
+    if (officeLatitude !== null && officeLatitude !== undefined) {
+      if (officeLatitude < -90 || officeLatitude > 90) {
+        return NextResponse.json({ error: 'Office latitude out of range (-90 to 90)' }, { status: 400 });
+      }
+    }
+    if (officeLongitude !== null && officeLongitude !== undefined) {
+      if (officeLongitude < -180 || officeLongitude > 180) {
+        return NextResponse.json({ error: 'Office longitude out of range (-180 to 180)' }, { status: 400 });
+      }
     }
 
     console.log('🔍 API RECEIVED:', {
