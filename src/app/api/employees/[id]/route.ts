@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import Lead from '@/models/Lead';
+import Team from '@/models/Team';
 import SystemSettings from '@/models/SystemSettings';
 import Commission from '@/models/Commission';
 import { verifyToken } from '@/lib/auth';
@@ -10,6 +11,47 @@ function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   return authHeader.slice(7);
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const token = extractToken(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    await connectDB();
+
+    const { id } = await params;
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+    const employee = await User.findById(id);
+    if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+
+    // Remove user from any team members arrays
+    await Team.updateMany({}, { $pull: { members: id } });
+    // If user is leader of any team, unset leader
+    await Team.updateMany({ leader: id }, { $unset: { leader: '' } });
+
+    // Unassign leads assigned to this user
+    await Lead.updateMany({ assignedTo: id }, { $set: { assignedTo: null } });
+
+    // Finally delete the user
+    await User.findByIdAndDelete(id);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    return NextResponse.json({ error: 'Failed to delete employee' }, { status: 500 });
+  }
 }
 
 export async function PUT(

@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
           closedDealsCount,
         };
       })
-    );
+    ).then(list => list.filter(e => e && e._id)); // Filter out invalid entries
 
     return NextResponse.json({ employees: employeesWithStats });
   } catch (error) {

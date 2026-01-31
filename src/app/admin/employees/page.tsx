@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare, Lock } from 'lucide-react';
+import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare, Lock, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { exportEmployeesToExcel } from '@/lib/exportExcel';
 import SendNoteModal from '@/components/SendNoteModal';
@@ -21,6 +21,16 @@ interface Employee {
 }
 
 const POSITION_CHOICES = ['senior', 'team lead', 'fresh', 'mid'];
+
+// Normalize position to ensure 'team lead' variants are stored consistently
+const normalizePosition = (position: string): string => {
+  const trimmed = position.trim().toLowerCase();
+  // Match any variation of "team lead/leader" and normalize to "team lead"
+  if (/^team[\s_\-]*(lead|leader)$/i.test(trimmed)) {
+    return 'team lead';
+  }
+  return trimmed;
+};
 
 export default function AdminEmployees() {
   const { user, loading, token } = useAuth();
@@ -52,6 +62,10 @@ export default function AdminEmployees() {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminSaving, setAdminSaving] = useState(false);
+  const [showCustomPosition, setShowCustomPosition] = useState(false);
+  const [showAddCustomPosition, setShowAddCustomPosition] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name?: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -114,6 +128,37 @@ export default function AdminEmployees() {
     setResetPasswordInput('');
     setShowResetPassword(false);
     setShowResetPasswordModal(true);
+  };
+
+  // Trigger delete confirmation modal
+  const handleDeleteEmployee = (empId: string, empName?: string) => {
+    if (!empId) return;
+    setDeleteCandidate({ id: empId, name: empName });
+  };
+
+  const performDeleteEmployee = async () => {
+    if (!deleteCandidate) return;
+    const { id: empId, name: empName } = deleteCandidate;
+    setDeleting(true);
+    const toastId = addToast('Deleting employee...', 'loading');
+    try {
+      const res = await fetch(`/api/employees/${empId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete employee');
+      }
+      setEmployees((prev) => (prev || []).filter((e) => e._id !== empId));
+      updateToast(toastId, `✅ ${empName || 'Employee'} deleted`, 'success');
+      if (editingId === empId) setEditingId(null);
+      setDeleteCandidate(null);
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to delete employee', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -232,7 +277,7 @@ export default function AdminEmployees() {
         name: editFormData.name,
         email: editFormData.email,
         phone: editFormData.phone,
-        position: editFormData.position,
+        position: normalizePosition(editFormData.position),
         salary: Number(editFormData.salary) || 0,
       };
 
@@ -277,7 +322,10 @@ export default function AdminEmployees() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(addFormData),
+        body: JSON.stringify({
+          ...addFormData,
+          position: normalizePosition(addFormData.position),
+        }),
       });
 
       if (!res.ok) {
@@ -423,6 +471,8 @@ export default function AdminEmployees() {
                     const conversionRate = emp.leadsCount && emp.leadsCount > 0 
                       ? ((emp.closedDealsCount || 0) / emp.leadsCount * 100).toFixed(1)
                       : '0';
+                    // Skip if emp doesn't have _id
+                    if (!emp || !emp._id) return null;
                     
                     return (
                       <tr
@@ -480,6 +530,13 @@ export default function AdminEmployees() {
                               title="Edit employee"
                             >
                               <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteCandidate({ id: emp._id, name: emp.name })}
+                              className="inline-block bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white p-2 rounded-lg transition-all"
+                              title="Delete employee"
+                            >
+                              <Trash2 size={18} />
                             </button>
                           </div>
                         </td>
@@ -577,18 +634,46 @@ export default function AdminEmployees() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Position</label>
-                    <select
-                      value={editFormData.position}
-                      onChange={(e) => setEditFormData({ ...editFormData, position: e.target.value })}
-                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900"
-                    >
-                      <option value="">Select Position</option>
-                      {POSITION_CHOICES.map((pos) => (
-                        <option key={pos} value={pos} className="capitalize">
-                          {pos.charAt(0).toUpperCase() + pos.slice(1)}
-                        </option>
-                      ))}
-                    </select>
+                    {!showCustomPosition ? (
+                      <div className="space-y-2">
+                        <select
+                          value={editFormData.position}
+                          onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                              setShowCustomPosition(true);
+                              setEditFormData({ ...editFormData, position: '' });
+                            } else {
+                              setEditFormData({ ...editFormData, position: e.target.value });
+                            }
+                          }}
+                          className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900"
+                        >
+                          <option value="">Select Position</option>
+                          {POSITION_CHOICES.map((pos) => (
+                            <option key={pos} value={pos} className="capitalize">
+                              {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                            </option>
+                          ))}
+                          <option value="__custom__">+ Custom Position</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editFormData.position}
+                          onChange={(e) => setEditFormData({ ...editFormData, position: e.target.value })}
+                          placeholder="Enter custom position"
+                          className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                        />
+                        <button
+                          onClick={() => setShowCustomPosition(false)}
+                          className="text-xs text-slate-400 hover:text-slate-300 underline"
+                        >
+                          Back to list
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Monthly Salary ($)</label>
@@ -611,6 +696,13 @@ export default function AdminEmployees() {
                 >
                   <Save size={18} />
                   Save Changes
+                </button>
+                <button
+                  onClick={() => editingId && setDeleteCandidate({ id: editingId, name: editFormData.name })}
+                  className="flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  Delete Employee
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
@@ -674,18 +766,46 @@ export default function AdminEmployees() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Position</label>
-                    <select
-                      value={addFormData.position}
-                      onChange={(e) => setAddFormData({ ...addFormData, position: e.target.value })}
-                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900"
-                    >
-                      <option value="">Select Position</option>
-                      {POSITION_CHOICES.map((pos) => (
-                        <option key={pos} value={pos} className="capitalize">
-                          {pos.charAt(0).toUpperCase() + pos.slice(1)}
-                        </option>
-                      ))}
-                    </select>
+                    {!showAddCustomPosition ? (
+                      <div className="space-y-2">
+                        <select
+                          value={addFormData.position}
+                          onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                              setShowAddCustomPosition(true);
+                              setAddFormData({ ...addFormData, position: '' });
+                            } else {
+                              setAddFormData({ ...addFormData, position: e.target.value });
+                            }
+                          }}
+                          className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900"
+                        >
+                          <option value="">Select Position</option>
+                          {POSITION_CHOICES.map((pos) => (
+                            <option key={pos} value={pos} className="capitalize">
+                              {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                            </option>
+                          ))}
+                          <option value="__custom__">+ Custom Position</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={addFormData.position}
+                          onChange={(e) => setAddFormData({ ...addFormData, position: e.target.value })}
+                          placeholder="Enter custom position"
+                          className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                        />
+                        <button
+                          onClick={() => setShowAddCustomPosition(false)}
+                          className="text-xs text-slate-400 hover:text-slate-300 underline"
+                        >
+                          Back to list
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Phone</label>
@@ -878,6 +998,47 @@ export default function AdminEmployees() {
                   className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600 flex items-center justify-center gap-2"
                 >
                   <X size={18} />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteCandidate && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-lg w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white">Confirm Delete</h2>
+                  <button
+                    onClick={() => setDeleteCandidate(null)}
+                    className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-slate-300">Are you sure you want to permanently delete <strong className="text-white">{deleteCandidate.name || 'this employee'}</strong>? This action cannot be undone.</p>
+                <p className="text-sm text-slate-400">All related assignments will be removed and the user will be deleted from the database.</p>
+              </div>
+
+              <div className="flex gap-3 p-6 border-t border-slate-600 bg-slate-900">
+                <button
+                  onClick={() => performDeleteEmployee()}
+                  disabled={deleting}
+                  className="flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Permanently'}
+                </button>
+                <button
+                  onClick={() => setDeleteCandidate(null)}
+                  disabled={deleting}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold transition-all border border-slate-600"
+                >
                   Cancel
                 </button>
               </div>

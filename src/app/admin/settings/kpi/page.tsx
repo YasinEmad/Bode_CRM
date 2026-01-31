@@ -310,7 +310,7 @@ export default function KPISettingsPage() {
                   {/* Indicator Header */}
                   <div className="mb-6">
                     <h3 className="text-xl font-bold text-white mb-1">
-                      {indicatorLabels[indicator.name]?.ar || indicator.name}
+                      {indicatorLabels[indicator.name]?.en || indicator.name}
                     </h3>
                     <p className="text-slate-400 text-sm">
                       {indicatorLabels[indicator.name]?.description}
@@ -321,11 +321,11 @@ export default function KPISettingsPage() {
                   <div className="mb-6">
                     <label className="block text-sm font-semibold text-slate-300 mb-2">
                       Target {indicator.name === 'attendance' && '(%)'}
-                      {indicator.name === 'deals' && '(عدد)'}
-                      {indicator.name === 'calls' && '(عدد)'}
-                      {indicator.name === 'meetings' && '(عدد)'}
-                      {indicator.name === 'assessments' && '(عدد)'}
-                      {indicator.name === 'requests' && '(عدد)'}
+                      {indicator.name === 'deals' && '(Count)'}
+                      {indicator.name === 'calls' && '(Count)'}
+                      {indicator.name === 'meetings' && '(Count)'}
+                      {indicator.name === 'assessments' && '(Count)'}
+                      {indicator.name === 'requests' && '(Count)'}
                     </label>
                     <input
                       type="number"
