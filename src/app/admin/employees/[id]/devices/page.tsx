@@ -17,6 +17,7 @@ export default function EmployeeDevicesPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [newDeviceId, setNewDeviceId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -68,8 +69,8 @@ export default function EmployeeDevicesPage() {
     }
   };
 
-  const handleRemoveDevice = async (deviceId: string) => {
-    if (!confirm('Remove this device?')) return;
+  const handleRemoveDevice = async (deviceId: string | null) => {
+    if (!deviceId) return;
     const toastId = addToast('Removing device...', 'loading');
     try {
       const res = await fetch(`/api/admin/users/${id}/device`, {
@@ -80,6 +81,7 @@ export default function EmployeeDevicesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || 'Failed to remove device');
       updateToast(toastId, 'Device removed', 'success');
+      setDeleteTargetId(null);
       await fetchEmployee();
     } catch (err) {
       updateToast(toastId, err instanceof Error ? err.message : 'Failed to remove device', 'error');
@@ -123,12 +125,12 @@ export default function EmployeeDevicesPage() {
             <p className="text-slate-400">No devices registered for this employee.</p>
           ) : (
             <ul className="space-y-2">
-              {deviceIds.map((d) => (
-                <li key={d} className="flex items-center justify-between bg-slate-900/40 p-3 rounded-md">
+              {deviceIds.map((d, idx) => (
+                <li key={`${d}-${idx}`} className="flex items-center justify-between bg-slate-900/40 p-3 rounded-md">
                   <code className="font-mono text-cyan-300 break-all">{d}</code>
                   <div className="flex items-center gap-2">
                     <button onClick={() => navigator.clipboard.writeText(d).then(() => addToast('Copied!', 'success'))} className="px-3 py-1 bg-slate-700 rounded-md text-sm text-white">Copy</button>
-                    <button onClick={() => handleRemoveDevice(d)} className="px-3 py-1 bg-rose-600 rounded-md text-sm text-white flex items-center gap-2"><Trash2 size={14}/> Remove</button>
+                    <button onClick={() => setDeleteTargetId(d)} className="px-3 py-1 bg-rose-600 rounded-md text-sm text-white flex items-center gap-2"><Trash2 size={14}/> Remove</button>
                   </div>
                 </li>
               ))}
@@ -146,6 +148,40 @@ export default function EmployeeDevicesPage() {
           </div>
           <p className="text-slate-400 text-sm mt-3">When an employee has one or more allowed devices they can check-in from them. For first-time registration the system may auto-register the first device. Removing a device prevents check-ins from that device.</p>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {deleteTargetId && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600">
+                <h2 className="text-2xl font-bold text-white">Remove Device</h2>
+                <p className="text-slate-400 text-sm mt-1">This device will no longer be allowed for check-ins.</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="bg-slate-900/40 border border-slate-700 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">Device ID:</p>
+                  <code className="font-mono text-cyan-300 text-sm break-all">{deleteTargetId}</code>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => handleRemoveDevice(deleteTargetId)}
+                    className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 rounded-lg font-semibold transition-all"
+                  >
+                    Remove Device
+                  </button>
+                  <button
+                    onClick={() => setDeleteTargetId(null)}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
