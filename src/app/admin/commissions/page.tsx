@@ -32,6 +32,7 @@ export default function AdminCommissions() {
   const [proofCommission, setProofCommission] = useState<Commission | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalAmount, setApprovalAmount] = useState('');
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -135,6 +136,31 @@ export default function AdminCommissions() {
       updateToast(toastId, 'Commission marked as paid!', 'success');
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Failed to mark as paid', 'error');
+    }
+  };
+
+  const handleDelete = async (commissionId: string | null) => {
+    if (!commissionId) return;
+
+    const toastId = addToast('Deleting commission...', 'loading');
+
+    try {
+      const res = await fetch(`/api/commissions/${commissionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to delete commission');
+
+      setCommissions((prev) => prev.filter((c) => c._id !== commissionId));
+      updateToast(toastId, 'Commission deleted', 'success');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to delete', 'error');
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -283,8 +309,17 @@ export default function AdminCommissions() {
                       onClick={() => setProofCommission(commission)}
                       className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
                     >
-                      الدليل
+                      Guide
                     </button>
+
+                    {(commission.status === 'rejected' || commission.status === 'paid') && (
+                      <button
+                        onClick={() => setDeleteTargetId(commission._id)}
+                        className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -376,24 +411,28 @@ export default function AdminCommissions() {
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
             <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-700">
               <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-indigo-600/20 to-purple-600/20">
-                <h2 className="text-2xl font-bold text-white">الدليل</h2>
+                <h2 className="text-2xl font-bold text-white">Guide</h2>
                 <button onClick={() => setProofCommission(null)} className="text-slate-400 hover:text-white p-2 rounded-lg"><X size={24} /></button>
               </div>
 
-              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
-                  <img src={proofCommission.dealId.proofImage} alt="proof" className="w-full object-contain rounded" />
-                ) : (
-                  <div className="text-slate-400">No proof image provided</div>
-                )}
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  <div className="w-full flex items-center justify-center">
+                    {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
+                      <img src={proofCommission.dealId.proofImage} alt="proof" className="w-full max-h-[60vh] object-contain rounded" />
+                    ) : (
+                      <div className="text-slate-400">No proof image provided</div>
+                    )}
+                  </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Info</h3>
-                  <p className="text-slate-200 whitespace-pre-wrap">{proofCommission.dealId && 'info' in proofCommission.dealId ? (proofCommission.dealId as any).info : 'No info provided'}</p>
+                  <div className="flex flex-col">
+                    <h3 className="text-sm font-semibold text-slate-300 mb-2">Info</h3>
+                    <div className="text-slate-200 whitespace-pre-wrap overflow-auto">{proofCommission.dealId && 'info' in proofCommission.dealId ? (proofCommission.dealId as any).info : 'No info provided'}</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 p-6 border-t border-slate-700 bg-slate-800">
+              <div className="flex flex-col md:flex-row gap-3 p-6 border-t border-slate-700 bg-slate-800">
                 {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
                   <a
                     href={proofCommission.dealId.proofImage}
@@ -432,6 +471,18 @@ export default function AdminCommissions() {
                       Reject
                     </button>
                   </>
+                )}
+
+                {(proofCommission.status === 'rejected' || proofCommission.status === 'paid') && (
+                  <button
+                    onClick={() => {
+                      setProofCommission(null);
+                      setDeleteTargetId(proofCommission._id);
+                    }}
+                    className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+                  >
+                    Delete
+                  </button>
                 )}
               </div>
             </div>
@@ -473,6 +524,36 @@ export default function AdminCommissions() {
                       setApprovingId(null);
                       setApprovalAmount('');
                     }}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Delete Confirmation Modal */}
+        {deleteTargetId && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600">
+                <h2 className="text-2xl font-bold text-white">Confirm Deletion</h2>
+                <p className="text-slate-400 text-sm mt-1">This will permanently delete the commission. This action cannot be undone.</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="text-sm text-slate-300">Are you sure you want to delete this commission?</div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => handleDelete(deleteTargetId)}
+                    className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 rounded-lg font-semibold transition-all"
+                  >
+                    Yes, Delete
+                  </button>
+                  <button
+                    onClick={() => setDeleteTargetId(null)}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600"
                   >
                     Cancel

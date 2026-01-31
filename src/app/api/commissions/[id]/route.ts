@@ -66,3 +66,36 @@ export async function PUT(
     return NextResponse.json({ error: 'Failed to update commission' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const token = extractToken(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    await connectDB();
+
+    const commission = await Commission.findByIdAndDelete(id)
+      .populate('dealId', 'name project proofImage notes')
+      .populate('employeeId', 'name');
+
+    if (!commission) {
+      return NextResponse.json({ error: 'Commission not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'Commission deleted', commission });
+  } catch (error) {
+    console.error('Error deleting commission:', error);
+    return NextResponse.json({ error: 'Failed to delete commission' }, { status: 500 });
+  }
+}
