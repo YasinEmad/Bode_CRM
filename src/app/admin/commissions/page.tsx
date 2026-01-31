@@ -73,6 +73,7 @@ export default function AdminCommissions() {
     const exportData = commissions.map((c) => ({
       'Deal Name': c.dealId?.name || 'Unknown Deal',
       'Project': c.dealId?.project || '—',
+      'Commission Rate': `${c.percentage}%`,
       'Client Phone': c.dealId?.phone || '—',
       'Employee': c.employeeId?.name || '—',
       'Commission Amount': c.amount,

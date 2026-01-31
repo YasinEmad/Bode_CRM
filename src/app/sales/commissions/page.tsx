@@ -90,6 +90,7 @@ export default function SalesCommissions() {
     const exportData = commissions.map((c) => ({
       'Deal Name': c.dealId?.name || 'Unknown Deal',
       'Project': c.dealId?.project || '—',
+      'Commission Rate': `${c.percentage}%`,
       'Commission Amount': c.amount,
       'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
       'Submitted': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
