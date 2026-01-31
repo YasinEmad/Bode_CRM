@@ -52,11 +52,7 @@ export default function AdminSettings() {
   }
   const isValid = validationErrors.length === 0;
 
-  // Employees device management
-  const [employees, setEmployees] = useState<Array<any>>([]);
-  const [loadingEmployees, setLoadingEmployees] = useState(true);
-  const [editingDeviceIdId, setEditingDeviceIdId] = useState<string | null>(null);
-  const [deviceIdEditValue, setDeviceIdEditValue] = useState<string>('');
+
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -67,54 +63,10 @@ export default function AdminSettings() {
   useEffect(() => {
     if (token) {
       fetchSettings();
-      fetchEmployees();
     }
   }, [token]);
 
-  const fetchEmployees = async () => {
-    setLoadingEmployees(true);
-    try {
-      const res = await fetch('/api/employees', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setEmployees(Array.isArray(data.employees) ? data.employees : []);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-      addToast('Failed to fetch employees', 'error');
-    } finally {
-      setLoadingEmployees(false);
-    }
-  };
 
-  const handleEditDevice = (emp: any) => {
-    setEditingDeviceIdId(emp._id);
-    setDeviceIdEditValue(emp.deviceId || '');
-  };
-
-  const handleSaveDevice = async (empId: string) => {
-    const toastId = addToast('Saving device id...', 'loading');
-    try {
-      const res = await fetch(`/api/employees/${empId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ deviceId: deviceIdEditValue || null }),
-      });
-
-      if (!res.ok) throw new Error('Failed to update device id');
-
-      const data = await res.json();
-      setEmployees(employees.map(e => (e._id === empId ? data.employee : e)));
-      updateToast(toastId, 'Device ID updated', 'success');
-      setEditingDeviceIdId(null);
-      setDeviceIdEditValue('');
-    } catch (error) {
-      updateToast(toastId, error instanceof Error ? error.message : 'Failed to update device id', 'error');
-    }
-  };
 
   const fetchSettings = async () => {
     try {
@@ -445,84 +397,6 @@ export default function AdminSettings() {
             )}
           </section>
 
-          {/* ... Keep Devices & Commission Sections exactly as is ... */}
-          {/* Employee Devices */}
-          <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
-             {/* ... (Same as previous code) ... */}
-              <button
-              className="w-full flex items-center justify-between px-6 py-4"
-              onClick={() => setOpenSection(openSection === 'devices' ? null : 'devices')}
-            >
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-white">Employee Devices</h2>
-              </div>
-              <ChevronDown className={`text-slate-300 transition-transform ${openSection === 'devices' ? 'rotate-180' : ''}`} />
-            </button>
-            {openSection === 'devices' && (
-              <div className="px-6 pb-6 pt-0">
-                 {/* ... Table Code ... */}
-                 {loadingEmployees ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
-                    </div>
-                  ) : employees.length === 0 ? (
-                    <p className="text-slate-400">No employees found</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-slate-900 border-b border-slate-600">
-                            <th className="px-4 py-3 text-left text-sm font-bold text-white">Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-white">Email</th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-white">Device ID</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-white">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {employees.map((emp) => (
-                            <tr key={emp._id} className="border-b border-slate-600 hover:bg-slate-700/40 transition-colors">
-                              <td className="px-4 py-3 text-sm text-white font-semibold">{emp.name}</td>
-                              <td className="px-4 py-3 text-sm text-slate-400">{emp.email}</td>
-                              <td className="px-4 py-3 text-sm text-slate-300">
-                                {editingDeviceIdId === emp._id ? (
-                                  <input
-                                    type="text"
-                                    value={deviceIdEditValue}
-                                    onChange={(e) => setDeviceIdEditValue(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white"
-                                  />
-                                ) : (
-                                  <div className="break-all">{emp.deviceId || <span className="text-slate-500">Not set</span>}</div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {editingDeviceIdId === emp._id ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() => handleSaveDevice(emp._id)}
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-md text-sm"
-                                    >Save</button>
-                                    <button
-                                      onClick={() => { setEditingDeviceIdId(null); setDeviceIdEditValue(''); }}
-                                      className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded-md text-sm"
-                                    >Cancel</button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() => handleEditDevice(emp)}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded-md text-sm"
-                                  >Edit</button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-              </div>
-            )}
-          </section>
 
           {/* Commission Rules removed — deprecated in admin settings */}
 
