@@ -71,7 +71,63 @@ export async function PUT(
         if (!proofImage || !info) {
           return NextResponse.json({ error: 'Proof image and info are required to close a lead' }, { status: 400 });
         }
-        updateData.proofImage = proofImage;
+        // Upload proofImage to ImageKit if it's a data URI, otherwise accept URL
+        if (typeof proofImage === 'string' && proofImage.startsWith('data:')) {
+          try {
+            if (!process.env.IMAGEKIT_PRIVATE_KEY) {
+              console.error('Missing IMAGEKIT_PRIVATE_KEY in environment');
+              return NextResponse.json({ error: 'Image upload not configured on server' }, { status: 500 });
+            }
+
+            const fileName = `proof_${Date.now()}.png`;
+            const form = new FormData();
+            form.append('file', proofImage);
+            form.append('fileName', fileName);
+            form.append('useUniqueFileName', 'true');
+
+            const privateKey = process.env.IMAGEKIT_PRIVATE_KEY || '';
+            const auth = 'Basic ' + Buffer.from(`${privateKey}:`).toString('base64');
+
+            const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+              method: 'POST',
+              headers: {
+                Authorization: auth,
+              },
+              body: form as any,
+            });
+
+            const uploadJson = await uploadRes.json();
+            if (!uploadRes.ok) {
+              console.error('ImageKit upload failed', uploadJson);
+              const message = uploadJson.message || (uploadJson.error && uploadJson.error.message) || 'ImageKit upload failed';
+              return NextResponse.json({ error: `Image upload failed: ${message}` }, { status: 500 });
+            }
+
+            // Prefer returned URL, fallback to configured endpoint + filePath
+            let imageUrl = uploadJson.url || '';
+            if ((!imageUrl || imageUrl === '') && process.env.IMAGEKIT_URL_ENDPOINT && uploadJson.filePath) {
+              imageUrl = `${process.env.IMAGEKIT_URL_ENDPOINT.replace(/\/$/, '')}/${uploadJson.filePath.replace(/^\//, '')}`;
+            }
+
+            if (!imageUrl) {
+              console.error('ImageKit did not return a valid URL', uploadJson);
+              return NextResponse.json({ error: 'Image upload succeeded but no URL was returned' }, { status: 500 });
+            }
+
+            updateData.proofImage = imageUrl;
+          } catch (err: any) {
+            console.error('Error uploading to ImageKit', err?.message ?? err);
+            // Provide a clearer message for common missing env or network issues
+            if (err?.name === 'FetchError' || err?.message?.includes('network')) {
+              return NextResponse.json({ error: 'Network error during image upload' }, { status: 502 });
+            }
+            return NextResponse.json({ error: 'Failed to upload proof image' }, { status: 500 });
+          }
+        } else {
+          // Already a URL (or not a data URI) — store as provided
+          updateData.proofImage = proofImage as any;
+        }
+
         updateData.info = info;
         updateData.status = 'closed_pending_approval';
       } else {
@@ -86,7 +142,46 @@ export async function PUT(
         updateData.notes = notes;
       }
     }
-    if (proofImage !== undefined) updateData.proofImage = proofImage;
+    // If proofImage was provided and wasn't handled above, upload it when necessary
+    if (proofImage !== undefined) {
+      if (typeof proofImage === 'string' && proofImage.startsWith('data:')) {
+        try {
+          const fileName = `proof_${Date.now()}.png`;
+          const form = new FormData();
+          form.append('file', proofImage);
+          form.append('fileName', fileName);
+
+          const privateKey = process.env.IMAGEKIT_PRIVATE_KEY || '';
+          const auth = 'Basic ' + Buffer.from(`${privateKey}:`).toString('base64');
+
+          const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+            method: 'POST',
+            headers: {
+              Authorization: auth,
+            },
+            body: form as any,
+          });
+
+          const uploadJson = await uploadRes.json();
+          if (!uploadRes.ok) {
+            console.error('ImageKit upload failed', uploadJson);
+            return NextResponse.json({ error: 'Failed to upload proof image' }, { status: 500 });
+          }
+
+          let imageUrl = uploadJson.url || '';
+          if ((!imageUrl || imageUrl === '') && process.env.IMAGEKIT_URL_ENDPOINT && uploadJson.filePath) {
+            imageUrl = `${process.env.IMAGEKIT_URL_ENDPOINT.replace(/\/$/, '')}/${uploadJson.filePath.replace(/^\//, '')}`;
+          }
+
+          updateData.proofImage = imageUrl;
+        } catch (err) {
+          console.error('Error uploading to ImageKit', err);
+          return NextResponse.json({ error: 'Failed to upload proof image' }, { status: 500 });
+        }
+      } else {
+        updateData.proofImage = proofImage as any;
+      }
+    }
     if (assignedTo !== undefined) {
       if (assignedTo) {
         try {

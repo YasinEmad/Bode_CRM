@@ -61,15 +61,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       try {
         const res = await fetch('/api/auth/me', {
-          headers: { 
+          headers: {
             'Authorization': `Bearer ${token}`,
           },
           credentials: 'include',
           signal: controller.signal,
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (res.ok) {
           const data = await res.json();
           console.log('[checkAuth] Session valid, user:', data.user.username);
@@ -81,9 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null);
           localStorage.removeItem('token');
         }
-      } catch (fetchError) {
+      } catch (fetchError: any) {
         clearTimeout(timeoutId);
-        console.error('CheckAuth fetch error:', fetchError);
+        // Treat aborted requests as non-errors (expected on slow connections)
+        if (fetchError.name === 'AbortError') {
+          console.debug('[checkAuth] Request aborted (timeout)');
+        } else {
+          console.error('CheckAuth fetch error:', fetchError);
+        }
+
         // Don't clear token on error - just mark loading as done
         // User will be redirected if needed by protected routes
         const userData = localStorage.getItem('user');

@@ -87,7 +87,39 @@ export default function SalesDashboard() {
     try {
       const body: any = { status: newStatus };
       if (extra?.notes !== undefined) body.notes = extra.notes;
-      if (extra?.proofImage !== undefined) body.proofImage = extra.proofImage;
+
+      // If proofImage is a data URI, upload it client-side to ImageKit
+      let proofImageToSend = extra?.proofImage;
+      if (typeof proofImageToSend === 'string' && proofImageToSend.startsWith('data:')) {
+        const publicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
+        if (publicKey) {
+          try {
+            const fileName = `proof_${Date.now()}.png`;
+            const form = new FormData();
+            form.append('file', proofImageToSend);
+            form.append('fileName', fileName);
+            form.append('publicKey', publicKey);
+            form.append('useUniqueFileName', 'true');
+
+            const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+              method: 'POST',
+              body: form,
+            });
+
+            const uploadJson = await uploadRes.json().catch(() => ({}));
+            if (!uploadRes.ok) {
+              console.warn('Client-side ImageKit upload failed, falling back to server upload', uploadJson);
+            } else if (uploadJson.url) {
+              proofImageToSend = uploadJson.url;
+            }
+          } catch (err) {
+            console.warn('Client-side ImageKit upload error, falling back to server upload', err);
+          }
+        }
+        // If no publicKey or client upload failed, proofImageToSend remains the data URI and the server will upload it
+      }
+
+      if (proofImageToSend !== undefined) body.proofImage = proofImageToSend;
       if (extra?.info !== undefined) body.info = extra.info;
       if (extra?.project !== undefined) body.project = extra.project;
 
