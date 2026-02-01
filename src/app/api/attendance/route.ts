@@ -14,6 +14,24 @@ function extractToken(req: NextRequest): string | null {
   return authHeader.slice(7);
 }
 
+// Parse time strings like "9", "09", "9:00", "09:00", "9 AM", "9:00 PM"
+function parseTimeString(timeStr: any, defaultHours = 18, defaultMinutes = 0) {
+  if (!timeStr || typeof timeStr !== 'string') return { hours: defaultHours, minutes: defaultMinutes };
+  const s = timeStr.trim().toUpperCase();
+  const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?\s*(AM|PM)?$/);
+  if (!m) return { hours: defaultHours, minutes: defaultMinutes };
+  let hours = parseInt(m[1], 10);
+  let minutes = m[2] ? parseInt(m[2], 10) : 0;
+  const meridiem = m[3];
+  if (meridiem) {
+    if (meridiem === 'PM' && hours < 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+  }
+  if (isNaN(hours) || isNaN(minutes)) return { hours: defaultHours, minutes: defaultMinutes };
+  hours = Math.max(0, Math.min(23, hours));
+  minutes = Math.max(0, Math.min(59, minutes));
+  return { hours, minutes };
+}
 
 
 export async function POST(req: NextRequest) {
@@ -234,29 +252,11 @@ export async function POST(req: NextRequest) {
     // Calculate if late based ONLY on the time set by admin
     // Ignore the date/calendar day - only compare the time of day
     const checkInTime = new Date();
-    
-    // Parse shift start time safely with trimming
-    let shiftStartHours = 18;  // Default 6 PM
-    let shiftStartMinutes = 0;
-    
-    if (settings.attendanceTime && typeof settings.attendanceTime === 'string') {
-      const timeStr = settings.attendanceTime.trim();
-      const parts = timeStr.split(':');
-      if (parts.length >= 2) {
-        shiftStartHours = parseInt(parts[0], 10);
-        shiftStartMinutes = parseInt(parts[1], 10);
-      }
-    }
 
-    // Validate parsed values
-    if (isNaN(shiftStartHours) || isNaN(shiftStartMinutes)) {
-      shiftStartHours = 18;
-      shiftStartMinutes = 0;
-    }
-
-    // Ensure hours and minutes are in valid range
-    shiftStartHours = Math.max(0, Math.min(23, shiftStartHours));
-    shiftStartMinutes = Math.max(0, Math.min(59, shiftStartMinutes));
+    // Robustly parse the shift start time (supports "9", "9:00", "9 AM", "21:00", etc.)
+    const parsedShift = parseTimeString((settings as any).attendanceTime, 18, 0);
+    let shiftStartHours = parsedShift.hours;
+    let shiftStartMinutes = parsedShift.minutes;
 
     // Determine if check-in is within valid shift time or after shift ends
     let isLate = false;
@@ -514,11 +514,9 @@ export async function GET(req: NextRequest) {
 
     // Determine today's shift date as in POST
     const today = new Date();
-    const shiftStartParts = (settings.attendanceTime || '18:00').trim().split(':');
-    let shiftStartHours = parseInt(shiftStartParts[0] || '18', 10);
-    let shiftStartMinutes = parseInt(shiftStartParts[1] || '0', 10);
-    if (isNaN(shiftStartHours)) shiftStartHours = 18;
-    if (isNaN(shiftStartMinutes)) shiftStartMinutes = 0;
+    const parsedShift = parseTimeString((settings as any).attendanceTime, 18, 0);
+    let shiftStartHours = parsedShift.hours;
+    let shiftStartMinutes = parsedShift.minutes;
     const shiftDuration = settings.shiftDuration || 9;
 
     const shiftStartTimeInMinutes = shiftStartHours * 60 + shiftStartMinutes;
