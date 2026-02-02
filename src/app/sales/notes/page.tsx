@@ -198,9 +198,9 @@ export default function NotesPage() {
                     {/* Sender Badge */}
                     <div className="flex-shrink-0">
                       <div
-                        className={`w-12 h-12 rounded-full bg-gradient-to-br ${getRoleColor(note.sender.role, note.sender.position)} flex items-center justify-center font-bold text-sm`}
+                        className={`w-12 h-12 rounded-full bg-gradient-to-br ${note.sender ? getRoleColor(note.sender.role, note.sender.position) : getRoleColor('', '')} flex items-center justify-center font-bold text-sm`}
                       >
-                        {note.sender.name.charAt(0).toUpperCase()}
+                        {note.sender?.name?.charAt(0).toUpperCase() || '?'}
                       </div>
                     </div>
 
@@ -208,24 +208,24 @@ export default function NotesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-bold text-white">
-                          {note.sender.name}
+                          {note.sender?.name || 'Unknown Sender'}
                         </h3>
-                        {note.sender.position && (
+                        {note.sender?.position && (
                           <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded-full whitespace-nowrap">
                             {note.sender.position}
                           </span>
                         )}
                         <span
                           className={`text-xs px-2 py-1 rounded-full capitalize font-semibold ${
-                            note.sender.role === 'admin'
+                            note.sender?.role === 'admin'
                               ? 'bg-red-600/20 text-red-400'
                               : 'bg-blue-600/20 text-blue-400'
                           }`}
                         >
-                          {note.sender.role}
+                          {note.sender?.role || 'user'}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-400">@{note.sender.username}</p>
+                      <p className="text-sm text-slate-400">@{note.sender?.username || 'unknown'}</p>
                     </div>
                   </div>
 
@@ -267,7 +267,7 @@ export default function NotesPage() {
                   </div>
 
                   <button
-                    onClick={() => handleDeleteNote(note._id, note.sender.name)}
+                    onClick={() => handleDeleteNote(note._id, note.sender?.name || 'Unknown Sender')}
                     className="text-slate-400 hover:text-red-400 transition-colors p-2 hover:bg-slate-700/50 rounded-lg"
                     title="Delete note"
                   >
