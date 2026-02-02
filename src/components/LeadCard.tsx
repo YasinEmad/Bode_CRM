@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Edit2, X, Save } from 'lucide-react';
+import { Phone, Edit2, X, Save } from 'lucide-react';
 
 interface LeadCardProps {
   id: string;
@@ -50,6 +50,11 @@ export default function LeadCard({
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [callConfirmation, setCallConfirmation] = useState<{ isOpen: boolean; phone: string; leadName: string }>({
+    isOpen: false,
+    phone: '',
+    leadName: '',
+  });
 
   const statusColor = statusColors[status] || { bg: 'from-slate-600 to-slate-700', text: 'text-slate-100', border: 'border-slate-500', label: status, icon: '•' };
 
@@ -66,17 +71,16 @@ export default function LeadCard({
     }
   };
 
-  const handleEmail = () => {
-    try {
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
-      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      try {
-        window.location.href = `mailto:${email}`;
-      } catch (err2) {
-        console.error('Failed to open mail client:', err2);
-      }
+  const handleCall = () => {
+    if (!phone) {
+      console.error('No phone number available');
+      return;
     }
+    setCallConfirmation({
+      isOpen: true,
+      phone: phone,
+      leadName: name,
+    });
   };
 
   const handleSaveNotes = () => {
@@ -138,11 +142,11 @@ export default function LeadCard({
           <span>WhatsApp</span>
         </button>
         <button
-          onClick={handleEmail}
-          className="flex-1 min-w-[80px] bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1"
+          onClick={handleCall}
+          className="flex-1 min-w-[80px] bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1"
         >
-          <Mail size={16} className="hidden sm:block" />
-          <span>Email</span>
+          <Phone size={16} className="hidden sm:block" />
+          <span>Call</span>
         </button>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -336,7 +340,58 @@ export default function LeadCard({
         </div>
       )}
 
-      
+      {/* Call Confirmation Modal */}
+      {callConfirmation.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600/20 to-red-600/10 border-b border-red-500/30 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-500/20 p-3 rounded-lg">
+                  <Phone className="text-red-400" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-white">Initiate Call</h3>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6 space-y-4">
+              <p className="text-slate-300">
+                هل أنت متأكد أنك تريد الاتصال على رقم الهاتف التالي؟
+              </p>
+              <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
+                <p className="text-xs text-slate-400 mb-2">Lead Name:</p>
+                <p className="text-sm font-semibold text-blue-400 mb-4">{callConfirmation.leadName}</p>
+                <p className="text-xs text-slate-400 mb-2">Phone Number:</p>
+                <p className="text-lg font-bold text-white font-mono">{callConfirmation.phone}</p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-700 bg-slate-900/50">
+              <button
+                onClick={() => setCallConfirmation({ isOpen: false, phone: '', leadName: '' })}
+                className="flex-1 px-4 py-2 text-slate-300 border border-slate-600 rounded-lg hover:bg-slate-700/50 hover:text-white transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const phoneNumber = callConfirmation.phone.replace(/\D/g, '');
+                  if (phoneNumber) {
+                    window.location.href = `tel:${phoneNumber}`;
+                    setCallConfirmation({ isOpen: false, phone: '', leadName: '' });
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-red-500/50"
+              >
+                <Phone size={18} />
+                Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

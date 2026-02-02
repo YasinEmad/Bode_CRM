@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Edit2, Mail, X, Save, Plus } from 'lucide-react';
+import { Loader, Edit2, Phone, Mail, X, Save, Plus, AlertTriangle } from 'lucide-react';
 
 interface Lead {
   _id: string;
@@ -49,6 +49,11 @@ export default function SalesLeads() {
     project: '',
     source: 'other',
     notes: '',
+  });
+  const [callConfirmation, setCallConfirmation] = useState<{ isOpen: boolean; phone: string; leadName: string }>({
+    isOpen: false,
+    phone: '',
+    leadName: '',
   });
 
   useEffect(() => {
@@ -366,25 +371,20 @@ export default function SalesLeads() {
                     </button>
                     <button
                       onClick={() => {
-                        try {
-                          const email = lead.email || '';
-                          if (!email) {
-                            addToast('No client email available', 'error');
-                            return;
-                          }
-                          const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
-                          window.open(gmailUrl, '_blank', 'noopener,noreferrer');
-                        } catch (err) {
-                          try {
-                            window.location.href = `mailto:${lead.email}`;
-                          } catch (err2) {
-                            console.error('Failed to open mail client:', err2);
-                          }
+                        if (!lead.phone) {
+                          addToast('No phone number available', 'error');
+                          return;
                         }
+                        setCallConfirmation({
+                          isOpen: true,
+                          phone: lead.phone,
+                          leadName: lead.name,
+                        });
                       }}
-                      className="flex-1 bg-blue-600/90 text-white py-2 rounded-md text-sm"
+                      className="flex-1 bg-red-600/90 text-white py-2 rounded-md text-sm flex items-center justify-center gap-2"
                     >
-                      Email
+                      <Phone size={16} />
+                      Call
                     </button>
                     <button
                       onClick={() => handleEditLead(lead)}
@@ -478,26 +478,20 @@ export default function SalesLeads() {
                           </button>
                           <button
                             onClick={() => {
-                              try {
-                                const email = lead.email || '';
-                                if (!email) {
-                                  addToast('No client email available', 'error');
-                                  return;
-                                }
-                                const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
-                                window.open(gmailUrl, '_blank', 'noopener,noreferrer');
-                              } catch (err) {
-                                try {
-                                  window.location.href = `mailto:${lead.email}`;
-                                } catch (err2) {
-                                  console.error('Failed to open mail client:', err2);
-                                }
+                              if (!lead.phone) {
+                                addToast('No phone number available', 'error');
+                                return;
                               }
+                              setCallConfirmation({
+                                isOpen: true,
+                                phone: lead.phone,
+                                leadName: lead.name,
+                              });
                             }}
-                            title="Email"
-                            className="p-2 text-blue-400 hover:bg-blue-500 hover:bg-opacity-20 rounded-lg transition"
+                            title="Call"
+                            className="p-2 text-red-400 hover:bg-red-500 hover:bg-opacity-20 rounded-lg transition"
                           >
-                            <Mail size={18} />
+                            <Phone size={18} />
                           </button>
                           <button
                             onClick={() => handleEditLead(lead)}
@@ -744,6 +738,61 @@ export default function SalesLeads() {
                   className="w-full sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-semibold transition border border-slate-600"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Call Confirmation Modal */}
+        {callConfirmation.isOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 overflow-hidden">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-red-600/20 to-red-600/10 border-b border-red-500/30 px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-500/20 p-3 rounded-lg">
+                    <Phone className="text-red-400" size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Initiate Call</h3>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-6 space-y-4">
+                <p className="text-slate-300">
+                  هل أنت متأكد أنك تريد الاتصال على رقم الهاتف التالي؟
+                </p>
+                <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
+                  <p className="text-xs text-slate-400 mb-2">Lead Name:</p>
+                  <p className="text-sm font-semibold text-blue-400 mb-4">{callConfirmation.leadName}</p>
+                  <p className="text-xs text-slate-400 mb-2">Phone Number:</p>
+                  <p className="text-lg font-bold text-white font-mono">{callConfirmation.phone}</p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 px-6 py-4 border-t border-slate-700 bg-slate-900/50">
+                <button
+                  onClick={() => setCallConfirmation({ isOpen: false, phone: '', leadName: '' })}
+                  className="flex-1 px-4 py-2 text-slate-300 border border-slate-600 rounded-lg hover:bg-slate-700/50 hover:text-white transition-all font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const phoneNumber = callConfirmation.phone.replace(/\D/g, '');
+                    if (phoneNumber) {
+                      window.location.href = `tel:${phoneNumber}`;
+                      setCallConfirmation({ isOpen: false, phone: '', leadName: '' });
+                    } else {
+                      addToast('Invalid phone number', 'error');
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-red-500/50"
+                >
+                  <Phone size={18} />
+                  Call
                 </button>
               </div>
             </div>
