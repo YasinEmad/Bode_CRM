@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
       downPaymentPercentage,
       downPaymentAmount,
       attachments: attachments || [],
+      project: body.project || undefined,
       info,
     });
 
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
           clientName: dealClosing.clientName,
           clientNumber: String(dealClosing.clientNumber || ''),
           developer: dealClosing.developer,
+          project: dealClosing.project || (updatedLead as any).project || '',
         });
         
         console.log('[DEAL-CLOSING] Commission created successfully:');

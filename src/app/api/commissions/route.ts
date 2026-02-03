@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Commission from '@/models/Commission';
+import DealClosing from '@/models/DealClosing';
 import Lead from '@/models/Lead';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
@@ -38,8 +39,8 @@ export async function GET(req: NextRequest) {
     }
 
     const commissions = await Commission.find(query)
-      // dealId refers to DealClosing and we want key client fields
-      .populate('dealId', 'clientName clientNumber developer attachments info userId')
+      // dealId refers to DealClosing and we want key client fields (include project)
+      .populate('dealId', 'clientName clientNumber developer project attachments info userId')
       .populate('employeeId', 'name')
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });
@@ -72,13 +73,13 @@ export async function POST(req: NextRequest) {
 
     const { dealId, employeeId, amount, percentage: percentageFromBody } = await req.json();
 
-    // Verify the lead exists and belongs to the employee
-    const lead = await Lead.findById(dealId);
-    if (!lead) {
+    // Verify the deal exists (dealId references DealClosing)
+    const deal = await DealClosing.findById(dealId);
+    if (!deal) {
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     }
 
-    // Admin must provide `amount`. Do not auto-calculate from lead/project or position.
+    // Admin must provide `amount`. Do not auto-calculate from deal/project or position.
     if (amount === undefined || amount === null || isNaN(Number(amount))) {
       return NextResponse.json({ error: 'Amount is required and must be numeric' }, { status: 400 });
     }
@@ -89,6 +90,10 @@ export async function POST(req: NextRequest) {
       amount: Number(amount),
       percentage: percentageFromBody !== undefined ? Number(percentageFromBody) : undefined,
       status: 'pending',
+      clientName: deal.clientName || '',
+      clientNumber: String(deal.clientNumber || ''),
+      developer: deal.developer || '',
+      project: deal.project || '',
     });
 
     return NextResponse.json({ commission }, { status: 201 });

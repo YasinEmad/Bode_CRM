@@ -8,6 +8,7 @@ interface CloseDealModalProps {
   leadId: string;
   leadName: string;
   leadPhone: string;
+  leadProject?: string;
   onClose: () => void;
   onSubmit: (formData: DealClosingFormData) => Promise<void>;
   isSubmitting: boolean;
@@ -19,6 +20,7 @@ export interface DealClosingFormData {
   clientName: string;
   clientNumber: string;
   developer: string;
+  project?: string;
   unitCode: number;
   unitArea: number;
   unitType: string;
@@ -59,6 +61,7 @@ export default function CloseDealModal({
   leadId,
   leadName,
   leadPhone,
+  leadProject,
   onClose,
   onSubmit,
   isSubmitting,
@@ -71,6 +74,7 @@ export default function CloseDealModal({
     clientName: '',
     clientNumber: '',
     developer: '',
+    project: leadProject || '',
     unitCode: 0,
     unitArea: 0,
     unitType: 'Apartment',
@@ -228,7 +232,7 @@ export default function CloseDealModal({
     e.preventDefault();
 
     // Validate required fields
-    if (!formData.clientName || !formData.clientNumber || !formData.developer || !formData.info) {
+    if (!formData.clientName || !formData.clientNumber || !formData.developer || !formData.project || !formData.info) {
       alert('Please fill in all required fields');
       return;
     }
@@ -334,6 +338,19 @@ export default function CloseDealModal({
                 value={formData.developer}
                 onChange={handleInputChange}
                 placeholder="Developer"
+                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Project
+              </label>
+              <input
+                type="text"
+                name="project"
+                value={formData.project}
+                onChange={handleInputChange}
+                placeholder="Project Name"
                 className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
               />
             </div>

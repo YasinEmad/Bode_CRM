@@ -12,6 +12,10 @@ export interface ICommission extends Document {
   approvalDate?: Date;
   rejectionReason?: string;
   rejectionNote?: string;
+  clientName?: string;
+  clientNumber?: string;
+  developer?: string;
+  project?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +36,10 @@ const CommissionSchema = new Schema<ICommission>(
       type: Number,
       required: true,
     },
+    clientName: String,
+    clientNumber: String,
+    developer: String,
+    project: String,
     percentage: {
       type: Number,
     },

@@ -218,6 +218,7 @@ export async function PUT(
           employeeId: updatedLead.assignedTo,
           amount: 0,
           status: 'pending',
+          project: updatedLead.project || '',
         });
       }
     }

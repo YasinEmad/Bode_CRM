@@ -511,6 +511,7 @@ export default function SalesLeads() {
             leadId={closingLeadId!}
             leadName={leads.find((l) => l._id === closingLeadId)?.name || ''}
             leadPhone={leads.find((l) => l._id === closingLeadId)?.phone || ''}
+            leadProject={leads.find((l) => l._id === closingLeadId)?.project || ''}
             onClose={() => setClosingLeadId(null)}
             isSubmitting={isSubmittingClose}
             token={token || ''}

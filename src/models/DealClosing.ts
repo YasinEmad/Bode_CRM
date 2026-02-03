@@ -12,6 +12,7 @@ export interface IDealClosing extends Document {
   unitType: 'Apartment' | 'Studio' | 'Duplex' | 'Penthouse' | 'Villa' | 'Twin House' | 'Townhouse' | 'Chalet' | 'Loft' | 'Shop' | 'Retail' | 'Showroom' | 'Mall Unit' | 'Office' | 'Administrative Unit' | 'Clinic';
   contractPrice: number;
   contractDate: Date;
+  project?: string;
   finishingType: 'Fully finished' | 'Semi-finished' | 'Not finished';
   deliveryDate: number; // Year
   paymentPlan: '0' | '1 year' | '2 years' | '3 years' | '4 years' | '5 years' | '6 years' | '7 years' | '8 years' | '9 years' | '10 years' | '11 years' | '12 years' | '13 years' | '14 years' | '15 years';
@@ -85,6 +86,10 @@ const DealClosingSchema = new Schema<IDealClosing>(
     contractPrice: {
       type: Number,
       required: true,
+    },
+    project: {
+      type: String,
+      default: '',
     },
     contractDate: {
       type: Date,

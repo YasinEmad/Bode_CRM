@@ -136,7 +136,7 @@ export default function AdminCommissions() {
       const exportData = enriched.map(({ commission: c, deal }) => ({
         'Deal Name': deal?.clientName || (c.dealId as any)?.clientName || 'Unknown',
         'Client Name': deal?.clientName || (c.dealId as any)?.clientName || 'Unknown',
-        'Project': deal?.developer || (c.dealId as any)?.developer || '—',
+        'Project': deal?.project || (c.dealId as any)?.project || (c as any).project || '—',
         'Developer': deal?.developer || (c.dealId as any)?.developer || '—',
         'Commission Rate': `${c.percentage}%`,
         'Client Phone': deal?.clientNumber || (c.dealId as any)?.clientNumber || '—',
@@ -362,6 +362,7 @@ export default function AdminCommissions() {
                   <thead className="bg-slate-900/60">
                     <tr>
                       <th className="px-4 py-3 text-slate-300">Client</th>
+                      <th className="px-4 py-3 text-slate-300">Project</th>
                       <th className="px-4 py-3 text-slate-300">Employee</th>
                       <th className="px-4 py-3 text-slate-300">Phone</th>
                       <th className="px-4 py-3 text-slate-300">Amount</th>
@@ -373,6 +374,7 @@ export default function AdminCommissions() {
                     {filteredCommissions.map((commission) => (
                       <tr key={commission._id} className="hover:bg-slate-700/40">
                         <td className="px-4 py-3 text-white font-semibold">{(commission.dealId as any)?.clientName || 'Unknown'}</td>
+                        <td className="px-4 py-3 text-slate-300">{(commission as any).project || (commission.dealId as any)?.project || '—'}</td>
                         <td className="px-4 py-3 text-slate-300">{commission.employeeId?.name || '—'}</td>
                         <td className="px-4 py-3 text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</td>
                         <td className="px-4 py-3 text-emerald-400">${commission.amount.toLocaleString()}</td>
@@ -420,6 +422,7 @@ export default function AdminCommissions() {
                         <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Client</p>
                         <p className="text-xl font-semibold text-white">{(commission.dealId as any)?.clientName || 'Unknown'}</p>
                         <p className="text-slate-400 text-sm mt-1">{(commission.dealId as any)?.developer || '—'}</p>
+                        <p className="text-slate-400 text-sm mt-1">{(commission as any).project || (commission.dealId as any)?.project || ''}</p>
                       </div>
 
                       <div className="text-right">

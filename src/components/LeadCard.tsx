@@ -253,6 +253,7 @@ export default function LeadCard({
           leadId={id}
           leadName={name}
           leadPhone={phone}
+          leadProject={project}
           onClose={() => setShowCloseModal(false)}
           isSubmitting={isSubmittingClose}
           token={token || ''}
