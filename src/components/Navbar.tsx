@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Menu, X, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import NotificationsBell from './NotificationsBell';
 
 interface NavLink {
   href: string;
@@ -156,6 +157,7 @@ export default function Navbar() {
                   <p className="text-xs sm:text-sm font-medium">{user.name}</p>
                   <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                 </div>
+                {user.role === 'sales' && <NotificationsBell />}
                 {user.role === 'sales' && (
                   <Link
                     href="/sales/notes"

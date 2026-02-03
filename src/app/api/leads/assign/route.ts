@@ -4,6 +4,7 @@ import Lead from '@/models/Lead';
 import User from '@/models/User';
 import Team from '@/models/Team';
 import AssignmentLog from '@/models/AssignmentLog';
+import Notification from '@/models/Notification';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -41,6 +42,22 @@ export async function POST(req: NextRequest) {
       lead.assignedTo = employeeId || null;
       await lead.save();
       await AssignmentLog.create({ lead: lead._id, from, to: employeeId || null, changedBy: payload.userId, reason: reason || '' });
+      
+      // إنشاء إشعار للموظف الذي تم إسناد الـ lead له
+      if (employeeId) {
+        const employee = await User.findById(employeeId);
+        if (employee) {
+          await Notification.create({
+            userId: employeeId,
+            type: 'new_lead',
+            title: 'New Lead',
+            message: `A new lead has been assigned to you: ${lead.name}`,
+            leadId: lead._id,
+            fromUser: payload.userId,
+          });
+        }
+      }
+      
       return NextResponse.json({ lead }, { status: 200 });
     }
 
@@ -64,6 +81,23 @@ export async function POST(req: NextRequest) {
       lead.assignedTo = employeeId || null;
       await lead.save();
       await AssignmentLog.create({ lead: lead._id, from, to: employeeId || null, changedBy: payload.userId, reason: reason || '' });
+      
+      // إنشاء إشعار للموظف الذي تم إسناد الـ lead له
+      if (employeeId && employeeId !== payload.userId) {
+        const employee = await User.findById(employeeId);
+        const teamLeader = await User.findById(payload.userId);
+        if (employee && teamLeader) {
+          await Notification.create({
+            userId: employeeId,
+            type: 'new_lead',
+            title: 'New Lead from Team Leader',
+            message: `A new lead has been assigned to you by ${teamLeader.name}: ${lead.name}`,
+            leadId: lead._id,
+            fromUser: payload.userId,
+          });
+        }
+      }
+      
       return NextResponse.json({ lead }, { status: 200 });
     }
 

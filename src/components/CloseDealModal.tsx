@@ -229,7 +229,7 @@ export default function CloseDealModal({
 
     // Validate required fields
     if (!formData.clientName || !formData.clientNumber || !formData.developer || !formData.info) {
-      alert('الرجاء ملء جميع الحقول المطلوبة');
+      alert('Please fill in all required fields');
       return;
     }
 
@@ -264,7 +264,7 @@ export default function CloseDealModal({
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-slate-700/20 bg-slate-800/70 sticky top-0">
           <div>
-            <h2 className="text-2xl font-bold text-white">إغلاق الصفقة</h2>
+            <h2 className="text-2xl font-bold text-white">Close Deal</h2>
             <p className="text-slate-400 text-sm mt-1">
               {leadName} • {leadPhone}
             </p>
@@ -302,7 +302,7 @@ export default function CloseDealModal({
                 name="clientName"
                 value={formData.clientName}
                 onChange={handleInputChange}
-                placeholder="اسم العميل"
+                placeholder="Client Name"
                 className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
               />
             </div>
@@ -319,7 +319,7 @@ export default function CloseDealModal({
                 name="clientNumber"
                 value={formData.clientNumber}
                 onChange={handleInputChange}
-                placeholder="رقم العميل"
+                placeholder="Client Number"
                 className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
               />
             </div>
@@ -333,7 +333,7 @@ export default function CloseDealModal({
                 name="developer"
                 value={formData.developer}
                 onChange={handleInputChange}
-                placeholder="المطور"
+                placeholder="Developer"
                 className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
               />
             </div>
@@ -399,7 +399,7 @@ export default function CloseDealModal({
                 name="contractPrice"
                 value={formData.contractPrice}
                 onChange={handleInputChange}
-                placeholder="سعر العقد"
+                placeholder="Contract Price"
                 className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
               />
             </div>
@@ -445,7 +445,7 @@ export default function CloseDealModal({
                 name="deliveryDate"
                 value={formData.deliveryDate}
                 onChange={handleInputChange}
-                placeholder="سنة التسليم"
+                placeholder="Delivery Year"
                 min="2025"
                 max="2050"
                 className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
@@ -500,7 +500,7 @@ export default function CloseDealModal({
               name="downPaymentAmount"
               value={formData.downPaymentAmount}
               onChange={handleInputChange}
-              placeholder="مبلغ الدفعة المقدمة"
+              placeholder="Down Payment Amount"
               className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
             />
           </div>
@@ -561,7 +561,7 @@ export default function CloseDealModal({
               name="info"
               value={formData.info}
               onChange={handleInputChange}
-              placeholder="معلومات إضافية عن الصفقة"
+              placeholder="Additional deal information"
               rows={4}
               className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
             />
@@ -575,13 +575,13 @@ export default function CloseDealModal({
             disabled={isSubmitting}
             className="w-full sm:flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition shadow-sm"
           >
-            {isSubmitting ? 'جاري إغلاق الصفقة...' : 'إغلاق الصفقة'}
+            {isSubmitting ? 'Closing Deal...' : 'Close Deal'}
           </button>
           <button
             onClick={onClose}
             className="w-full sm:flex-1 bg-slate-700/80 hover:bg-slate-700 text-white py-3 rounded-lg font-semibold transition border border-slate-600/30"
           >
-            إلغاء
+            Cancel
           </button>
         </div>
       </div>

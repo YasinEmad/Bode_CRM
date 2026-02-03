@@ -4,6 +4,7 @@ import Lead from '@/models/Lead';
 import Commission from '@/models/Commission';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
+import Notification from '@/models/Notification';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -40,6 +41,38 @@ export async function PUT(req: NextRequest) {
       { _id: { $in: leadIds } },
       { assignedTo: employeeId || null }
     );
+
+    // إنشاء إشعارات للموظف الذي تم إسناد الـ leads له
+    if (employeeId) {
+      const employee = await User.findById(employeeId);
+      if (employee) {
+        const leads = await Lead.find({ _id: { $in: leadIds } }).limit(5); // عرض أول 5 leads كمثال
+        
+        // إنشاء إشعار واحد لكل lead أو إشعار واحد عام إذا كانت العدد كبيراً
+        if (leadIds.length <= 5) {
+          for (const lead of leads) {
+            await Notification.create({
+              userId: employeeId,
+              type: 'new_lead',
+              title: 'New Lead',
+              message: `A new lead has been assigned to you: ${lead.name}`,
+              leadId: lead._id,
+              fromUser: payload.userId,
+            });
+          }
+        } else {
+          // إشعار واحد عام عن عدد الـ leads
+          await Notification.create({
+            userId: employeeId,
+            type: 'new_lead',
+            title: 'Multiple New Leads',
+            message: `${leadIds.length} new leads have been assigned to you`,
+            leadId: leads[0]?._id || leadIds[0],
+            fromUser: payload.userId,
+          });
+        }
+      }
+    }
 
     // Do not auto-create commissions when assigning leads. Admin must set commission values manually.
 
