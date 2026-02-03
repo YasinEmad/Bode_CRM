@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   name: string;
   role: 'admin' | 'sales';
+  createdBy?: mongoose.Types.ObjectId | null;
   phone?: string;
   position?: string; // e.g., 'Sales Junior', 'Sales Senior', 'Team Leader'
   salary?: number; // Monthly salary
@@ -64,6 +65,11 @@ const UserSchema = new Schema<IUser>(
     teamId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Team',
+      default: null,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       default: null,
     },
   },

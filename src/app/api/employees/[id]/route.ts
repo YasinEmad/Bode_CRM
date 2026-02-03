@@ -36,6 +36,19 @@ export async function DELETE(
     const employee = await User.findById(id);
     if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
 
+    // Prevent deleting yourself
+    const actor = await User.findById(payload.userId);
+    if (!actor) return NextResponse.json({ error: 'Actor not found' }, { status: 401 });
+
+    if (String(actor._id) === String(employee._id)) {
+      return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
+    }
+
+    // Prevent a child admin from deleting their creator admin
+    if (employee.role === 'admin' && actor.createdBy && String(actor.createdBy) === String(employee._id)) {
+      return NextResponse.json({ error: 'Forbidden: cannot delete your creator admin' }, { status: 403 });
+    }
+
     // Remove user from any team members arrays
     await Team.updateMany({}, { $pull: { members: id } });
     // If user is leader of any team, unset leader

@@ -38,7 +38,9 @@ export async function GET(req: NextRequest) {
 
     // Get all team leaders (users who lead a team)
     const teamLeaders = await Team.find().populate('leader', '_id name').exec();
-    const leaderIds = teamLeaders.map((team) => team.leader._id);
+    // Filter out teams without a leader to avoid runtime errors
+    const validTeamLeaders = teamLeaders.filter((team: any) => team.leader && team.leader._id);
+    const leaderIds = validTeamLeaders.map((team: any) => team.leader._id);
 
     // Fetch performance data for all team leaders for the given month
     const performances = await TeamLeaderPerformance.find({
@@ -47,27 +49,32 @@ export async function GET(req: NextRequest) {
     }).populate('userId', '_id name');
 
     // Create a map of performance data
-    const performanceMap = new Map(performances.map((p) => [p.userId._id.toString(), p]));
+    const performanceMap = new Map(performances.map((p: any) => [String(p.userId._id || p.userId), p]));
 
     // Build response with all team leaders, creating empty records if needed
     const leaderPerformances = await Promise.all(
-      teamLeaders.map(async (team) => {
-        const leader = team.leader;
-        const performance = performanceMap.get(leader._id.toString());
+      validTeamLeaders.map(async (team) => {
+        const leader = team.leader as any;
+        const leaderIdStr = String(leader._id);
+        const performance = performanceMap.get(leaderIdStr);
 
         if (performance) {
           return {
-            ...performance.toObject(),
-            leaderName: leader.name,
+            userId: String(performance.userId._id || performance.userId),
+            leaderName: leader.name || '',
+            month: performance.month,
+            calls: performance.calls,
+            assessments: performance.assessments,
+            meetings: performance.meetings,
+            requests: performance.requests,
           };
         }
 
         // Return empty performance record for new leaders
         return {
-          _id: undefined,
-          userId: leader._id,
+          userId: leaderIdStr,
           month: month,
-          leaderName: leader.name,
+          leaderName: leader.name || '',
           calls: { week1: 0, week2: 0, week3: 0, week4: 0 },
           assessments: { week1: 0, week2: 0, week3: 0, week4: 0 },
           meetings: { week1: 0, week2: 0, week3: 0, week4: 0 },
