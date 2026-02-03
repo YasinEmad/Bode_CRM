@@ -412,62 +412,81 @@ export default function AdminCommissions() {
               </div>
             ) : (
               <div className="grid gap-6">
-                {filteredCommissions.map((commission) => (
-                  <div
-                    key={commission._id}
-                    className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-md p-4 border border-slate-700 hover:shadow-lg transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3 gap-3">
-                      <div>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Client</p>
-                        <p className="text-xl font-semibold text-white">{(commission.dealId as any)?.clientName || 'Unknown'}</p>
-                        <p className="text-slate-400 text-sm mt-1">{(commission.dealId as any)?.developer || '—'}</p>
-                        <p className="text-slate-400 text-sm mt-1">{(commission as any).project || (commission.dealId as any)?.project || ''}</p>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-slate-400 text-[11px] uppercase">Amount</p>
-                        <p className="text-xl font-semibold text-emerald-400">${commission.amount.toLocaleString()}</p>
-                        <div className="mt-2">
-                          <span className={`px-2 py-0.5 rounded text-sm font-medium flex items-center gap-2 ${statusBadge(commission.status)}`}>
-                            {commission.status === 'pending' && <Clock size={12} />}
-                            {commission.status === 'approved' && <CheckCircle size={12} />}
-                            {commission.status === 'rejected' && <XCircle size={12} />}
-                            {commission.status === 'paid' && <CheckCircle size={12} />}
-                            {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
-                          </span>
+                {filteredCommissions.map((commission) => {
+                  const projectName = (commission as any).project || (commission.dealId as any)?.project || '';
+                  return (
+                    <div
+                      key={commission._id}
+                      className={`rounded-xl shadow-md border-l-4 transition-all hover:shadow-lg ${
+                        commission.status === 'pending'
+                          ? 'bg-gradient-to-br from-slate-800 to-slate-700 border-yellow-500'
+                          : commission.status === 'approved'
+                          ? 'bg-gradient-to-br from-slate-800 to-slate-700 border-emerald-500'
+                          : commission.status === 'rejected'
+                          ? 'bg-gradient-to-br from-slate-800 to-slate-700 border-red-500'
+                          : 'bg-gradient-to-br from-slate-800 to-slate-700 border-blue-500'
+                      } border border-slate-700`}
+                    >
+                      {/* Header: Client & Project & Status */}
+                      <div className="flex items-start justify-between p-5 border-b border-slate-600 bg-slate-900/50">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-bold text-white">{(commission.dealId as any)?.clientName || 'Unknown Client'}</h3>
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${statusBadge(commission.status)}`}>
+                              {commission.status === 'pending' && <Clock size={14} />}
+                              {commission.status === 'approved' && <CheckCircle size={14} />}
+                              {commission.status === 'rejected' && <XCircle size={14} />}
+                              {commission.status === 'paid' && <CheckCircle size={14} />}
+                              {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
+                            </span>
+                          </div>
+                          {projectName && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">📌 Project:</span>
+                              <span className="px-2.5 py-1 bg-blue-600/30 border border-blue-500/50 rounded-md text-sm font-semibold text-blue-200">{projectName}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-xs text-slate-400 uppercase font-medium mb-1">Commission</p>
+                          <p className="text-2xl font-bold text-emerald-400">${commission.amount.toLocaleString()}</p>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 text-sm">
-                      <div>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Employee</p>
-                        <p className="text-sm font-semibold text-white">{commission.employeeId?.name || 'Unknown'}</p>
+                      {/* Deal Details */}
+                      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-slate-600">
+                        <div>
+                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Developer</p>
+                          <p className="text-sm font-semibold text-slate-100">{(commission.dealId as any)?.developer || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Client Phone</p>
+                          <p className="text-sm font-semibold text-emerald-300">{(commission.dealId as any)?.clientNumber || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Sales Rep</p>
+                          <p className="text-sm font-semibold text-slate-100">{commission.employeeId?.name || 'Unknown'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Submitted</p>
+                          <p className="text-sm font-semibold text-slate-100">{commission.createdAt ? new Date(commission.createdAt).toLocaleDateString() : '—'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Phone</p>
-                        <p className="text-sm font-semibold text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Submitted</p>
-                        <p className="text-xs text-slate-300">{commission.createdAt ? new Date(commission.createdAt).toLocaleDateString() : '—'}</p>
-                      </div>
-                    </div>
 
-                    <div className="flex gap-2 flex-wrap">
+                    {/* Action Buttons */}
+                    <div className="p-4 flex gap-2 flex-wrap">
                       {commission.status === 'pending' ? (
                         <>
                           <button
                             onClick={() => setApprovingId(commission._id)}
-                            className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-1 px-3 rounded-md text-sm transition-all"
+                            className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-all shadow-md"
                           >
                             <CheckCircle size={16} />
                             Approve
                           </button>
                           <button
                             onClick={() => setRejectingId(commission._id)}
-                            className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-1 px-3 rounded-md text-sm transition-all"
+                            className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-all shadow-md"
                           >
                             <XCircle size={16} />
                             Reject
@@ -476,7 +495,7 @@ export default function AdminCommissions() {
                       ) : commission.status === 'approved' ? (
                         <button
                           onClick={() => handlePay(commission._id)}
-                          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-1 px-3 rounded-md text-sm transition-all"
+                          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-all shadow-md"
                         >
                           <CheckCircle size={16} />
                           Mark as Paid
@@ -497,23 +516,29 @@ export default function AdminCommissions() {
                             addToast?.('Failed to load deal details', 'error');
                           }
                         }}
-                        className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition-all"
                       >
-                        Details
+                        📋 Details
                       </button>
 
                       {(commission.status === 'rejected' || commission.status === 'paid') && (
-                        <button onClick={() => setDeleteTargetId(commission._id)} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">Delete</button>
+                        <button 
+                          onClick={() => setDeleteTargetId(commission._id)} 
+                          className="flex items-center gap-2 ml-auto px-4 py-2 bg-red-600/70 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-all"
+                        >
+                          Delete
+                        </button>
                       )}
                     </div>
 
                     {commission.status === 'rejected' && commission.rejectionReason && (
-                      <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-md">
+                      <div className="mx-4 mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                         <p className="text-sm text-red-400"><strong>Rejection Reason:</strong> {commission.rejectionReason}</p>
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -653,81 +678,122 @@ export default function AdminCommissions() {
                 <button onClick={() => setSelectedDealClosing(null)} className="text-slate-400 hover:text-white p-2 rounded-lg"><X size={24} /></button>
               </div>
 
-              <div className="p-6 overflow-y-auto max-h-[70vh]">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-slate-400 text-sm mb-1">Client Name</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.clientName}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Client Number</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.clientNumber}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Developer</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.developer}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Employee</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.userId?.name || '—'}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Unit Code</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.unitCode}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Unit Type</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.unitType}</p>
+              <div className="p-6 overflow-y-auto max-h-[70vh] space-y-5">
+                {/* Header: Client & Developer & Project */}
+                <div className="bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/30 rounded-lg p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-xs text-blue-300 font-bold uppercase tracking-wider mb-1">👤 Client Name</p>
+                      <p className="text-2xl font-bold text-white">{selectedDealClosing.clientName}</p>
+                      <p className="text-sm text-slate-300 mt-1">📞 {selectedDealClosing.clientNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-300 font-bold uppercase tracking-wider mb-1">🏢 Developer</p>
+                      <p className="text-xl font-bold text-blue-200">{selectedDealClosing.developer}</p>
+                      {selectedDealClosing.project && (
+                        <p className="text-sm text-slate-300 mt-1">📌 <span className="text-blue-300 font-semibold">{selectedDealClosing.project}</span></p>
+                      )}
+                    </div>
                   </div>
-
-                  <div>
-                    <p className="text-slate-400 text-sm mb-1">Unit Area</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.unitArea} </p>
-
-                    <p className="text-slate-400 text-sm mb-1">Contract Price</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.contractPrice}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Contract Date</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.contractDate ? new Date(selectedDealClosing.contractDate).toLocaleDateString() : '—'}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Finishing Type</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.finishingType}</p>
-
-                    <p className="text-slate-400 text-sm mb-1">Delivery Year</p>
-                    <p className="text-white font-semibold mb-3">{selectedDealClosing.deliveryDate}</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-400 font-medium uppercase">Sales Representative</p>
+                      <p className="text-white font-semibold">{selectedDealClosing.userId?.name || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 font-medium uppercase">TCR Type</p>
+                      <p className="text-white font-semibold">{selectedDealClosing.tcrType || '—'}</p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-6">
-                  <h3 className="text-sm text-slate-300 mb-2">Payment & Down Payment</h3>
+                {/* Unit Details */}
+                <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/50 border border-slate-600 rounded-lg p-5">
+                  <h3 className="text-sm font-bold text-emerald-300 uppercase tracking-wider mb-4">🏠 Unit Details</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Unit Code</p>
+                      <p className="text-lg font-bold text-emerald-300">{selectedDealClosing.unitCode}</p>
+                    </div>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Unit Type</p>
+                      <p className="text-lg font-bold text-slate-200">{selectedDealClosing.unitType}</p>
+                    </div>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Unit Area (m²)</p>
+                      <p className="text-lg font-bold text-slate-200">{selectedDealClosing.unitArea}</p>
+                    </div>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Finishing</p>
+                      <p className="text-lg font-bold text-slate-200">{selectedDealClosing.finishingType}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contract Details */}
+                <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/50 border border-slate-600 rounded-lg p-5">
+                  <h3 className="text-sm font-bold text-amber-300 uppercase tracking-wider mb-4">📋 Contract Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-slate-400 text-sm">Payment Plan</p>
-                      <p className="text-white font-semibold">{selectedDealClosing.paymentPlan}</p>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Contract Price</p>
+                      <p className="text-2xl font-bold text-amber-300">${selectedDealClosing.contractPrice?.toLocaleString()}</p>
                     </div>
-                    <div>
-                      <p className="text-slate-400 text-sm">Down Payment %</p>
-                      <p className="text-white font-semibold">{selectedDealClosing.downPaymentPercentage}%</p>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Contract Date</p>
+                      <p className="text-lg font-bold text-slate-200">{selectedDealClosing.contractDate ? new Date(selectedDealClosing.contractDate).toLocaleDateString() : '—'}</p>
                     </div>
-                    <div>
-                      <p className="text-slate-400 text-sm">Down Payment Amount</p>
-                      <p className="text-white font-semibold">{selectedDealClosing.downPaymentAmount}</p>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Delivery Year</p>
+                      <p className="text-lg font-bold text-slate-200">{selectedDealClosing.deliveryDate}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6">
-                  <h3 className="text-sm text-slate-300 mb-2">Additional Info</h3>
-                  <div className="text-slate-200 whitespace-pre-wrap">{selectedDealClosing.info}</div>
+                {/* Payment Details */}
+                <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/50 border border-slate-600 rounded-lg p-5">
+                  <h3 className="text-sm font-bold text-green-300 uppercase tracking-wider mb-4">💰 Payment Plan & Down Payment</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Payment Plan</p>
+                      <p className="text-lg font-bold text-green-300">{selectedDealClosing.paymentPlan}</p>
+                    </div>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Down Payment %</p>
+                      <p className="text-2xl font-bold text-green-300">{selectedDealClosing.downPaymentPercentage}%</p>
+                    </div>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Down Payment Amount</p>
+                      <p className="text-2xl font-bold text-green-300">${selectedDealClosing.downPaymentAmount?.toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mt-6">
-                  <h3 className="text-sm text-slate-300 mb-2">Attachments</h3>
+                {/* Additional Info */}
+                <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/50 border border-slate-600 rounded-lg p-5">
+                  <h3 className="text-sm font-bold text-cyan-300 uppercase tracking-wider mb-3">📝 Additional Information</h3>
+                  <div className="bg-slate-800/70 rounded-lg p-4 text-slate-200 whitespace-pre-wrap text-sm leading-relaxed max-h-48 overflow-y-auto border border-slate-600/50">
+                    {selectedDealClosing.info || '—'}
+                  </div>
+                </div>
+
+                {/* Attachments */}
+                <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/50 border border-slate-600 rounded-lg p-5">
+                  <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4">📸 Attachments</h3>
                   {selectedDealClosing.attachments && selectedDealClosing.attachments.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {selectedDealClosing.attachments.map((a: string, i: number) => (
-                        <a key={i} href={a} target="_blank" rel="noreferrer" className="block">
-                          <img src={a} alt={`attachment-${i}`} className="w-full h-36 object-cover rounded-lg" />
+                        <a key={i} href={a} target="_blank" rel="noreferrer" className="block group">
+                          <div className="relative overflow-hidden rounded-lg border border-slate-600 group-hover:border-purple-500 transition-all">
+                            <img src={a} alt={`attachment-${i}`} className="w-full h-40 object-cover group-hover:scale-110 transition-transform" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <span className="text-white text-sm font-semibold">View</span>
+                            </div>
+                          </div>
                         </a>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-slate-400">No attachments</div>
+                    <div className="text-center py-8 text-slate-400">📋 No attachments</div>
                   )}
                 </div>
               </div>
