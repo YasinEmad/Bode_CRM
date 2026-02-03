@@ -461,153 +461,260 @@ export default function MyMonthlyKPIs() {
               </div>
             ) : (
               <>
-                {/* KPI Score Card - Large */}
+                {/* KPI Score Card - Large with Breakdown */}
                 <div className="mb-8 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-8 border border-slate-700">
-                  <div className="text-center">
-                    <h2 className="text-slate-400 text-sm font-bold mb-4 uppercase tracking-wide">Overall KPI Score</h2>
-                    <div className="mb-6">
-                      <div className={`inline-block px-8 py-6 rounded-2xl ${
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Main KPI Score */}
+                    <div className="lg:col-span-1 flex flex-col items-center justify-center">
+                      <h2 className="text-slate-400 text-sm font-bold mb-6 uppercase tracking-wide">Overall KPI Score</h2>
+                      <div className={`relative w-40 h-40 rounded-full flex items-center justify-center ${
                         kpiData.kpiPercentage >= 80
-                          ? 'bg-gradient-to-br from-emerald-600 to-emerald-500'
+                          ? 'bg-gradient-to-br from-emerald-600 to-emerald-500 shadow-lg shadow-emerald-500/50'
                           : kpiData.kpiPercentage >= 60
-                          ? 'bg-gradient-to-br from-yellow-600 to-yellow-500'
-                          : 'bg-gradient-to-br from-red-600 to-red-500'
+                          ? 'bg-gradient-to-br from-yellow-600 to-yellow-500 shadow-lg shadow-yellow-500/50'
+                          : 'bg-gradient-to-br from-red-600 to-red-500 shadow-lg shadow-red-500/50'
                       }`}>
-                        <p className="text-6xl font-bold text-white">
-                          {kpiData.kpiPercentage.toFixed(1)}%
-                        </p>
+                        <div className="text-center">
+                          <p className="text-5xl font-bold text-white">
+                            {kpiData.kpiPercentage.toFixed(0)}
+                          </p>
+                          <p className="text-white text-sm font-semibold">%</p>
+                        </div>
+                      </div>
+                      <p className="text-slate-300 text-center mt-6 font-semibold">
+                        {kpiData.kpiPercentage >= 80
+                          ? '🎉 Excellent Performance!'
+                          : kpiData.kpiPercentage >= 60
+                          ? '👍 Good Performance!'
+                          : '📈 Keep Improving!'}
+                      </p>
+                    </div>
+
+                    {/* KPI Breakdown */}
+                    <div className="lg:col-span-2">
+                      <h3 className="text-slate-300 font-bold mb-6 text-base">📊 Performance Breakdown</h3>
+                      <div className="space-y-3">
+                        {/* Attendance */}
+                        <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-blue-400 text-lg">📅</span>
+                            <span className="text-slate-300 text-sm">Attendance</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 bg-slate-600 rounded-full h-2">
+                              <div className="bg-blue-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.attendance, 100)}%`}}></div>
+                            </div>
+                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.attendance.toFixed(1)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Deals */}
+                        <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-cyan-400 text-lg">🎯</span>
+                            <span className="text-slate-300 text-sm">Closed Deals</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 bg-slate-600 rounded-full h-2">
+                              <div className="bg-cyan-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.deals, 100)}%`}}></div>
+                            </div>
+                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.deals.toFixed(1)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Calls */}
+                        <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-yellow-400 text-lg">☎️</span>
+                            <span className="text-slate-300 text-sm">Calls Made</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 bg-slate-600 rounded-full h-2">
+                              <div className="bg-yellow-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.calls, 100)}%`}}></div>
+                            </div>
+                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.calls.toFixed(1)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Meetings */}
+                        <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-pink-400 text-lg">📋</span>
+                            <span className="text-slate-300 text-sm">Meetings</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 bg-slate-600 rounded-full h-2">
+                              <div className="bg-pink-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.meetings, 100)}%`}}></div>
+                            </div>
+                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.meetings.toFixed(1)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Assessments */}
+                        <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-purple-400 text-lg">🎓</span>
+                            <span className="text-slate-300 text-sm">Assessments</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 bg-slate-600 rounded-full h-2">
+                              <div className="bg-purple-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.assessments, 100)}%`}}></div>
+                            </div>
+                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.assessments.toFixed(1)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Requests */}
+                        <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-orange-400 text-lg">📞</span>
+                            <span className="text-slate-300 text-sm">Requests Handled</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 bg-slate-600 rounded-full h-2">
+                              <div className="bg-orange-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.requests, 100)}%`}}></div>
+                            </div>
+                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.requests.toFixed(1)}%</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <p className="text-slate-300 text-lg">
-                      {kpiData.kpiPercentage >= 80
-                        ? 'Excellent Performance! 🎉'
-                        : kpiData.kpiPercentage >= 60
-                        ? 'Good Performance! Keep it up! 👍'
-                        : 'Below Target. Let\'s improve! 📈'}
-                    </p>
                   </div>
                 </div>
 
-                {/* Key Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* Key Metrics Grid - Enhanced with Color Coding */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                   {/* Attendance */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Attendance</h3>
-                      <div className="bg-blue-600/20 p-2 rounded-lg">
-                        <Calendar size={20} className="text-blue-400" />
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📅</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Attendance</h3>
                       </div>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.attendancePercentage}%</p>
-                      <span className="text-slate-400 text-sm">Attendance Rate</span>
-                    </div>
-                  </div>
-
-                  {/* Deals */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Closed Deals</h3>
-                      <div className="bg-cyan-600/20 p-2 rounded-lg">
-                        <TrendingUp size={20} className="text-cyan-400" />
-                      </div>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.closedDealsCount}</p>
-                      <span className="text-slate-400 text-sm">out of {kpiData.leadsCount} leads</span>
-                    </div>
-                  </div>
-
-                  {/* Calls */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Calls Made</h3>
-                      <div className="bg-yellow-600/20 p-2 rounded-lg">
-                        <span className="text-yellow-400 font-bold text-lg">☎</span>
-                      </div>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.callsCount}</p>
-                      <span className="text-slate-400 text-sm">This month</span>
-                    </div>
-                  </div>
-
-                  {/* Meetings */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Meetings</h3>
-                      <div className="bg-pink-600/20 p-2 rounded-lg">
-                        <span className="text-pink-400 font-bold text-lg">📅</span>
-                      </div>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.meetingsCount}</p>
-                      <span className="text-slate-400 text-sm">Scheduled</span>
-                    </div>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.attendancePercentage}%</p>
+                    <p className="text-slate-500 text-xs">Attendance Rate</p>
                   </div>
 
                   {/* Leads */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Leads Created</h3>
-                      <div className="bg-emerald-600/20 p-2 rounded-lg">
-                        <TrendingUp size={20} className="text-emerald-400" />
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🚀</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Leads</h3>
                       </div>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.leadsCount}</p>
-                      <span className="text-slate-400 text-sm">New leads</span>
-                    </div>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.leadsCount}</p>
+                    <p className="text-slate-500 text-xs">New Leads Created</p>
                   </div>
 
-                  {/* Assessments */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Assessments</h3>
-                      <div className="bg-purple-600/20 p-2 rounded-lg">
-                        <Target size={20} className="text-purple-400" />
+                  {/* Deals */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-cyan-500 hover:shadow-xl hover:shadow-cyan-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🎯</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Deals</h3>
                       </div>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.assessmentsCount}</p>
-                      <span className="text-slate-400 text-sm">Completed</span>
-                    </div>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.closedDealsCount}</p>
+                    <p className="text-slate-500 text-xs">out of {kpiData.leadsCount} leads</p>
                   </div>
 
-                  {/* Requests */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-slate-300 font-semibold">Requests</h3>
-                      <div className="bg-orange-600/20 p-2 rounded-lg">
-                        <Target size={20} className="text-orange-400" />
+                  {/* Conversion Rate */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-yellow-500 hover:shadow-xl hover:shadow-yellow-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📊</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Conversion</h3>
                       </div>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-4xl font-bold text-white">{kpiData.requestsCount}</p>
-                      <span className="text-slate-400 text-sm">Handled</span>
-                    </div>
+                    <p className="text-3xl font-bold text-white mb-1">
+                      {kpiData.leadsCount > 0 ? ((kpiData.closedDealsCount / kpiData.leadsCount) * 100).toFixed(0) : 0}%
+                    </p>
+                    <p className="text-slate-500 text-xs">Conversion Rate</p>
                   </div>
                 </div>
 
-                {/* Summary Info */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700">
-                  <h2 className="text-slate-300 font-bold mb-4 text-lg">Employee Information</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Name</p>
-                      <p className="text-white font-semibold text-lg">{kpiData.name}</p>
+                {/* Activity Metrics - Second Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  {/* Calls */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-yellow-500 hover:shadow-xl hover:shadow-yellow-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">☎️</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Calls</h3>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Position</p>
-                      <p className="text-white font-semibold text-lg">{kpiData.position}</p>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.callsCount}</p>
+                    <p className="text-slate-500 text-xs">Calls Made</p>
+                  </div>
+
+                  {/* Meetings */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-pink-500 hover:shadow-xl hover:shadow-pink-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📋</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Meetings</h3>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Salary</p>
-                      <p className="text-white font-semibold text-lg">${kpiData.salary.toLocaleString()}</p>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.meetingsCount}</p>
+                    <p className="text-slate-500 text-xs">Scheduled</p>
+                  </div>
+
+                  {/* Assessments */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-purple-500 hover:shadow-xl hover:shadow-purple-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🎓</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Assessments</h3>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Report Period</p>
-                      <p className="text-white font-semibold text-lg">{selectedMonthName} {selectedYear}</p>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.assessmentsCount}</p>
+                    <p className="text-slate-500 text-xs">Completed</p>
+                  </div>
+
+                  {/* Requests */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-orange-500 hover:shadow-xl hover:shadow-orange-500/10 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📞</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Requests</h3>
+                      </div>
+                    </div>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.requestsCount}</p>
+                    <p className="text-slate-500 text-xs">Handled</p>
+                  </div>
+                </div>
+
+                {/* Summary Info - Enhanced */}
+                <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 rounded-2xl shadow-xl p-8 border border-indigo-700/50">
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className="text-3xl">👤</span>
+                    <h2 className="text-white font-bold text-xl">Employee Profile</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Name */}
+                    <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50">
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Name</p>
+                      <p className="text-white font-bold text-lg">{kpiData.name}</p>
+                    </div>
+
+                    {/* Position */}
+                    <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50">
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Position</p>
+                      <p className="text-white font-bold text-lg">{kpiData.position}</p>
+                    </div>
+
+                    {/* Salary */}
+                    <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50">
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Monthly Salary</p>
+                      <p className="text-emerald-400 font-bold text-lg">${kpiData.salary.toLocaleString()}</p>
+                    </div>
+
+                    {/* Period */}
+                    <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50">
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Report Period</p>
+                      <p className="text-white font-bold text-lg">{selectedMonthName} {selectedYear}</p>
                     </div>
                   </div>
                 </div>
