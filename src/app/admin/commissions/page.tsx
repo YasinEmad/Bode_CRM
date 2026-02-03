@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { CheckCircle, XCircle, Loader, Clock, X } from 'lucide-react';
+import { CheckCircle, XCircle, Loader, Clock, X, Search, List, Grid } from 'lucide-react';
 import { exportCommissionsToExcel } from '@/lib/exportExcel';
 
 interface Commission {
@@ -34,6 +34,8 @@ export default function AdminCommissions() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [compactView, setCompactView] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [rejectReason, setRejectReason] = useState('');
@@ -54,6 +56,21 @@ export default function AdminCommissions() {
       fetchCommissions();
     }
   }, [token, filterStatus]);
+
+  const filteredCommissions = commissions.filter((c) => {
+    if (filterStatus && c.status !== filterStatus) return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const clientName = ((c.dealId as any)?.clientName || '').toString().toLowerCase();
+    const employee = (c.employeeId?.name || '').toString().toLowerCase();
+    const phone = ((c.dealId as any)?.clientNumber || '').toString().toLowerCase();
+    return clientName.includes(q) || employee.includes(q) || phone.includes(q) || c._id.includes(q);
+  });
+
+  const statusCounts = commissions.reduce((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   const fetchCommissions = async () => {
     try {
@@ -224,27 +241,52 @@ export default function AdminCommissions() {
           <h1 className="text-5xl font-bold text-white mb-2">Commission Management</h1>
           <p className="text-slate-400">Review and approve employee commissions</p>
           
-          {/* Filter */}
-          <div className="flex flex-wrap gap-2 mt-6">
-            {['', 'pending', 'approved', 'rejected', 'paid'].map((status) => (
+          {/* Controls: status chips, search and view toggle */}
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              {['', 'pending', 'approved', 'rejected', 'paid'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
+                    filterStatus === status
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow'
+                      : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  {status ? `${status.charAt(0).toUpperCase() + status.slice(1)} (${statusCounts[status] || 0})` : `All (${commissions.length})`}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-none">
+                <input
+                  placeholder="Search client, employee or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Search size={16} />
+                </div>
+              </div>
+
               <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filterStatus === status
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
-                    : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
-                }`}
+                onClick={() => setCompactView((v) => !v)}
+                title="Toggle compact view"
+                className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
               >
-                {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All'}
+                {compactView ? <Grid size={16} /> : <List size={16} />}
               </button>
-            ))}
-            <button
-              onClick={handleExport}
-              className="ml-2 px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600"
-            >
-              Export Excel
-            </button>
+
+              <button
+                onClick={handleExport}
+                className="px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600"
+              >
+                Export Excel
+              </button>
+            </div>
           </div>
         </div>
 
@@ -258,152 +300,164 @@ export default function AdminCommissions() {
             <p className="text-slate-400 text-lg">No commissions to review</p>
           </div>
         ) : (
-          <div className="grid gap-6">
-            {commissions.map((commission) => (
-              <div
-                key={commission._id}
-                className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl transition-all"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div>
+            {compactView ? (
+              <div className="overflow-x-auto bg-slate-800 rounded-2xl border border-slate-700">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-900/60">
+                    <tr>
+                      <th className="px-4 py-3 text-slate-300">Client</th>
+                      <th className="px-4 py-3 text-slate-300">Employee</th>
+                      <th className="px-4 py-3 text-slate-300">Phone</th>
+                      <th className="px-4 py-3 text-slate-300">Amount</th>
+                      <th className="px-4 py-3 text-slate-300">Status</th>
+                      <th className="px-4 py-3 text-slate-300">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700">
+                    {filteredCommissions.map((commission) => (
+                      <tr key={commission._id} className="hover:bg-slate-700/40">
+                        <td className="px-4 py-3 text-white font-semibold">{(commission.dealId as any)?.clientName || 'Unknown'}</td>
+                        <td className="px-4 py-3 text-slate-300">{commission.employeeId?.name || '—'}</td>
+                        <td className="px-4 py-3 text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</td>
+                        <td className="px-4 py-3 text-emerald-400">${commission.amount.toLocaleString()}</td>
+                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-sm ${statusBadge(commission.status)}`}>{commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}</span></td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const dealIdValue = commission.dealId && typeof commission.dealId === 'object'
+                                    ? (commission.dealId as any)._id || (commission.dealId as any).toString()
+                                    : commission.dealId;
+                                  if (!dealIdValue) throw new Error('No dealId');
+                                  const res = await fetch(`/api/deal-closing?dealId=${encodeURIComponent(String(dealIdValue))}`, { headers: { Authorization: `Bearer ${token}` } });
+                                  const data = await res.json().catch(() => ({}));
+                                  setSelectedDealClosing(data.dealClosing || null);
+                                } catch (err) {
+                                  addToast?.('Failed to load deal details', 'error');
+                                }
+                              }}
+                              className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-sm"
+                            >
+                              Details
+                            </button>
 
-                  <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Client Name</p>
-                    <p className="text-lg font-bold text-white">{(commission.dealId as any)?.clientName || 'Unknown'}</p>
-                  </div>
+                            {(commission.status === 'rejected' || commission.status === 'paid') && (
+                              <button onClick={() => setDeleteTargetId(commission._id)} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">Delete</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {filteredCommissions.map((commission) => (
+                  <div
+                    key={commission._id}
+                    className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-md p-4 border border-slate-700 hover:shadow-lg transition-all"
+                  >
+                    <div className="flex items-start justify-between mb-3 gap-3">
+                      <div>
+                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Client</p>
+                        <p className="text-xl font-semibold text-white">{(commission.dealId as any)?.clientName || 'Unknown'}</p>
+                        <p className="text-slate-400 text-sm mt-1">{(commission.dealId as any)?.developer || '—'}</p>
+                      </div>
 
-                  <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Developer</p>
-                    <p className="text-lg font-bold text-blue-400">{(commission.dealId as any)?.developer || '—'}</p>
-                  </div>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-[11px] uppercase">Amount</p>
+                        <p className="text-xl font-semibold text-emerald-400">${commission.amount.toLocaleString()}</p>
+                        <div className="mt-2">
+                          <span className={`px-2 py-0.5 rounded text-sm font-medium flex items-center gap-2 ${statusBadge(commission.status)}`}>
+                            {commission.status === 'pending' && <Clock size={12} />}
+                            {commission.status === 'approved' && <CheckCircle size={12} />}
+                            {commission.status === 'rejected' && <XCircle size={12} />}
+                            {commission.status === 'paid' && <CheckCircle size={12} />}
+                            {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                  <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Employee</p>
-                    <p className="text-lg font-bold text-white">{commission.employeeId && commission.employeeId.name ? commission.employeeId.name : 'Unknown'}</p>
-                  </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 text-sm">
+                      <div>
+                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Employee</p>
+                        <p className="text-sm font-semibold text-white">{commission.employeeId?.name || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Phone</p>
+                        <p className="text-sm font-semibold text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1">Submitted</p>
+                        <p className="text-xs text-slate-300">{commission.createdAt ? new Date(commission.createdAt).toLocaleDateString() : '—'}</p>
+                      </div>
+                    </div>
 
-                  <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Client Phone</p>
-                    <p className="text-lg font-bold text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</p>
-                  </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {commission.status === 'pending' ? (
+                        <>
+                          <button
+                            onClick={() => setApprovingId(commission._id)}
+                            className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-1 px-3 rounded-md text-sm transition-all"
+                          >
+                            <CheckCircle size={16} />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(commission._id)}
+                            className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-1 px-3 rounded-md text-sm transition-all"
+                          >
+                            <XCircle size={16} />
+                            Reject
+                          </button>
+                        </>
+                      ) : commission.status === 'approved' ? (
+                        <button
+                          onClick={() => handlePay(commission._id)}
+                          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-1 px-3 rounded-md text-sm transition-all"
+                        >
+                          <CheckCircle size={16} />
+                          Mark as Paid
+                        </button>
+                      ) : null}
 
-                  <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Commission Amount</p>
-                    <p className="text-lg font-bold text-emerald-400">${commission.amount.toLocaleString()}</p>
-                  </div>
-                </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const dealIdValue = commission.dealId && typeof commission.dealId === 'object'
+                              ? (commission.dealId as any)._id || (commission.dealId as any).toString()
+                              : commission.dealId;
+                            if (!dealIdValue) throw new Error('No dealId');
+                            const res = await fetch(`/api/deal-closing?dealId=${encodeURIComponent(String(dealIdValue))}`, { headers: { Authorization: `Bearer ${token}` } });
+                            const data = await res.json().catch(() => ({}));
+                            setSelectedDealClosing(data.dealClosing || null);
+                          } catch (err) {
+                            addToast?.('Failed to load deal details', 'error');
+                          }
+                        }}
+                        className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-sm"
+                      >
+                        Details
+                      </button>
 
-                <div className="border-t border-slate-600 pt-4 mb-4 flex flex-wrap justify-between items-center gap-4">
-                  <div className="flex items-center gap-4">
-                    <span className={`px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2 ${statusBadge(commission.status)}`}>
-                      {commission.status === 'pending' && <Clock size={16} />}
-                      {commission.status === 'approved' && <CheckCircle size={16} />}
-                      {commission.status === 'rejected' && <XCircle size={16} />}
-                      {commission.status === 'paid' && <CheckCircle size={16} />}
-                      {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
-                    </span>
-                    <div className="flex flex-col gap-1">
-                      {commission.createdAt && (
-                        <p className="text-xs text-slate-400">
-                          Submitted: {new Date(commission.createdAt).toLocaleDateString()}
-                        </p>
-                      )}
-                      {commission.approvalDate && (
-                        <p className="text-xs text-slate-400">
-                          Approved: {new Date(commission.approvalDate).toLocaleDateString()}
-                        </p>
+                      {(commission.status === 'rejected' || commission.status === 'paid') && (
+                        <button onClick={() => setDeleteTargetId(commission._id)} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm">Delete</button>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setProofCommission(commission)}
-                      className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
-                    >
-                      Guide
-                    </button>
 
-                    <button
-                      onClick={async () => {
-                        try {
-                          // commission.dealId can be an object or a string id
-                          const dealIdValue = commission.dealId && typeof commission.dealId === 'object'
-                            ? (commission.dealId as any)._id || (commission.dealId as any).toString()
-                            : commission.dealId;
-
-                          if (!dealIdValue) {
-                            throw new Error('No dealId available');
-                          }
-
-                          const res = await fetch(`/api/deal-closing?dealId=${encodeURIComponent(String(dealIdValue))}`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                          });
-
-                          const data = await res.json().catch(() => ({}));
-                          if (!res.ok) {
-                            console.error('deal-closing API error', data);
-                            throw new Error(data.error || 'Failed to fetch deal details');
-                          }
-
-                          setSelectedDealClosing(data.dealClosing || null);
-                        } catch (err) {
-                          console.error('Failed to load deal details', err);
-                          addToast?.('Failed to load deal details', 'error');
-                        }
-                      }}
-                      className="ml-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium"
-                    >
-                      Details
-                    </button>
-
-                    {(commission.status === 'rejected' || commission.status === 'paid') && (
-                      <button
-                        onClick={() => setDeleteTargetId(commission._id)}
-                        className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
-                      >
-                        Delete
-                      </button>
+                    {commission.status === 'rejected' && commission.rejectionReason && (
+                      <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-md">
+                        <p className="text-sm text-red-400"><strong>Rejection Reason:</strong> {commission.rejectionReason}</p>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {commission.status === 'pending' && (
-                  <div className="flex gap-3 flex-wrap">
-                    <button
-                      onClick={() => setApprovingId(commission._id)}
-                      className="flex items-center gap-2 flex-1 min-w-40 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2 px-4 rounded-lg font-medium transition-all"
-                    >
-                      <CheckCircle size={18} />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => setRejectingId(commission._id)}
-                      className="flex items-center gap-2 flex-1 min-w-40 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 px-4 rounded-lg font-medium transition-all"
-                    >
-                      <XCircle size={18} />
-                      Reject
-                    </button>
-                  </div>
-                )}
-
-                {commission.status === 'approved' && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handlePay(commission._id)}
-                      className="flex items-center gap-2 flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-all"
-                    >
-                      <CheckCircle size={18} />
-                      Mark as Paid
-                    </button>
-                  </div>
-                )}
-
-                {commission.status === 'rejected' && commission.rejectionReason && (
-                  <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <p className="text-sm text-red-400"><strong>Rejection Reason:</strong> {commission.rejectionReason}</p>
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
