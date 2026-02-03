@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import CloseDealModal, { DealClosingFormData } from './CloseDealModal';
+import { useAuth } from '@/hooks/useAuth';
 import { Phone, Edit2, X, Save } from 'lucide-react';
 
 interface LeadCardProps {
@@ -45,9 +47,8 @@ export default function LeadCard({
   const [editNotes, setEditNotes] = useState(notes);
   const [closeInfo, setCloseInfo] = useState('');
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
-  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
+  const { token } = useAuth();
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [callConfirmation, setCallConfirmation] = useState<{ isOpen: boolean; phone: string; leadName: string }>({
@@ -105,10 +106,10 @@ export default function LeadCard({
       {/* Contact Details */}
       <div className="space-y-3 mb-4 flex-1">
         <div className="flex items-start gap-2 text-sm">
-          <span className="text-slate-500 flex-shrink-0">✉️</span>
+          <span className="text-slate-500 flex-shrink-0">🏷️</span>
           <div>
-            <p className="text-xs text-slate-400">Email</p>
-            <p className="text-slate-200 break-all text-xs sm:text-sm">{email}</p>
+            <p className="text-xs text-slate-400">Project</p>
+            <p className="text-slate-200 break-all text-xs sm:text-sm">{project || '—'}</p>
           </div>
         </div>
         <div className="flex items-start gap-2 text-sm">
@@ -199,7 +200,7 @@ export default function LeadCard({
           {/* Status Selection */}
           <div>
             <label className="text-xs sm:text-sm font-semibold text-slate-300 block mb-2">Update Status</label>
-            <select
+              <select
               value={status}
               onChange={(e) => {
                 const val = e.target.value;
@@ -208,8 +209,8 @@ export default function LeadCard({
                   return;
                 }
                 if (val === 'closed') {
-                  // open modal to collect proof and notes before submitting
-                  setShowCloseModal(true);
+                    // open modal to collect full deal info before submitting
+                    setShowCloseModal(true);
                 } else {
                   onStatusChange?.(val);
                 }
@@ -247,97 +248,42 @@ export default function LeadCard({
       )}
 
       {showCloseModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-slate-800 rounded-xl w-full max-w-lg border border-slate-700 flex flex-col max-h-[80vh]">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
-              <h3 className="text-lg font-bold text-white">Close Deal</h3>
-              <button onClick={() => setShowCloseModal(false)} className="text-slate-400 p-2"><X size={20} /></button>
-            </div>
+        <CloseDealModal
+          isOpen={showCloseModal}
+          leadId={id}
+          leadName={name}
+          leadPhone={phone}
+          onClose={() => setShowCloseModal(false)}
+          isSubmitting={isSubmittingClose}
+          token={token || ''}
+          onSubmit={async (data: DealClosingFormData) => {
+            try {
+              setIsSubmittingClose(true);
+              const res = await fetch('/api/deal-closing', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ leadId: id, ...data }),
+              });
 
-            <div className="p-4 overflow-y-auto space-y-4">
-              <div>
-                <label className="block text-sm text-slate-300 mb-2">Project Name</label>
-                <input
-                  type="text"
-                  placeholder="Project name"
-                  value={project}
-                  disabled
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 opacity-75 cursor-not-allowed"
-                />
-              </div>
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to close deal');
+              }
 
-              <div>
-                <label className="block text-sm text-slate-300 mb-2">Proof Image *</label>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setProofImageFile(file);
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          setProofImagePreview(event.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 file:bg-blue-600 file:border-0 file:text-white file:px-3 file:py-1 file:rounded file:cursor-pointer"
-                  />
-                </div>
-                {proofImagePreview && (
-                  <div className="mt-3">
-                    <p className="text-xs text-slate-400 mb-2">Preview:</p>
-                    <img src={proofImagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm text-slate-300 mb-2">Info *</label>
-                <textarea
-                  value={closeInfo}
-                  onChange={(e) => setCloseInfo(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
-                  rows={4}
-                />
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-700 bg-slate-900 flex gap-3 flex-col sm:flex-row">
-              <button
-                onClick={async () => {
-                  if (!proofImageFile || !closeInfo) return;
-                  try {
-                    setIsSubmittingClose(true);
-                    // Convert image to base64
-                    const reader = new FileReader();
-                    reader.onload = async (event) => {
-                      const imageData = event.target?.result as string;
-                      await onStatusChange?.('closed', { proofImage: imageData, info: closeInfo });
-                      setShowCloseModal(false);
-                      setIsExpanded(false);
-                      setProofImageFile(null);
-                      setProofImagePreview(null);
-                    };
-                    reader.readAsDataURL(proofImageFile);
-                  } catch (err) {
-                    console.error(err);
-                  } finally {
-                    setIsSubmittingClose(false);
-                  }
-                }}
-                disabled={!proofImageFile || !closeInfo || isSubmittingClose}
-                className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-3 rounded-lg font-semibold disabled:opacity-50 transition"
-              >
-                {isSubmittingClose ? 'Closing...' : 'Close Deal'}
-              </button>
-
-              <button onClick={() => setShowCloseModal(false)} className="w-full sm:flex-1 bg-slate-700 text-white py-3 rounded-lg transition hover:bg-slate-600">Cancel</button>
-            </div>
-          </div>
-        </div>
+              // Inform parent to refresh status and data
+              onStatusChange?.('closed');
+              setShowCloseModal(false);
+              setIsExpanded(false);
+            } catch (err) {
+              console.error('Close deal failed', err);
+            } finally {
+              setIsSubmittingClose(false);
+            }
+          }}
+        />
       )}
 
       {/* Call Confirmation Modal */}

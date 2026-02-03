@@ -12,7 +12,15 @@ interface Commission {
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId?: { _id: string; name: string; project?: string; phone?: string } | null;
+  dealId?: {
+    _id?: string;
+    clientName?: string;
+    clientNumber?: string;
+    developer?: string;
+    attachments?: string[];
+    info?: string;
+    userId?: { _id?: string; name?: string };
+  } | null;
   employeeId?: { _id: string; name: string } | null;
   rejectionReason?: string;
   createdAt?: string;
@@ -30,6 +38,7 @@ export default function AdminCommissions() {
   const [rejectNote, setRejectNote] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [proofCommission, setProofCommission] = useState<Commission | null>(null);
+  const [selectedDealClosing, setSelectedDealClosing] = useState<any | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalAmount, setApprovalAmount] = useState('');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -72,10 +81,10 @@ export default function AdminCommissions() {
     }
 
     const exportData = commissions.map((c) => ({
-      'Deal Name': c.dealId?.name || 'Unknown Deal',
-      'Project': c.dealId?.project || '—',
+      'Client Name': (c.dealId as any)?.clientName || 'Unknown',
+      'Developer': (c.dealId as any)?.developer || '—',
       'Commission Rate': `${c.percentage}%`,
-      'Client Phone': c.dealId?.phone || '—',
+      'Client Phone': (c.dealId as any)?.clientNumber || '—',
       'Employee': c.employeeId?.name || '—',
       'Commission Amount': c.amount,
       'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
@@ -256,14 +265,15 @@ export default function AdminCommissions() {
                 className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl transition-all"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+
                   <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Deal Name</p>
-                    <p className="text-lg font-bold text-white">{commission.dealId?.name || 'Unknown Deal'}</p>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Client Name</p>
+                    <p className="text-lg font-bold text-white">{(commission.dealId as any)?.clientName || 'Unknown'}</p>
                   </div>
 
                   <div>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Project</p>
-                    <p className="text-lg font-bold text-blue-400">{commission.dealId?.project || '—'}</p>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Developer</p>
+                    <p className="text-lg font-bold text-blue-400">{(commission.dealId as any)?.developer || '—'}</p>
                   </div>
 
                   <div>
@@ -273,7 +283,7 @@ export default function AdminCommissions() {
 
                   <div>
                     <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Client Phone</p>
-                    <p className="text-lg font-bold text-emerald-400">{commission.dealId?.phone || '—'}</p>
+                    <p className="text-lg font-bold text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</p>
                   </div>
 
                   <div>
@@ -310,6 +320,39 @@ export default function AdminCommissions() {
                       className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
                     >
                       Guide
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          // commission.dealId can be an object or a string id
+                          const dealIdValue = commission.dealId && typeof commission.dealId === 'object'
+                            ? (commission.dealId as any)._id || (commission.dealId as any).toString()
+                            : commission.dealId;
+
+                          if (!dealIdValue) {
+                            throw new Error('No dealId available');
+                          }
+
+                          const res = await fetch(`/api/deal-closing?dealId=${encodeURIComponent(String(dealIdValue))}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            console.error('deal-closing API error', data);
+                            throw new Error(data.error || 'Failed to fetch deal details');
+                          }
+
+                          setSelectedDealClosing(data.dealClosing || null);
+                        } catch (err) {
+                          console.error('Failed to load deal details', err);
+                          addToast?.('Failed to load deal details', 'error');
+                        }
+                      }}
+                      className="ml-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium"
+                    >
+                      Details
                     </button>
 
                     {(commission.status === 'rejected' || commission.status === 'paid') && (
@@ -418,8 +461,8 @@ export default function AdminCommissions() {
               <div className="p-6 max-h-[70vh] overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                   <div className="w-full flex items-center justify-center">
-                    {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
-                      <img src={proofCommission.dealId.proofImage} alt="proof" className="w-full max-h-[60vh] object-contain rounded" />
+                    {((proofCommission.dealId as any)?.proofImage && typeof (proofCommission.dealId as any).proofImage === 'string') || ((proofCommission.dealId as any)?.attachments && (proofCommission.dealId as any).attachments.length > 0) ? (
+                      <img src={(proofCommission.dealId as any).proofImage ? (proofCommission.dealId as any).proofImage : (proofCommission.dealId as any).attachments[0]} alt="proof" className="w-full max-h-[60vh] object-contain rounded" />
                     ) : (
                       <div className="text-slate-400">No proof image provided</div>
                     )}
@@ -427,15 +470,15 @@ export default function AdminCommissions() {
 
                   <div className="flex flex-col">
                     <h3 className="text-sm font-semibold text-slate-300 mb-2">Info</h3>
-                    <div className="text-slate-200 whitespace-pre-wrap overflow-auto">{proofCommission.dealId && 'info' in proofCommission.dealId ? (proofCommission.dealId as any).info : 'No info provided'}</div>
+                    <div className="text-slate-200 whitespace-pre-wrap overflow-auto">{(proofCommission.dealId as any)?.info || 'No info provided'}</div>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col md:flex-row gap-3 p-6 border-t border-slate-700 bg-slate-800">
-                {proofCommission.dealId && 'proofImage' in proofCommission.dealId && typeof proofCommission.dealId.proofImage === 'string' ? (
+                {((proofCommission.dealId as any)?.proofImage && typeof (proofCommission.dealId as any).proofImage === 'string') || ((proofCommission.dealId as any)?.attachments && (proofCommission.dealId as any).attachments.length > 0) ? (
                   <a
-                    href={proofCommission.dealId.proofImage}
+                    href={(proofCommission.dealId as any).proofImage ? (proofCommission.dealId as any).proofImage : (proofCommission.dealId as any).attachments[0]}
                     download={`proof_${proofCommission._id}.png`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -484,6 +527,101 @@ export default function AdminCommissions() {
                     Delete
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deal Closing Details Modal */}
+        {selectedDealClosing && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border border-slate-700 overflow-hidden">
+              <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-indigo-600/20 to-purple-600/20">
+                <h2 className="text-2xl font-bold text-white">Deal Details</h2>
+                <button onClick={() => setSelectedDealClosing(null)} className="text-slate-400 hover:text-white p-2 rounded-lg"><X size={24} /></button>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-slate-400 text-sm mb-1">Client Name</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.clientName}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Client Number</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.clientNumber}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Developer</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.developer}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Employee</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.userId?.name || '—'}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Unit Code</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.unitCode}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Unit Type</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.unitType}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-slate-400 text-sm mb-1">Unit Area</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.unitArea} </p>
+
+                    <p className="text-slate-400 text-sm mb-1">Contract Price</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.contractPrice}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Contract Date</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.contractDate ? new Date(selectedDealClosing.contractDate).toLocaleDateString() : '—'}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Finishing Type</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.finishingType}</p>
+
+                    <p className="text-slate-400 text-sm mb-1">Delivery Year</p>
+                    <p className="text-white font-semibold mb-3">{selectedDealClosing.deliveryDate}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-sm text-slate-300 mb-2">Payment & Down Payment</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-slate-400 text-sm">Payment Plan</p>
+                      <p className="text-white font-semibold">{selectedDealClosing.paymentPlan}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-sm">Down Payment %</p>
+                      <p className="text-white font-semibold">{selectedDealClosing.downPaymentPercentage}%</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-sm">Down Payment Amount</p>
+                      <p className="text-white font-semibold">{selectedDealClosing.downPaymentAmount}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-sm text-slate-300 mb-2">Additional Info</h3>
+                  <div className="text-slate-200 whitespace-pre-wrap">{selectedDealClosing.info}</div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-sm text-slate-300 mb-2">Attachments</h3>
+                  {selectedDealClosing.attachments && selectedDealClosing.attachments.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {selectedDealClosing.attachments.map((a: string, i: number) => (
+                        <a key={i} href={a} target="_blank" rel="noreferrer" className="block">
+                          <img src={a} alt={`attachment-${i}`} className="w-full h-36 object-cover rounded-lg" />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-slate-400">No attachments</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-slate-700 bg-slate-800 flex gap-3 justify-end">
+                <button onClick={() => setSelectedDealClosing(null)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Close</button>
               </div>
             </div>
           </div>

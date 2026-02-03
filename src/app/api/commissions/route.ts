@@ -38,7 +38,8 @@ export async function GET(req: NextRequest) {
     }
 
     const commissions = await Commission.find(query)
-      .populate('dealId', 'name project phone proofImage info notes')
+      // dealId refers to DealClosing and we want key client fields
+      .populate('dealId', 'clientName clientNumber developer attachments info userId')
       .populate('employeeId', 'name')
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });

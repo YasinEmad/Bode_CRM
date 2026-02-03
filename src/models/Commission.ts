@@ -20,7 +20,7 @@ const CommissionSchema = new Schema<ICommission>(
   {
     dealId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Lead',
+      ref: 'DealClosing',
       required: true,
     },
     employeeId: {

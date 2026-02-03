@@ -12,7 +12,7 @@ interface Commission {
   amount: number;
   percentage: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
-  dealId?: { _id: string; name: string; project?: string } | null;
+  dealId?: { _id?: string; clientName?: string; clientNumber?: string; developer?: string } | null;
   rejectionNote?: string;
   createdAt?: string;
   approvalDate?: string;
@@ -88,8 +88,8 @@ export default function SalesCommissions() {
     }
 
     const exportData = commissions.map((c) => ({
-      'Deal Name': c.dealId?.name || 'Unknown Deal',
-      'Project': c.dealId?.project || '—',
+      'Client Name': (c.dealId as any)?.clientName || 'Unknown',
+      'Developer': (c.dealId as any)?.developer || '—',
       'Commission Rate': `${c.percentage}%`,
       'Commission Amount': c.amount,
       'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
@@ -236,13 +236,13 @@ export default function SalesCommissions() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div>
-                    <p className="text-sm text-slate-400 font-medium">📋 Deal Name</p>
-                    <p className="text-lg font-semibold text-white mt-1">{commission.dealId?.name || 'Unknown Deal'}</p>
+                    <p className="text-sm text-slate-400 font-medium">📋 Client Name</p>
+                    <p className="text-lg font-semibold text-white mt-1">{(commission.dealId as any)?.clientName || 'Unknown'}</p>
                   </div>
 
                   <div>
-                    <p className="text-sm text-slate-400 font-medium">🏷️ Project</p>
-                    <p className="text-lg font-semibold text-blue-400 mt-1">{commission.dealId?.project || '—'}</p>
+                    <p className="text-sm text-slate-400 font-medium">🏷️ Developer</p>
+                    <p className="text-lg font-semibold text-blue-400 mt-1">{(commission.dealId as any)?.developer || '—'}</p>
                   </div>
 
                   <div>
@@ -323,12 +323,12 @@ export default function SalesCommissions() {
                         ?.amount.toLocaleString()}
                     </span>
                   </p>
-                  <p className="text-sm text-slate-400">
-                    Deal:{' '}
-                    <span className="font-semibold text-white">
-                      {commissions.find((c) => c._id === showNoteModal)?.dealId?.name || 'Unknown Deal'}
-                    </span>
-                  </p>
+                    <p className="text-sm text-slate-400">
+                      Client:{' '}
+                      <span className="font-semibold text-white">
+                        {commissions.find((c) => c._id === showNoteModal)?.dealId?.clientName || 'Unknown'}
+                      </span>
+                    </p>
                 </div>
 
                 <button
