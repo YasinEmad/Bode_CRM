@@ -9,7 +9,7 @@ function extractToken(req: NextRequest): string | null {
   return authHeader.slice(7);
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = extractToken(req);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const notification = await Notification.findById(id);
     if (!notification) {
@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = extractToken(req);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -52,7 +52,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const notification = await Notification.findById(id);
     if (!notification) {

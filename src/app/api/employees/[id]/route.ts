@@ -49,6 +49,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden: cannot delete your creator admin' }, { status: 403 });
     }
 
+    // For admin deletion: only allow if actor (current admin) created the target admin
+    // Exception: root admins (createdBy = null) can be deleted by any admin
+    if (employee.role === 'admin' && employee.createdBy) {
+      if (String(actor._id) !== String(employee.createdBy)) {
+        return NextResponse.json({ error: 'You can only delete admins you created' }, { status: 403 });
+      }
+    }
+
     // Remove user from any team members arrays
     await Team.updateMany({}, { $pull: { members: id } });
     // If user is leader of any team, unset leader

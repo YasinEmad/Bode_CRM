@@ -88,8 +88,8 @@ export default function SalesCommissions() {
     }
 
     const exportData = commissions.map((c) => ({
-      'Client Name': (c.dealId as any)?.clientName || 'Unknown',
-      'Developer': (c.dealId as any)?.developer || '—',
+      'Deal Name': (c.dealId as any)?.projectName || (c.dealId as any)?.clientName || 'Unknown',
+      'Project': (c.dealId as any)?.project || (c.dealId as any)?.projectName || '—',
       'Commission Rate': `${c.percentage}%`,
       'Commission Amount': c.amount,
       'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),

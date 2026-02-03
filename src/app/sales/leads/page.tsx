@@ -167,14 +167,8 @@ export default function SalesLeads() {
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     if (newStatus === 'closed') {
-      // Open modal to collect project, notes, and proof image
-      const lead = leads.find((l) => l._id === leadId);
+      // Open modal to collect deal closing details
       setClosingLeadId(leadId);
-      setCloseFormData({
-          project: lead?.project || '',
-          info: '',
-          proofImage: '',
-        });
       return;
     }
 

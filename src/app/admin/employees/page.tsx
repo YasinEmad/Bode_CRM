@@ -37,7 +37,9 @@ export default function AdminEmployees() {
   const router = useRouter();
   const { addToast, updateToast } = useToast();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [admins, setAdmins] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addFormData, setAddFormData] = useState({ username: '', name: '', password: '', position: '', phone: '' });
@@ -57,6 +59,10 @@ export default function AdminEmployees() {
   const [resetPasswordInput, setResetPasswordInput] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showAdminAuthModal, setShowAdminAuthModal] = useState(false);
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [createAdminForm, setCreateAdminForm] = useState({ username: '', name: '', password: '', email: '', phone: '' });
+  const [showCreateAdminPassword, setShowCreateAdminPassword] = useState(false);
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -76,6 +82,7 @@ export default function AdminEmployees() {
   useEffect(() => {
     if (token) {
       fetchEmployees();
+      fetchAdmins();
       fetchCommissionRules();
     }
   }, [token]);
@@ -92,6 +99,23 @@ export default function AdminEmployees() {
       addToast('Failed to fetch employees', 'error');
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const fetchAdmins = async () => {
+    try {
+      setLoadingAdmins(true);
+      const res = await fetch('/api/admin/admins-list', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdmins(Array.isArray(data.admins) ? data.admins : []);
+      }
+    } catch (error) {
+      console.error('Error fetching admins:', error);
+    } finally {
+      setLoadingAdmins(false);
     }
   };
 
@@ -343,6 +367,47 @@ export default function AdminEmployees() {
     }
   };
 
+  const handleCreateAdmin = async () => {
+    if (!createAdminForm.username || !createAdminForm.name || !createAdminForm.password) {
+      addToast('Username, name and password are required', 'error');
+      return;
+    }
+
+    const pwd = String(createAdminForm.password);
+    const strongPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    if (!strongPwdRegex.test(pwd)) {
+      addToast('Password must be at least 8 chars and include uppercase, lowercase, number and special char', 'error');
+      return;
+    }
+
+    const toastId = addToast('Creating admin...', 'loading');
+    setCreatingAdmin(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ...createAdminForm }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create admin');
+      }
+
+      await res.json();
+      updateToast(toastId, 'Admin created successfully!', 'success');
+      setShowCreateAdminModal(false);
+      setCreateAdminForm({ username: '', name: '', password: '', email: '', phone: '' });
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to create admin', 'error');
+    } finally {
+      setCreatingAdmin(false);
+    }
+  };
+
   const handleExportToExcel = () => {
     if (employees.length === 0) {
       addToast('No employees to export', 'error');
@@ -406,6 +471,12 @@ export default function AdminEmployees() {
                 className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-all shadow-lg"
               >
                 Add Employee
+              </button>
+              <button
+                onClick={() => setShowCreateAdminModal(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-all shadow-lg"
+              >
+                Create Admin
               </button>
               <button
                 onClick={() => openAdminAuthModal()}
@@ -896,7 +967,94 @@ export default function AdminEmployees() {
         )}
 
         {/* Admin Authentication Modal */}
-        {showAdminAuthModal && (
+        {showCreateAdminModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
+              <div className="p-6 border-b border-slate-600 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Create Admin</h2>
+                <button onClick={() => setShowCreateAdminModal(false)} className="text-slate-400 hover:text-white p-2">Close</button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Username *</label>
+                    <input
+                      type="text"
+                      value={createAdminForm.username}
+                      onChange={(e) => setCreateAdminForm({ ...createAdminForm, username: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Full Name *</label>
+                    <input
+                      type="text"
+                      value={createAdminForm.name}
+                      onChange={(e) => setCreateAdminForm({ ...createAdminForm, name: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showCreateAdminPassword ? 'text' : 'password'}
+                        value={createAdminForm.password}
+                        onChange={(e) => setCreateAdminForm({ ...createAdminForm, password: e.target.value })}
+                        className="w-full pr-12 px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateAdminPassword(!showCreateAdminPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-white"
+                        aria-label={showCreateAdminPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showCreateAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={createAdminForm.email}
+                      onChange={(e) => setCreateAdminForm({ ...createAdminForm, email: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Phone</label>
+                    <input
+                      type="tel"
+                      value={createAdminForm.phone}
+                      onChange={(e) => setCreateAdminForm({ ...createAdminForm, phone: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 p-6 border-t border-slate-600 bg-slate-900">
+                <button
+                  onClick={() => handleCreateAdmin()}
+                  disabled={creatingAdmin}
+                  className="flex-1 bg-gradient-to-r from-pink-600 to-pink-500 text-white py-2 px-4 rounded-lg font-semibold"
+                >
+                  {creatingAdmin ? <Loader size={18} className="animate-spin" /> : 'Create Admin'}
+                </button>
+                <button
+                  onClick={() => setShowCreateAdminModal(false)}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg font-semibold border border-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+{showAdminAuthModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
               <div className="p-6 border-b border-slate-600">
@@ -972,6 +1130,125 @@ export default function AdminEmployees() {
             </div>
           </div>
         )}
+
+        {/* Admins Management Section */}
+        <div className="mt-12">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-white mb-2">Admin Management</h2>
+            <p className="text-slate-400">View and manage system administrators</p>
+          </div>
+
+          {loadingAdmins ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader size={40} className="animate-spin text-blue-400" />
+            </div>
+          ) : admins.length === 0 ? (
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">
+              <p className="text-slate-300">No admins registered yet</p>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
+              {/* Mobile Cards */}
+              <div className="block sm:hidden p-4 space-y-4">
+                {admins.map((admin) => (
+                  <div key={admin._id} className="bg-slate-900/40 border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="text-white font-bold text-lg">{admin.name}</div>
+                        <div className="text-slate-400 text-sm">@{admin.username}</div>
+                      </div>
+                      <span className="inline-block bg-pink-600/20 text-pink-300 px-3 py-1 rounded-full text-xs font-semibold">Admin</span>
+                    </div>
+                    {admin.createdBy && (
+                      <div className="mb-3 text-xs text-slate-400">
+                        Created by: <span className="text-slate-200 font-medium">{admin.createdBy.name}</span>
+                      </div>
+                    )}
+                    {admin.createdBy === null && (
+                      <div className="mb-3 text-xs text-emerald-400">
+                        Root Admin (Protected)
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      {user?.role === 'admin' && user.id === admin.createdBy?._id.toString() && (
+                        <button
+                          onClick={() => setDeleteCandidate({ id: admin._id, name: admin.name })}
+                          className="flex-1 bg-rose-600/90 text-white py-2 rounded-md text-sm"
+                        >
+                          Delete
+                        </button>
+                      )}
+                      {user?.role === 'admin' && !admin.createdBy && (
+                        <span className="flex-1 text-xs text-slate-400 text-center py-2">Cannot delete root admin</span>
+                      )}
+                      {user?.role === 'admin' && admin.createdBy && user.id !== admin.createdBy._id.toString() && (
+                        <span className="flex-1 text-xs text-slate-400 text-center py-2">Only creator can delete</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="overflow-x-auto hidden sm:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-900 border-b border-slate-600">
+                      <th className="px-6 py-4 text-left text-sm font-bold text-white">Name</th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-white">Username</th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-white">Email</th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-white">Created By</th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-white">Created At</th>
+                      <th className="px-6 py-4 text-center text-sm font-bold text-white">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {admins.map((admin, idx) => (
+                      <tr
+                        key={admin._id}
+                        className={`border-b border-slate-600 hover:bg-slate-700/50 transition-colors ${
+                          idx % 2 === 0 ? 'bg-slate-800/30' : 'bg-slate-800/10'
+                        }`}
+                      >
+                        <td className="px-6 py-4 text-sm text-white font-semibold">{admin.name}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">@{admin.username}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">{admin.email || '—'}</td>
+                        <td className="px-6 py-4 text-sm">
+                          {admin.createdBy ? (
+                            <div className="text-slate-300">
+                              <div className="font-medium">{admin.createdBy.name}</div>
+                              <div className="text-xs text-slate-500">@{admin.createdBy.username}</div>
+                            </div>
+                          ) : (
+                            <span className="inline-block bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded text-xs font-semibold">Root Admin</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-400">
+                          {new Date(admin.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {user?.role === 'admin' && user.id === admin.createdBy?._id.toString() ? (
+                            <button
+                              onClick={() => setDeleteCandidate({ id: admin._id, name: admin.name })}
+                              className="inline-block bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white p-2 rounded-lg transition-all"
+                              title="Delete admin"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          ) : admin.createdBy ? (
+                            <span className="text-xs text-slate-400">Only creator</span>
+                          ) : (
+                            <span className="text-xs text-slate-400">Protected</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Send Note Modal */}
         {selectedEmployeeForNote && token && (
