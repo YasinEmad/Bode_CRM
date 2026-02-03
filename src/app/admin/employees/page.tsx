@@ -1170,7 +1170,7 @@ export default function AdminEmployees() {
                       </div>
                     )}
                     <div className="flex gap-2">
-                      {user?.role === 'admin' && user.id === admin.createdBy?._id.toString() && (
+                      {user?.role === 'admin' && (user.id === admin.createdBy?._id.toString() || user.id === admin._id) && (
                         <button
                           onClick={() => setDeleteCandidate({ id: admin._id, name: admin.name })}
                           className="flex-1 bg-rose-600/90 text-white py-2 rounded-md text-sm"
@@ -1178,10 +1178,10 @@ export default function AdminEmployees() {
                           Delete
                         </button>
                       )}
-                      {user?.role === 'admin' && !admin.createdBy && (
+                      {user?.role === 'admin' && !admin.createdBy && user.id !== admin._id && (
                         <span className="flex-1 text-xs text-slate-400 text-center py-2">Cannot delete root admin</span>
                       )}
-                      {user?.role === 'admin' && admin.createdBy && user.id !== admin.createdBy._id.toString() && (
+                      {user?.role === 'admin' && admin.createdBy && user.id !== admin.createdBy._id.toString() && user.id !== admin._id && (
                         <span className="flex-1 text-xs text-slate-400 text-center py-2">Only creator can delete</span>
                       )}
                     </div>
@@ -1227,7 +1227,7 @@ export default function AdminEmployees() {
                           {new Date(admin.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {user?.role === 'admin' && user.id === admin.createdBy?._id.toString() ? (
+                          {user?.role === 'admin' && (user.id === admin.createdBy?._id.toString() || user.id === admin._id) ? (
                             <button
                               onClick={() => setDeleteCandidate({ id: admin._id, name: admin.name })}
                               className="inline-block bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white p-2 rounded-lg transition-all"
