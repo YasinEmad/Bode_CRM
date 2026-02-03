@@ -91,26 +91,81 @@ export default function AdminCommissions() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!commissions || commissions.length === 0) {
       addToast('No commissions to export', 'warning');
       return;
     }
 
-    const exportData = commissions.map((c) => ({
-      'Client Name': (c.dealId as any)?.clientName || 'Unknown',
-      'Developer': (c.dealId as any)?.developer || '—',
-      'Commission Rate': `${c.percentage}%`,
-      'Client Phone': (c.dealId as any)?.clientNumber || '—',
-      'Employee': c.employeeId?.name || '—',
-      'Commission Amount': c.amount,
-      'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
-      'Submitted': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
-      'Approved Date': c.approvalDate ? new Date(c.approvalDate).toLocaleString() : '',
-      'Rejection Note': (c as any).rejectionNote || (c as any).rejectionReason || '',
-    }));
+    const toastId = addToast('Preparing export...', 'loading');
+    try {
+      // Enrich commissions with deal details when dealId is just an id
+      const enriched = await Promise.all(
+        commissions.map(async (c) => {
+          let deal: any = null;
+          if (c.dealId && typeof c.dealId === 'object') {
+            deal = c.dealId;
+            // If populated commission.dealId doesn't include full deal fields, fetch full deal
+            if (!deal.unitCode && c.dealId) {
+              try {
+                const res = await fetch(`/api/deal-closing?dealId=${encodeURIComponent(String((c.dealId as any)?._id || c.dealId))}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.dealClosing) deal = data.dealClosing;
+              } catch (err) {
+                // ignore per-item failure
+              }
+            }
+          } else if (c.dealId) {
+            try {
+              const res = await fetch(`/api/deal-closing?dealId=${encodeURIComponent(String(c.dealId))}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.dealClosing) deal = data.dealClosing;
+            } catch (err) {
+              // ignore per-item failure
+            }
+          }
 
-    exportCommissionsToExcel(exportData, 'admin_commissions.xlsx');
+          return { commission: c, deal };
+        })
+      );
+
+      const exportData = enriched.map(({ commission: c, deal }) => ({
+        'Deal Name': deal?.clientName || (c.dealId as any)?.clientName || 'Unknown',
+        'Client Name': deal?.clientName || (c.dealId as any)?.clientName || 'Unknown',
+        'Project': deal?.developer || (c.dealId as any)?.developer || '—',
+        'Developer': deal?.developer || (c.dealId as any)?.developer || '—',
+        'Commission Rate': `${c.percentage}%`,
+        'Client Phone': deal?.clientNumber || (c.dealId as any)?.clientNumber || '—',
+        'Employee': c.employeeId?.name || '—',
+        'Commission Amount': c.amount,
+        'Status': c.status.charAt(0).toUpperCase() + c.status.slice(1),
+        'Submitted': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
+        'Approved Date': c.approvalDate ? new Date(c.approvalDate).toLocaleString() : '',
+        'Rejection Note': (c as any).rejectionNote || (c as any).rejectionReason || '',
+        // Deal fields
+        'Unit Code': deal?.unitCode || '',
+        'Unit Type': deal?.unitType || '',
+        'Unit Area': deal?.unitArea || '',
+        'Contract Price': deal?.contractPrice || '',
+        'Contract Date': deal?.contractDate ? new Date(deal.contractDate).toLocaleDateString() : '',
+        'Finishing Type': deal?.finishingType || '',
+        'Delivery Year': deal?.deliveryDate || '',
+        'Payment Plan': deal?.paymentPlan || '',
+        'Down Payment %': deal?.downPaymentPercentage || '',
+        'Down Payment Amount': deal?.downPaymentAmount || '',
+        'Info': deal?.info || '',
+        'Attachments': Array.isArray(deal?.attachments) ? deal.attachments.join('; ') : (deal?.proofImage ? deal.proofImage : ''),
+      }));
+
+      exportCommissionsToExcel(exportData, 'admin_commissions_full.xlsx');
+      updateToast(toastId, '✅ Export ready', 'success');
+    } catch (err) {
+      updateToast(toastId, err instanceof Error ? err.message : 'Export failed', 'error');
+    }
   };
 
   const handleApprove = async (commissionId: string) => {
