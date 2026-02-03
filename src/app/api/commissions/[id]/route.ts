@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Commission from '@/models/Commission';
 import Lead from '@/models/Lead';
+import DealClosing from '@/models/DealClosing';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -51,12 +52,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Commission not found' }, { status: 404 });
     }
 
-    // If admin approved the commission, also mark the related Lead as closed
-    if (status === 'approved' && commission.dealId) {
+    // If admin approved or rejected the commission, find the related DealClosing to update the original Lead status
+    if (commission.dealId) {
       try {
-        await Lead.findByIdAndUpdate(commission.dealId._id || commission.dealId, { status: 'closed' });
+        const dealClosingId = (commission.dealId as any)._id || commission.dealId;
+        const dealClosing = await DealClosing.findById(dealClosingId).populate('leadId');
+        if (dealClosing && (dealClosing as any).leadId) {
+          const leadId = (dealClosing as any).leadId._id || (dealClosing as any).leadId;
+          if (status === 'approved') {
+            await Lead.findByIdAndUpdate(leadId, { status: 'closed' });
+          } else if (status === 'rejected') {
+            await Lead.findByIdAndUpdate(leadId, { status: 'rejected' });
+          }
+        }
       } catch (err) {
-        console.error('Failed to update lead status after commission approval:', err);
+        console.error('Failed to update lead status after commission status change:', err);
       }
     }
 
