@@ -135,17 +135,17 @@ export default function NotificationsBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="relative flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+        className="relative p-2 rounded-lg transition-all"
+        title="Notifications"
       >
         <div className="relative">
-          <Bell size={18} className="transition-transform duration-300" />
+          <Bell size={18} className="text-purple-400 hover:text-purple-300 transition-transform duration-300" />
           {unreadCount > 0 && (
-            <span className="absolute -top-3 -right-3 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white">
+            <span className="absolute -top-3 -right-3 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </div>
-        <span className="hidden sm:inline">Notifications</span>
       </button>
 
       {/* Dropdown */}

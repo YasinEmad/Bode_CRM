@@ -424,7 +424,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Format the late time message
-    let message = 'تم تسجيل الحضور في الوقت المحدد';
+    let message = 'Attendance was recorded on time';
     if (savedRecord?.isLate) {
       const hours = Math.floor((savedRecord?.lateMinutes || 0) / 60);
       const minutes = (savedRecord?.lateMinutes || 0) % 60;
