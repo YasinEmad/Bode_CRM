@@ -55,13 +55,13 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     unitCode: {
       type: Number,
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
     unitArea: {
       type: Number,
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
@@ -85,13 +85,13 @@ const DealClosingSchema = new Schema<IDealClosing>(
         'Administrative Unit',
         'Clinic',
       ],
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
     contractPrice: {
       type: Number,
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
@@ -101,20 +101,20 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     contractDate: {
       type: Date,
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
     finishingType: {
       type: String,
       enum: ['Fully finished', 'Semi-finished', 'Not finished'],
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
     deliveryDate: {
       type: Number, // Year
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
@@ -138,19 +138,19 @@ const DealClosingSchema = new Schema<IDealClosing>(
         '14 years',
         '15 years',
       ],
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
     downPaymentPercentage: {
       type: Number,
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
     downPaymentAmount: {
       type: Number,
-      required: function() {
+      required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
     },
