@@ -29,6 +29,22 @@ export async function logAdminAction({
       await connectDB();
     }
 
+    // Prevent duplicate logs for the same resource within 10 seconds
+    // Check if there's already a recent log for this resource
+    if (resourceId && resourceType === 'commission') {
+      const tenSecondsAgo = new Date(Date.now() - 10000);
+      const recentLog = await AdminAction.findOne({
+        resourceId: resourceId,
+        resourceType: 'commission',
+        createdAt: { $gte: tenSecondsAgo },
+      });
+
+      if (recentLog) {
+        console.log('⚠️ Duplicate log detected and skipped for:', { resourceId, action, resourceType });
+        return recentLog;
+      }
+    }
+
     const log = await AdminAction.create({
       admin: adminId,
       action,

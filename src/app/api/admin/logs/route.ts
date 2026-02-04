@@ -188,6 +188,31 @@ export async function DELETE(req: NextRequest) {
 
     await connectDB();
 
+    // Check if specific resource ID is provided
+    const resourceId = req.nextUrl.searchParams.get('resourceId');
+
+    if (resourceId) {
+      // Delete logs for a specific resource (e.g., a specific commission)
+      try {
+        const { Types } = await import('mongoose');
+        const mongoId = new Types.ObjectId(resourceId);
+        const adminActionResult = await AdminAction.deleteMany({ resourceId: mongoId });
+        const assignmentLogResult = await AssignmentLog.deleteMany({ lead: mongoId });
+
+        return NextResponse.json({
+          message: `Logs deleted for resource ${resourceId}`,
+          deletedAdminActions: adminActionResult.deletedCount || 0,
+          deletedAssignmentLogs: assignmentLogResult.deletedCount || 0,
+          totalDeleted: (adminActionResult.deletedCount || 0) + (assignmentLogResult.deletedCount || 0),
+        });
+      } catch (e) {
+        return NextResponse.json(
+          { error: 'Invalid resource ID format' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Delete all admin actions and assignment logs
     const adminActionResult = await AdminAction.deleteMany({});
     const assignmentLogResult = await AssignmentLog.deleteMany({});
