@@ -100,6 +100,8 @@ export default function Navbar() {
         { href: '/admin/monthly-employee-report', label: 'Monthly Report' },
         { href: '/admin/team-leaders-monthly-report', label: 'Team Leaders' },
         { href: '/admin/commissions', label: 'Commissions' },
+        { href: '/admin/logs', label: 'Logs' },
+
         { href: '/admin/settings', label: 'Settings' },
       ]
     : [
