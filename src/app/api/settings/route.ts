@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import SystemSettings from '@/models/SystemSettings';
 import { calculateDistance } from '@/lib/geolocation';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -145,6 +146,26 @@ export async function PUT(req: NextRequest) {
     console.log('✅ AFTER DB SAVE:', {
       saved_lat: settings.officeLatitude,
       saved_lon: settings.officeLongitude,
+    });
+
+    // Log the admin action
+    const changedFields: Record<string, any> = {};
+    if (officeLatitude !== undefined && officeLatitude !== null) changedFields.officeLatitude = officeLatitude;
+    if (officeLongitude !== undefined && officeLongitude !== null) changedFields.officeLongitude = officeLongitude;
+    if (officeName !== undefined && officeName !== null) changedFields.officeName = officeName;
+    if (attendanceRadius !== undefined && attendanceRadius !== null) changedFields.attendanceRadius = attendanceRadius;
+    if (attendanceTime !== undefined && attendanceTime !== null) changedFields.attendanceTime = attendanceTime;
+    if (commissionRules !== undefined && commissionRules !== null) changedFields.commissionRules = commissionRules;
+    if (minGpsAccuracy !== undefined && minGpsAccuracy !== null) changedFields.minGpsAccuracy = minGpsAccuracy;
+
+    await logAdminAction({
+      adminId: payload.userId,
+      action: 'update',
+      resourceType: 'system-settings',
+      resourceId: settings._id.toString(),
+      resourceName: 'System Settings',
+      description: 'Updated system settings',
+      details: changedFields,
     });
 
     return NextResponse.json({ settings });

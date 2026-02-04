@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import KPISetting from '@/models/KPISetting';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -210,6 +211,24 @@ export async function PUT(req: NextRequest) {
     } else {
       console.error('❌ Verification failed - no settings found in DB');
     }
+
+    // Log the admin action
+    await logAdminAction({
+      adminId: payload.userId,
+      action: 'update',
+      resourceType: 'kpi-settings',
+      resourceId: kpiSettings._id.toString(),
+      resourceName: 'KPI Settings',
+      description: 'Updated KPI settings indicators and targets',
+      details: {
+        indicators: indicators.map((ind: any) => ({
+          name: ind.name,
+          target: ind.target,
+          weight: ind.weight,
+        })),
+        totalWeight,
+      },
+    });
 
     return NextResponse.json({ kpiSettings, message: 'KPI settings updated successfully' });
   } catch (error) {

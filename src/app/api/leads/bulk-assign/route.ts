@@ -6,6 +6,7 @@ import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
 import Notification from '@/models/Notification';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -41,6 +42,26 @@ export async function PUT(req: NextRequest) {
       { _id: { $in: leadIds } },
       { assignedTo: employeeId || null }
     );
+
+    // Log admin action
+    const employee = employeeId ? await User.findById(employeeId) : null;
+    const assignedLeads = await Lead.find({ _id: { $in: leadIds } });
+    
+    await logAdminAction({
+      adminId: payload.userId,
+      action: 'bulk-assign',
+      resourceType: 'leads',
+      resourceId: null,
+      resourceName: `Bulk assigned ${leadIds.length} leads`,
+      description: `Assigned ${leadIds.length} leads to ${employee?.name || 'unassigned'}`,
+      details: {
+        leadCount: leadIds.length,
+        leadIds: leadIds,
+        leadNames: assignedLeads.map(l => l.name),
+        assignedTo: employeeId,
+        employeeName: employee?.name || 'unassigned',
+      },
+    });
 
     // إنشاء إشعارات للموظف الذي تم إسناد الـ leads له
     if (employeeId) {

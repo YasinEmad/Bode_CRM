@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import { verifyToken, hashPassword } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -48,6 +49,21 @@ export async function POST(req: NextRequest) {
       position: position || '',
       role: 'admin',
       createdBy: payload.userId,
+    });
+
+    // Log the admin action
+    await logAdminAction({
+      adminId: payload.userId,
+      action: 'create',
+      resourceType: 'admin',
+      resourceId: user._id,
+      resourceName: user.name,
+      description: `Created new admin user: ${user.name} (${user.username})`,
+      details: {
+        username: user.username,
+        email: user.email,
+        position: user.position,
+      },
     });
 
     return NextResponse.json({ success: true, admin: { id: user._id, username: user.username, name: user.name, role: user.role } }, { status: 201 });

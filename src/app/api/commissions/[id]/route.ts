@@ -4,6 +4,7 @@ import Commission from '@/models/Commission';
 import Lead from '@/models/Lead';
 import DealClosing from '@/models/DealClosing';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -51,6 +52,25 @@ export async function PUT(
     if (!commission) {
       return NextResponse.json({ error: 'Commission not found' }, { status: 404 });
     }
+
+    // Log the admin action
+    const employee = (commission as any).employeeId;
+    const employeeName = employee?.name || 'Unknown Employee';
+    await logAdminAction({
+      adminId: payload.userId,
+      action: status === 'approved' ? 'approve' : 'reject',
+      resourceType: 'commission',
+      resourceId: commission._id,
+      resourceName: `Commission for ${employeeName}`,
+      description: `${status === 'approved' ? 'Approved' : 'Rejected'} commission for ${employeeName}. Amount: ${commission.amount}. ${status === 'rejected' ? `Reason: ${rejectionReason}` : ''}`,
+      details: {
+        commissionId: commission._id,
+        employeeId: commission.employeeId,
+        amount: commission.amount,
+        status,
+        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+      },
+    });
 
     // If admin approved or rejected the commission, find the related DealClosing to update the original Lead status
     if (commission.dealId) {
@@ -102,6 +122,23 @@ export async function DELETE(
     if (!commission) {
       return NextResponse.json({ error: 'Commission not found' }, { status: 404 });
     }
+
+    // Log the admin action
+    const employee = (commission as any).employeeId;
+    const employeeName = employee?.name || 'Unknown Employee';
+    await logAdminAction({
+      adminId: payload.userId,
+      action: 'delete',
+      resourceType: 'commission',
+      resourceId: id,
+      resourceName: `Commission for ${employeeName}`,
+      description: `Deleted commission for ${employeeName}. Amount was: ${commission.amount}`,
+      details: {
+        commissionId: commission._id,
+        employeeId: commission.employeeId,
+        amount: commission.amount,
+      },
+    });
 
     return NextResponse.json({ message: 'Commission deleted', commission });
   } catch (error) {

@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Users, TrendingUp, DollarSign, CheckCircle, BarChart3, Zap } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, CheckCircle, BarChart3, Zap, Shield } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, loading, token } = useAuth();
@@ -263,6 +263,19 @@ export default function AdminDashboard() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">System Settings</h3>
             <p className="text-slate-400">Configure office location & commission rules</p>
+          </a>
+
+          <a
+            href="/admin/logs"
+            className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-pink-500 transition-all group cursor-pointer"
+          >
+            <div className="mb-4">
+              <div className="inline-block bg-gradient-to-br from-pink-600 to-pink-500 rounded-lg p-3 group-hover:scale-110 transition-transform">
+                <Shield size={28} className="text-white" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Admin Logs</h3>
+            <p className="text-slate-400">View all admin actions and activity logs</p>
           </a>
         </div>
       </div>

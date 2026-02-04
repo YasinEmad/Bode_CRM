@@ -44,6 +44,7 @@ export default function AdminCommissions() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalAmount, setApprovalAmount] = useState('');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -169,6 +170,10 @@ export default function AdminCommissions() {
   };
 
   const handleApprove = async (commissionId: string) => {
+    // Prevent duplicate requests
+    if (processingIds.has(commissionId)) return;
+    
+    setProcessingIds((prev) => new Set([...prev, commissionId]));
     const toastId = addToast('Approving commission...', 'loading');
 
     try {
@@ -194,6 +199,12 @@ export default function AdminCommissions() {
       updateToast(toastId, 'Commission approved! Now waiting for payment.', 'success');
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Failed to approve', 'error');
+    } finally {
+      setProcessingIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(commissionId);
+        return newSet;
+      });
     }
   };
 
@@ -246,6 +257,10 @@ export default function AdminCommissions() {
   };
 
   const handleReject = async (commissionId: string, reason: string, note: string) => {
+    // Prevent duplicate requests
+    if (processingIds.has(commissionId)) return;
+    
+    setProcessingIds((prev) => new Set([...prev, commissionId]));
     const toastId = addToast('Rejecting commission...', 'loading');
 
     try {
@@ -268,6 +283,12 @@ export default function AdminCommissions() {
       setRejectNote('');
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Failed to reject', 'error');
+    } finally {
+      setProcessingIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(commissionId);
+        return newSet;
+      });
     }
   };
 
@@ -568,16 +589,18 @@ export default function AdminCommissions() {
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={() => handleReject(rejectingId, 'Rejected by admin', rejectNote)}
-                    className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 rounded-lg font-semibold transition-all"
+                    disabled={processingIds.has(rejectingId)}
+                    className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Confirm Rejection
+                    {processingIds.has(rejectingId) ? 'Rejecting...' : 'Confirm Rejection'}
                   </button>
                   <button
                     onClick={() => {
                       setRejectingId(null);
                       setRejectNote('');
                     }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600"
+                    disabled={processingIds.has(rejectingId)}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
@@ -830,17 +853,18 @@ export default function AdminCommissions() {
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={() => handleApprove(approvingId)}
-                    disabled={!approvalAmount || isNaN(Number(approvalAmount))}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-2 rounded-lg font-semibold transition-all"
+                    disabled={!approvalAmount || isNaN(Number(approvalAmount)) || processingIds.has(approvingId)}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Approve
+                    {processingIds.has(approvingId) ? 'Approving...' : 'Approve'}
                   </button>
                   <button
                     onClick={() => {
                       setApprovingId(null);
                       setApprovalAmount('');
                     }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600"
+                    disabled={processingIds.has(approvingId)}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>

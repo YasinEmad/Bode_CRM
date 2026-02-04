@@ -6,6 +6,7 @@ import Team from '@/models/Team';
 import AssignmentLog from '@/models/AssignmentLog';
 import Notification from '@/models/Notification';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -42,6 +43,32 @@ export async function POST(req: NextRequest) {
       lead.assignedTo = employeeId || null;
       await lead.save();
       await AssignmentLog.create({ lead: lead._id, from, to: employeeId || null, changedBy: payload.userId, reason: reason || '' });
+      
+      // Log admin action
+      const employee = employeeId ? await User.findById(employeeId) : null;
+      console.log('🔵 Admin assigning lead - logging action:', { leadId: lead._id, employeeId, employeeName: employee?.name });
+      
+      try {
+        await logAdminAction({
+          adminId: payload.userId,
+          action: 'assign',
+          resourceType: 'lead',
+          resourceId: lead._id.toString(),
+          resourceName: lead.name,
+          description: `Assigned lead to ${employee?.name || 'unassigned'}`,
+          details: {
+            leadId: lead._id.toString(),
+            leadName: lead.name,
+            assignedTo: employeeId || null,
+            employeeName: employee?.name || 'unassigned',
+            from: from ? from.toString() : 'unassigned',
+            reason: reason || '',
+          },
+        });
+        console.log('✅ Admin action logged successfully');
+      } catch (logError) {
+        console.error('❌ Error logging admin action:', logError);
+      }
       
       // إنشاء إشعار للموظف الذي تم إسناد الـ lead له
       if (employeeId) {
