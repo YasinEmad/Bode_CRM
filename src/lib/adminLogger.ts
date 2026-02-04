@@ -22,7 +22,14 @@ export async function logAdminAction({
   details?: Record<string, any>;
 }) {
   try {
-    await AdminAction.create({
+    // Ensure database connection before logging
+    const mongoose = await import('mongoose');
+    if (mongoose.default.connection.readyState !== 1) {
+      const { connectDB } = await import('@/lib/mongodb');
+      await connectDB();
+    }
+
+    const log = await AdminAction.create({
       admin: adminId,
       action,
       resourceType,
@@ -31,8 +38,15 @@ export async function logAdminAction({
       description,
       details: details || {},
     });
+
+    console.log('✅ Admin action logged:', { logId: log._id, action, resourceType });
+    return log;
   } catch (error) {
-    console.error('Error logging admin action:', error);
+    console.error('❌ Error logging admin action:', {
+      action,
+      resourceType,
+      error: error instanceof Error ? error.message : error,
+    });
     // Don't throw; logging failure should not break the main operation
   }
 }
