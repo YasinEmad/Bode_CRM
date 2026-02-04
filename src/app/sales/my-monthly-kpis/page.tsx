@@ -502,9 +502,9 @@ export default function MyMonthlyKPIs() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-blue-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.attendance, 100)}%`}}></div>
+                              <div className="bg-blue-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.attendance || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.attendance.toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.attendance || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -516,9 +516,9 @@ export default function MyMonthlyKPIs() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-cyan-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.deals, 100)}%`}}></div>
+                              <div className="bg-cyan-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.deals || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.deals.toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.deals || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -530,9 +530,9 @@ export default function MyMonthlyKPIs() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-yellow-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.calls, 100)}%`}}></div>
+                              <div className="bg-yellow-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.calls || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.calls.toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.calls || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -544,9 +544,9 @@ export default function MyMonthlyKPIs() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-pink-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.meetings, 100)}%`}}></div>
+                              <div className="bg-pink-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.meetings || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.meetings.toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.meetings || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -558,9 +558,9 @@ export default function MyMonthlyKPIs() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-purple-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.assessments, 100)}%`}}></div>
+                              <div className="bg-purple-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.assessments || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.assessments.toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.assessments || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -572,9 +572,9 @@ export default function MyMonthlyKPIs() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-orange-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData.kpiBreakdown.requests, 100)}%`}}></div>
+                              <div className="bg-orange-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.requests || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{kpiData.kpiBreakdown.requests.toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.requests || 0).toFixed(1)}%</span>
                           </div>
                         </div>
                       </div>
