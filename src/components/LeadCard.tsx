@@ -274,8 +274,8 @@ export default function LeadCard({
                 throw new Error(err.error || 'Failed to close deal');
               }
 
-              // Inform parent to refresh status and data
-              onStatusChange?.('closed');
+              // Deal closing API already updates the lead status, so just close the modal
+              // Do NOT call onStatusChange because that would try to update the lead again
               setShowCloseModal(false);
               setIsExpanded(false);
             } catch (err) {
@@ -304,7 +304,7 @@ export default function LeadCard({
             {/* Content */}
             <div className="px-6 py-6 space-y-4">
               <p className="text-slate-300">
-                هل أنت متأكد أنك تريد الاتصال على رقم الهاتف التالي؟
+                Are you sure you want to call the following phone number?
               </p>
               <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
                 <p className="text-xs text-slate-400 mb-2">Lead Name:</p>

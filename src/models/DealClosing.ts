@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IDealClosing extends Document {
   leadId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId; // Sales representative who closed the deal
-  tcrType: 'Reservation' | 'Contract';
+  tcrType: 'Reservation' | 'Contract' | 'EOI';
   clientName: string;
   clientNumber: string;
   developer: string;
@@ -38,7 +38,7 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     tcrType: {
       type: String,
-      enum: ['Reservation', 'Contract'],
+      enum: ['Reservation', 'Contract', 'EOI'],
       required: true,
     },
     clientName: {
@@ -55,11 +55,15 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     unitCode: {
       type: Number,
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     unitArea: {
       type: Number,
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     unitType: {
       type: String,
@@ -81,11 +85,15 @@ const DealClosingSchema = new Schema<IDealClosing>(
         'Administrative Unit',
         'Clinic',
       ],
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     contractPrice: {
       type: Number,
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     project: {
       type: String,
@@ -93,16 +101,22 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     contractDate: {
       type: Date,
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     finishingType: {
       type: String,
       enum: ['Fully finished', 'Semi-finished', 'Not finished'],
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     deliveryDate: {
       type: Number, // Year
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     paymentPlan: {
       type: String,
@@ -124,15 +138,21 @@ const DealClosingSchema = new Schema<IDealClosing>(
         '14 years',
         '15 years',
       ],
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     downPaymentPercentage: {
       type: Number,
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     downPaymentAmount: {
       type: Number,
-      required: true,
+      required: function() {
+        return this.tcrType !== 'EOI';
+      },
     },
     attachments: [
       {

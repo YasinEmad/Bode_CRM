@@ -16,7 +16,7 @@ interface CloseDealModalProps {
 }
 
 export interface DealClosingFormData {
-  tcrType: 'Reservation' | 'Contract';
+  tcrType: 'Reservation' | 'Contract' | 'EOI';
   clientName: string;
   clientNumber: string;
   developer: string;
@@ -231,10 +231,18 @@ export default function CloseDealModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required fields
+    // Validate required fields based on tcrType
     if (!formData.clientName || !formData.clientNumber || !formData.developer || !formData.project || !formData.info) {
       alert('Please fill in all required fields');
       return;
+    }
+
+    // For EOI, these fields are not required
+    if (formData.tcrType !== 'EOI') {
+      if (!formData.unitCode || !formData.unitArea || !formData.contractPrice) {
+        alert('Please fill in all required fields');
+        return;
+      }
     }
 
     try {
@@ -294,6 +302,7 @@ export default function CloseDealModal({
               >
                 <option value="Reservation">Reservation</option>
                 <option value="Contract">Contract</option>
+                <option value="EOI">EOI</option>
               </select>
             </div>
 
@@ -357,6 +366,7 @@ export default function CloseDealModal({
           </div>
 
           {/* Row 3 */}
+          {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
@@ -404,8 +414,10 @@ export default function CloseDealModal({
               </select>
             </div>
           </div>
+          )}
 
           {/* Row 4 */}
+          {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
@@ -434,8 +446,10 @@ export default function CloseDealModal({
               />
             </div>
           </div>
+          )}
 
           {/* Row 5 */}
+          {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
@@ -469,8 +483,10 @@ export default function CloseDealModal({
               />
             </div>
           </div>
+          )}
 
           {/* Row 6 */}
+          {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
@@ -506,8 +522,10 @@ export default function CloseDealModal({
               />
             </div>
           </div>
+          )}
 
           {/* Row 7 */}
+          {formData.tcrType !== 'EOI' && (
           <div>
             <label className="block text-sm font-semibold text-white mb-2">
               Down Payment Amount *
@@ -521,6 +539,7 @@ export default function CloseDealModal({
               className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
             />
           </div>
+          )}
 
           {/* Attachments */}
           <div>

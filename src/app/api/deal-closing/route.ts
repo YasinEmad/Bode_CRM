@@ -54,23 +54,34 @@ export async function POST(req: NextRequest) {
       !clientName ||
       !clientNumber ||
       !developer ||
-      !unitCode ||
-      !unitArea ||
-      !unitType ||
-      !contractPrice ||
-      !contractDate ||
-      !finishingType ||
-      !deliveryDate ||
-      !paymentPlan ||
-      downPaymentPercentage === undefined ||
-      downPaymentPercentage === null ||
-      !downPaymentAmount ||
       !info
     ) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    // For non-EOI types, validate additional required fields
+    if (tcrType !== 'EOI') {
+      if (
+        !unitCode ||
+        !unitArea ||
+        !unitType ||
+        !contractPrice ||
+        !contractDate ||
+        !finishingType ||
+        !deliveryDate ||
+        !paymentPlan ||
+        downPaymentPercentage === undefined ||
+        downPaymentPercentage === null ||
+        !downPaymentAmount
+      ) {
+        return NextResponse.json(
+          { error: 'Missing required fields for ' + tcrType },
+          { status: 400 }
+        );
+      }
     }
 
     // Create new deal closing record
