@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Upload to GridFS
-        const uploadStream = bucket.openUploadStream(file.name, {
+        const uploadStream = bucket.openUploadStream(file.name, ({
           contentType: file.type,
           metadata: {
             uploadedBy: decoded.userId,
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
             originalSize: buffer.length,
             compressedSize,
           },
-        });
+        } as any));
 
         uploadStream.end(compressedBuffer);
 

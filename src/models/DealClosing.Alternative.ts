@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, Bucket } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
 /**
  * Alternative Implementation: Storing Images in MongoDB using GridFS
@@ -182,7 +182,7 @@ DealClosingGridFSSchema.index({ leadId: 1 });
 DealClosingGridFSSchema.index({ userId: 1, createdAt: -1 });
 DealClosingGridFSSchema.index({ tcrType: 1 });
 
-export default mongoose.models.DealClosingGridFS ||
+export const DealClosingGridFS = mongoose.models.DealClosingGridFS ||
   mongoose.model<IDealClosingWithGridFS>('DealClosingGridFS', DealClosingGridFSSchema);
 
 // ============================================
@@ -348,7 +348,7 @@ const DealClosingBase64Schema = new Schema<IDealClosingBase64>(
 DealClosingBase64Schema.index({ leadId: 1 });
 DealClosingBase64Schema.index({ userId: 1, createdAt: -1 });
 
-export default mongoose.models.DealClosingBase64 ||
+export const DealClosingBase64 = mongoose.models.DealClosingBase64 ||
   mongoose.model<IDealClosingBase64>('DealClosingBase64', DealClosingBase64Schema);
 
 // ============================================
@@ -525,7 +525,7 @@ const DealClosingHybridSchema = new Schema<IDealClosingHybrid>(
 DealClosingHybridSchema.index({ leadId: 1 });
 DealClosingHybridSchema.index({ userId: 1, createdAt: -1 });
 
-export default mongoose.models.DealClosingHybrid ||
+export const DealClosingHybrid = mongoose.models.DealClosingHybrid ||
   mongoose.model<IDealClosingHybrid>('DealClosingHybrid', DealClosingHybridSchema);
 
 // ============================================
