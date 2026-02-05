@@ -74,21 +74,21 @@ export async function POST(req: NextRequest) {
       try {
         // Convert file to buffer
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const buffer: Buffer = Buffer.from(arrayBuffer as any);
 
         // Compress image if it's large (optional but recommended)
-        let compressedBuffer = buffer;
+        let compressedBuffer: Buffer = buffer;
         let compressedSize = buffer.length;
 
         if (file.type === 'image/jpeg' || file.type === 'image/png') {
           try {
-            compressedBuffer = await sharp(buffer)
+            compressedBuffer = (await sharp(buffer)
               .resize(1920, 1080, {
                 fit: 'inside',
                 withoutEnlargement: true,
               })
               .jpeg({ quality: 80 })
-              .toBuffer();
+              .toBuffer()) as Buffer;
             compressedSize = compressedBuffer.length;
           } catch (compressError) {
             console.error('Image compression failed, using original:', compressError);
