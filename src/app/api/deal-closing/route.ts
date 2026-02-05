@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       paymentPlan,
       downPaymentPercentage,
       downPaymentAmount,
+      paymentByMonth,
       attachments,
       info,
     } = body;
@@ -75,7 +76,9 @@ export async function POST(req: NextRequest) {
         !paymentPlan ||
         downPaymentPercentage === undefined ||
         downPaymentPercentage === null ||
-        !downPaymentAmount
+        !downPaymentAmount ||
+        paymentByMonth === undefined ||
+        paymentByMonth === null
       ) {
         return NextResponse.json(
           { error: 'Missing required fields for ' + tcrType },
@@ -103,6 +106,7 @@ export async function POST(req: NextRequest) {
       paymentPlan,
       downPaymentPercentage,
       downPaymentAmount,
+      paymentByMonth,
       attachments: attachments || [],
       project: body.project || undefined,
       info,

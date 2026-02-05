@@ -160,9 +160,10 @@ export default function AdminCommissions() {
         'Down Payment Amount': deal?.downPaymentAmount || '',
         'Info': deal?.info || '',
         'Attachments': Array.isArray(deal?.attachments) ? deal.attachments.join('; ') : (deal?.proofImage ? deal.proofImage : ''),
+        'AttachmentUrls': Array.isArray(deal?.attachments) ? deal.attachments : (deal?.proofImage ? [deal.proofImage] : []),
       }));
 
-      exportCommissionsToExcel(exportData, 'admin_commissions_full.xlsx');
+      await exportCommissionsToExcel(exportData, 'admin_commissions_full.xlsx');
       updateToast(toastId, '✅ Export ready', 'success');
     } catch (err) {
       updateToast(toastId, err instanceof Error ? err.message : 'Export failed', 'error');
@@ -775,7 +776,7 @@ export default function AdminCommissions() {
                 {/* Payment Details */}
                 <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/50 border border-slate-600 rounded-lg p-5">
                   <h3 className="text-sm font-bold text-green-300 uppercase tracking-wider mb-4">💰 Payment Plan & Down Payment</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-slate-800/70 rounded-lg p-3">
                       <p className="text-xs text-slate-400 uppercase font-bold mb-1">Payment Plan</p>
                       <p className="text-lg font-bold text-green-300">{selectedDealClosing.paymentPlan}</p>
@@ -787,6 +788,10 @@ export default function AdminCommissions() {
                     <div className="bg-slate-800/70 rounded-lg p-3">
                       <p className="text-xs text-slate-400 uppercase font-bold mb-1">Down Payment Amount</p>
                       <p className="text-2xl font-bold text-green-300">${selectedDealClosing.downPaymentAmount?.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-slate-800/70 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 uppercase font-bold mb-1">Monthly Installment</p>
+                      <p className="text-2xl font-bold text-green-300">${selectedDealClosing.paymentByMonth?.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>

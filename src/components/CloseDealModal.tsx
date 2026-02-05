@@ -31,6 +31,7 @@ export interface DealClosingFormData {
   paymentPlan: string;
   downPaymentPercentage: number;
   downPaymentAmount: number;
+  paymentByMonth: number; // Monthly installment amount
   attachments: string[];
   info: string;
 }
@@ -85,6 +86,7 @@ export default function CloseDealModal({
     paymentPlan: '0',
     downPaymentPercentage: 0,
     downPaymentAmount: 0,
+    paymentByMonth: 0,
     attachments: [],
     info: '',
   });
@@ -262,6 +264,7 @@ export default function CloseDealModal({
         paymentPlan: '0',
         downPaymentPercentage: 0,
         downPaymentAmount: 0,
+        paymentByMonth: 0,
         attachments: [],
         info: '',
       });
@@ -526,18 +529,34 @@ export default function CloseDealModal({
 
           {/* Row 7 */}
           {formData.tcrType !== 'EOI' && (
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2">
-              Down Payment Amount *
-            </label>
-            <input
-              type="number"
-              name="downPaymentAmount"
-              value={formData.downPaymentAmount}
-              onChange={handleInputChange}
-              placeholder="Down Payment Amount"
-              className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Down Payment Amount *
+              </label>
+              <input
+                type="number"
+                name="downPaymentAmount"
+                value={formData.downPaymentAmount}
+                onChange={handleInputChange}
+                placeholder="Down Payment Amount"
+                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Payment by Month (Monthly Installment) *
+              </label>
+              <input
+                type="number"
+                name="paymentByMonth"
+                value={formData.paymentByMonth}
+                onChange={handleInputChange}
+                placeholder="Monthly installment amount"
+                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+              />
+            </div>
           </div>
           )}
 

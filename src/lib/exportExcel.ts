@@ -1,4 +1,7 @@
 import { utils, write } from 'xlsx';
+// ExcelJS can cause bundler/runtime issues in the browser. We'll dynamically import
+// the browser build and polyfill `Buffer` when running client-side.
+// Do NOT statically import ExcelJS here.
 
 export interface AttendanceExportData {
   'Employee Name': string;
@@ -202,45 +205,131 @@ export interface CommissionExportData {
   'Rejection Note': string;
 }
 
-export function exportCommissionsToExcel(
+export async function exportCommissionsToExcel(
   data: CommissionExportData[],
   filename: string = 'commissions.xlsx'
 ) {
-  const ws = utils.json_to_sheet(data);
+  if (!data || data.length === 0) return;
 
-  const colWidths = [30, 25, 18, 18, 15, 18, 18, 30];
-  ws['!cols'] = colWidths.map((width) => ({ wch: width }));
+  // Dynamic imports + polyfills for browser environment
+  let ExcelJS: any = null;
+  if (typeof window !== 'undefined') {
+    // Ensure Buffer is available (some bundlers remove Node Buffer)
+    if (!(window as any).Buffer) {
+      try {
+        const bufMod = await import('buffer');
+        (window as any).Buffer = bufMod.Buffer;
+      } catch (err) {
+        // ignore — some environments already provide Buffer
+      }
+    }
 
-  const headerStyle = {
-    fill: { fgColor: { rgb: 'FF1F2937' } },
-    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    border: {
-      top: { style: 'thin', color: { rgb: 'FF000000' } },
-      bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-      left: { style: 'thin', color: { rgb: 'FF000000' } },
-      right: { style: 'thin', color: { rgb: 'FF000000' } },
-    },
-  };
+    // Try to import the browser build first
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      ExcelJS = (await import('exceljs/dist/exceljs.min.js')).default || (await import('exceljs')).default;
+    } catch (err) {
+      ExcelJS = (await import('exceljs')).default || (await import('exceljs'));
+    }
+  } else {
+    // Server-side
+    ExcelJS = (await import('exceljs')).default || (await import('exceljs'));
+  }
 
-  const headerRange = utils.decode_range(ws['!ref'] || 'A1');
-  for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
-    const cellAddress = utils.encode_col(col) + '1';
-    if (ws[cellAddress]) {
-      ws[cellAddress].s = headerStyle;
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Commissions');
+
+  // Build headers from keys (keep order)
+  const headers = Object.keys(data[0]);
+
+  // Add header row (avoid assigning sheet.columns directly to prevent exceljs expecting Column instances)
+  sheet.addRow(headers);
+  // Set header styles
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } } as any;
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } } as any;
+  // Set default widths
+  headers.forEach((h, i) => {
+    const col = sheet.getColumn(i + 1);
+    col.width = 30;
+  });
+
+  // Add rows and collect image rows (support multiple URLs)
+  const imageRows: { rowNumber: number; urls: string[] }[] = [];
+  for (const rowObj of data) {
+    const rowValues = headers.map((h) => {
+      if (h === 'AttachmentUrls' || h === 'AttachmentUrl' || h === 'attachmentUrls' || h === 'attachments') return '';
+      return (rowObj as any)[h] ?? '';
+    });
+    const row = sheet.addRow(rowValues);
+    const currentRowNumber = row.number;
+    // Collect possible url(s)
+    let urls: string[] = [];
+    if (Array.isArray((rowObj as any).AttachmentUrls)) urls = (rowObj as any).AttachmentUrls;
+    else if (Array.isArray((rowObj as any).attachments)) urls = (rowObj as any).attachments;
+    else if ((rowObj as any).AttachmentUrl) urls = [(rowObj as any).AttachmentUrl];
+    else if ((rowObj as any).attachmentUrl) urls = [(rowObj as any).attachmentUrl];
+
+    if (urls.length > 0) {
+      imageRows.push({ rowNumber: currentRowNumber, urls });
+      sheet.getRow(currentRowNumber).height = 90;
     }
   }
 
-  const wb = utils.book_new();
-  utils.book_append_sheet(wb, ws, 'Commissions');
+  // Helper to convert ArrayBuffer to base64
+  function arrayBufferToBase64(buffer: ArrayBuffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
 
-  const timestamp = new Date().toISOString().split('T')[0];
-  const finalFilename = filename.replace('.xlsx', '') + '_' + timestamp + '.xlsx';
+  // Embed images (if any)
+  for (const imgRow of imageRows) {
+    const urls = imgRow.urls || [];
+    for (let i = 0; i < urls.length; i++) {
+      const urlStr = urls[i];
+      try {
+        const res = await fetch(urlStr);
+        if (!res.ok) throw new Error('Image fetch failed');
+        const contentType = res.headers.get('content-type') || '';
+        const arrayBuffer = await res.arrayBuffer();
+        const base64 = arrayBufferToBase64(arrayBuffer);
+        let ext = 'png';
+        if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpeg';
+        else if (contentType.includes('gif')) ext = 'gif';
 
-  const blob = new Blob([Buffer.from(write(wb, { bookType: 'xlsx', type: 'binary' }), 'binary')],
-    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const imageId = workbook.addImage({ base64, extension: ext });
+
+        const imageColIndex = headers.findIndex((h) => h === 'AttachmentUrls' || h === 'AttachmentUrl' || h === 'attachmentUrls' || h === 'attachments');
+        const baseIndex = imageColIndex >= 0 ? imageColIndex : headers.length; // zero-based
+        const targetCol = baseIndex + i; // zero-based
+
+        // Ensure sheet has enough columns and set header for new attachment columns
+        while (sheet.columnCount <= targetCol) {
+          const newColIndex = sheet.columnCount + 1; // 1-based
+          sheet.getRow(1).getCell(newColIndex).value = `Attachment ${newColIndex - headers.length}`;
+          sheet.getColumn(newColIndex).width = 22;
+        }
+
+        const tl = { col: targetCol, row: imgRow.rowNumber - 1 };
+        sheet.addImage(imageId, { tl, ext: { width: 160, height: 110 } });
+      } catch (err) {
+        // on failure write URL into appropriate cell
+        const colIndex = headers.findIndex((h) => h === 'AttachmentUrls' || h === 'AttachmentUrl' || h === 'attachmentUrls' || h === 'attachments');
+        const baseIndex = colIndex >= 0 ? colIndex : headers.length;
+        const cell = sheet.getRow(imgRow.rowNumber).getCell(baseIndex + i + 1);
+        cell.value = urlStr;
+      }
+    }
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
+  const timestamp = new Date().toISOString().split('T')[0];
+  const finalFilename = filename.replace('.xlsx', '') + '_' + timestamp + '.xlsx';
   link.href = url;
   link.download = finalFilename;
   document.body.appendChild(link);
