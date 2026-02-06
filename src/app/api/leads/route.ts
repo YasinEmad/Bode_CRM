@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Lead from '@/models/Lead';
+import { logAdminAction } from '@/lib/adminLogger';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -122,6 +123,25 @@ export async function POST(req: NextRequest) {
       notes: notes || '',
       assignedTo: assignedToId,
     });
+
+    // If an admin created the lead, log the action for the admin logs page
+    if (payload.role === 'admin') {
+      try {
+        console.log('🔵 Admin creating lead - attempting to log action', { adminId: payload.userId, leadId: lead._id });
+        const log = await logAdminAction({
+          adminId: payload.userId,
+          action: 'create',
+          resourceType: 'lead',
+          resourceId: lead._id,
+          resourceName: lead.name,
+          description: `Admin created lead ${lead.name}`,
+          details: { phone: lead.phone, email: lead.email, assignedTo: lead.assignedTo || null },
+        });
+        console.log('✅ Admin create lead log result:', { logId: log?._id });
+      } catch (e) {
+        console.error('Failed to log admin action for lead creation:', e);
+      }
+    }
 
     return NextResponse.json({ lead }, { status: 201 });
   } catch (error) {

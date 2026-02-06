@@ -5,6 +5,7 @@ import Commission from '@/models/Commission';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 import * as XLSX from 'xlsx';
 
 function extractToken(req: NextRequest): string | null {
@@ -144,6 +145,23 @@ export async function POST(req: NextRequest) {
       // ignore
     }
     // Note: Do not auto-create commissions during bulk import. Admin must create/set commission amounts manually.
+
+    // Log the bulk import as an admin action
+    try {
+      console.log('🔵 Admin bulk import - attempting to log action', { adminId: payload.userId, importedCount: insertedLeads.length });
+      const log = await logAdminAction({
+        adminId: payload.userId,
+        action: 'bulk_create',
+        resourceType: 'lead',
+        resourceId: null,
+        resourceName: 'Bulk Import',
+        description: `Imported ${insertedLeads.length} leads via bulk import`,
+        details: { importedIds: insertedLeads.map((l: any) => l._id), skippedDuplicates: dupErrors.length },
+      });
+      console.log('✅ Admin bulk import log result:', { logId: log?._id });
+    } catch (e) {
+      console.error('Failed to log admin bulk import action:', e);
+    }
 
     // There is currently no automatic commission creation during bulk import.
     const commissionsToCreate: any[] = [];
