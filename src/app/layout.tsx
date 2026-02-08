@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import ThemeProvider from "@/context/ThemeContext";
 import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/components/Toast";
 
@@ -32,10 +33,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <ToastProvider>
-          <AuthProvider>
-            <Navbar />
-            {children}
-          </AuthProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <Navbar />
+              {children}
+            </AuthProvider>
+          </ThemeProvider>
         </ToastProvider>
       </body>
     </html>

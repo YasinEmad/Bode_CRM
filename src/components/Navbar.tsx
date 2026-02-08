@@ -6,6 +6,8 @@ import { LogOut, Menu, X, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import NotificationsBell from './NotificationsBell';
+import useTheme from '@/hooks/useTheme';
+import ThemeToggle from './ThemeToggle';
 
 interface NavLink {
   href: string;
@@ -19,6 +21,9 @@ export default function Navbar() {
   const pathname = usePathname() || '';
   const [isTeamLeader, setIsTeamLeader] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const { theme } = useTheme();
+  const logoSrc = theme === 'light' ? '/BodeLightModeLogo.png' : '/Off White.png';
 
   const isAuthPage = pathname === '/login';
   const isAdminPage = pathname.startsWith('/admin');
@@ -77,7 +82,7 @@ export default function Navbar() {
       <header className="border-b border-slate-800 backdrop-blur-sm bg-slate-900/50 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <img src="/Off White.png" alt="Bode CRM" className="h-10 w-auto" />
+            <img src={logoSrc} alt="Bode CRM" className="h-10 w-auto" />
           </Link>
           <Link
             href="/login"
@@ -124,7 +129,7 @@ export default function Navbar() {
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-center py-4">
           <Link href="/" className="flex items-center gap-3 text-2xl font-bold hover:opacity-90 transition">
-            <img src="/Off White.png" alt="Bode CRM" className="h-10 w-auto" />
+            <img src={logoSrc} alt="Bode CRM" className="h-10 w-auto" />
           </Link>
         </div>
       </header>
@@ -137,7 +142,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <img src="/Off White.png" alt="Bode CRM" className="h-8 w-auto" />
+            <img src={logoSrc} alt="Bode CRM" className="h-8 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -162,6 +167,8 @@ export default function Navbar() {
                   <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                 </div>
                 {user.role === 'sales' && <NotificationsBell />}
+                {/* Theme toggle - minimal styling to avoid changing navbar appearance */}
+                <ThemeToggle className="p-2 rounded-lg hidden sm:inline-flex" />
                 {user.role === 'sales' && (
                   <Link
                     href="/sales/notes"
@@ -242,6 +249,10 @@ export default function Navbar() {
                     )}
                   </div>
                 </Link>
+                {/* Mobile theme toggle */}
+                <div className="p-1">
+                  <ThemeToggle />
+                </div>
               </div>
             )}
             {user && (

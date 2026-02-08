@@ -5,6 +5,19 @@
   --foreground: #171717;
 }
 
+/* Extended color tokens (defaults for light) */
+:root {
+  --primary: #2563eb;
+  --primary-rgb: 37,99,235;
+  --primary-variant: #1e40af;
+  --accent: #f59e0b;
+  --success: #16a34a;
+  --danger: #ef4444;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --border: #e6e6e0;
+  --card: #ffffff;
+}
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -16,8 +29,444 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --primary: #60a5fa;
+    --primary-rgb: 96,165,250;
+    --accent: #fbbf24;
+    --success: #34d399;
+    --danger: #f87171;
+    --surface: #0b0b0b;
+    --muted: #9ca3af;
+    --border: rgba(255,255,255,0.06);
+    --card: #0b0b0b;
   }
 }
+
+/* Light mode override when the html element has the `light` class. */
+html.light {
+  --background: #f8f8f5; /* off-white main color for light mode */
+  --foreground: #111827; /* dark text for readability */
+  --primary: #1e40af; /* deeper blue for accents */
+  --primary-rgb: 30,64,175;
+  --primary-variant: #2563eb;
+  --accent: #f59e0b;
+  --success: #16a34a;
+  --danger: #ef4444;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --border: #e6e6e0;
+  --card: #ffffff;
+  /* Additional colors for light mode */
+  --info: #0ea5e9;
+  --info-light: #e0f2fe;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --secondary: #8b5cf6;
+  --secondary-light: #f3e8ff;
+  --teal: #14b8a6;
+  --teal-light: #ccfbf1;
+  --pink: #ec4899;
+  --pink-light: #fce7f3;
+  --indigo: #6366f1;
+  --indigo-light: #e0e7ff;
+  --cyan: #06b6d4;
+  --cyan-light: #cffafe;
+}
+
+/* Ensure Tailwind utility classes (e.g. bg-gray-50) don't override light mode when enabled. */
+html.light body {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Strong overrides to ensure light mode is applied across Tailwind utilities and components. */
+/* This clears gradients/background-images and forces background, text and border colors when light mode is active. */
+html.light,
+html.light body,
+html.light #__next,
+html.light main,
+html.light header,
+html.light nav,
+html.light section,
+html.light div,
+html.light aside,
+html.light footer,
+html.light article {
+  background-image: none !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+}
+
+/* Override Tailwind utility backgrounds and gradients */
+html.light [class*="bg-"] ,
+html.light [class*="from-"],
+html.light [class*="to-"],
+html.light [class*="via-"] {
+  background-image: none !important;
+  background-color: var(--background) !important;
+}
+
+/* Override text utility classes */
+html.light [class*="text-"] {
+  color: var(--foreground) !important;
+}
+
+/* Borders */
+html.light [class*="border-"] {
+  border-color: rgba(17,24,39,0.08) !important; /* subtle neutral border in light mode */
+}
+
+/* Form elements and buttons */
+html.light input,
+html.light textarea,
+html.light select,
+html.light button {
+  background-image: none !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: rgba(17,24,39,0.08) !important;
+}
+
+/* Light-mode enhanced styling for more color and visual interest */
+html.light nav,
+html.light header {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Navbar links: keep text but show primary on hover */
+html.light nav a {
+  color: var(--foreground) !important;
+}
+html.light nav a:hover {
+  color: var(--primary) !important;
+  background-color: var(--primary-light, rgba(var(--primary-rgb), 0.06)) !important;
+}
+
+/* Global links accent - colored on hover */
+html.light a {
+  color: var(--primary) !important;
+  transition: color 200ms ease !important;
+}
+html.light a:hover {
+  color: var(--primary-variant) !important;
+}
+
+/* Cards and surfaces */
+.card,
+article,
+.panel,
+.card-root {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+/* Buttons: gentle primary styling */
+html.light button,
+html.light .btn {
+  background-image: none !important;
+}
+html.light .btn-primary,
+html.light button.primary {
+  background-color: var(--primary) !important;
+  color: white !important;
+  border-color: transparent !important;
+}
+
+/* Accent badges with varied colors */
+.badge,
+.tag,
+.pill {
+  background-color: rgba(var(--primary-rgb),0.1);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb),0.12);
+}
+
+/* Color variants for badges */
+html.light .badge-success,
+html.light .badge-info {
+  background-color: var(--info-light) !important;
+  color: var(--info) !important;
+  border-color: rgba(14, 165, 233, 0.2) !important;
+}
+
+html.light .badge-warning {
+  background-color: var(--warning-light) !important;
+  color: var(--warning) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+html.light .badge-danger,
+html.light .badge-error {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: var(--danger) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+html.light .badge-secondary {
+  background-color: var(--secondary-light) !important;
+  color: var(--secondary) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+html.light .badge-teal {
+  background-color: var(--teal-light) !important;
+  color: var(--teal) !important;
+  border-color: rgba(20, 184, 166, 0.2) !important;
+}
+
+html.light .badge-pink {
+  background-color: var(--pink-light) !important;
+  color: var(--pink) !important;
+  border-color: rgba(236, 72, 153, 0.2) !important;
+}
+
+/* Subtle shadows on surfaces */
+html.light .shadow-xl,
+html.light .card {
+  box-shadow: 0 6px 20px rgba(16,24,40,0.04) !important;
+}
+
+/* Make rounded containers (most cards) more lively in light mode.
+   Targets elements that use Tailwind's rounded classes so we don't need
+   to change component markup. Adds an accent stripe and hover lift. */
+html.light [class*="rounded"] {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  position: relative !important;
+  overflow: visible !important;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease !important;
+}
+
+html.light [class*="rounded"]:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 30px rgba(16,24,40,0.06) !important;
+  border-color: rgba(16,24,40,0.08) !important;
+}
+
+/* Make main headings pop with varied colors */
+html.light h1 {
+  color: var(--primary) !important;
+}
+
+html.light h2 {
+  color: var(--secondary) !important;
+}
+
+html.light h3 {
+  color: var(--indigo) !important;
+}
+
+html.light h4,
+html.light h5 {
+  color: var(--teal) !important;
+}
+
+/* Subheadings and descriptions */
+html.light p,
+html.light .muted,
+html.light .lead {
+  color: var(--muted) !important;
+}
+
+/* Stat numbers and emphasis */
+html.light .stat-number,
+html.light .metric,
+html.light .big-number {
+  color: var(--primary-variant) !important;
+  font-weight: 700 !important;
+}
+
+/* Give the navbar a subtle horizontal gradient to add warmth */
+html.light nav {
+  background: linear-gradient(90deg, var(--surface), rgba(var(--primary-rgb),0.03)) !important;
+  box-shadow: 0 2px 8px rgba(16,24,40,0.03) !important;
+}
+
+/* Accent icons and interactive bits - varied colors */
+html.light svg {
+  color: var(--primary-variant) !important;
+  transition: color 200ms ease !important;
+}
+
+/* Colored icons by type */
+html.light .icon-success svg {
+  color: var(--success) !important;
+}
+
+html.light .icon-info svg {
+  color: var(--info) !important;
+}
+
+html.light .icon-warning svg {
+  color: var(--warning) !important;
+}
+
+html.light .icon-danger svg {
+  color: var(--danger) !important;
+}
+
+html.light .icon-secondary svg {
+  color: var(--secondary) !important;
+}
+
+html.light .icon-teal svg {
+  color: var(--teal) !important;
+}
+
+/* Make interactive buttons and primary actions more visible */
+html.light .btn-primary,
+html.light button.primary,
+html.light .primary-action {
+  background: linear-gradient(180deg, var(--primary), var(--primary-variant)) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(var(--primary-rgb),0.12) !important;
+}
+
+/* Button color variants */
+html.light .btn-secondary,
+html.light button.secondary {
+  background: linear-gradient(180deg, var(--secondary), #7c3aed) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.12) !important;
+}
+
+html.light .btn-success {
+  background: linear-gradient(180deg, var(--success), #15803d) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.12) !important;
+}
+
+html.light .btn-info {
+  background: linear-gradient(180deg, var(--info), #0284c7) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.12) !important;
+}
+
+html.light .btn-warning {
+  background: linear-gradient(180deg, var(--warning), #d97706) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.12) !important;
+}
+
+html.light .btn-danger {
+  background: linear-gradient(180deg, var(--danger), #dc2626) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.12) !important;
+}
+
+/* Outline button variants */
+html.light .btn-outline-primary {
+  border: 2px solid var(--primary) !important;
+  color: var(--primary) !important;
+  background: transparent !important;
+}
+
+html.light .btn-outline-secondary {
+  border: 2px solid var(--secondary) !important;
+  color: var(--secondary) !important;
+  background: transparent !important;
+}
+
+html.light button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08) !important;
+  transition: all 200ms ease !important;
+}
+
+/* Add small decorative separators for large sections */
+html.light .section-separator {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,0,0,0), var(--border), rgba(0,0,0,0)) !important;
+  margin: 28px 0;
+}
+
+/* Colored section separators */
+html.light .section-separator-primary {
+  background: linear-gradient(90deg, transparent, var(--primary), transparent) !important;
+}
+
+html.light .section-separator-secondary {
+  background: linear-gradient(90deg, transparent, var(--secondary), transparent) !important;
+}
+
+html.light .section-separator-success {
+  background: linear-gradient(90deg, transparent, var(--success), transparent) !important;
+}
+
+/* Subtle background bands for page sections to create depth */
+html.light main > section:nth-child(odd) {
+  background-color: rgba(17,24,39,0.01) !important;
+}
+
+html.light main > section:nth-child(3n) {
+  background: linear-gradient(180deg, var(--secondary-light), transparent) !important;
+  background-color: rgba(243, 232, 255, 0.4) !important;
+}
+
+html.light main > section:nth-child(3n+1) {
+  background: linear-gradient(180deg, var(--info-light), transparent) !important;
+  background-color: rgba(224, 242, 254, 0.2) !important;
+}
+
+/* Colored info/alert boxes */
+html.light .alert-info,
+html.light [class*="alert-info"] {
+  background-color: var(--info-light) !important;
+  color: #0369a1 !important;
+  border-left: 4px solid var(--info) !important;
+}
+
+html.light .alert-success {
+  background-color: rgba(22, 163, 74, 0.08) !important;
+  color: #165e26 !important;
+  border-left: 4px solid var(--success) !important;
+}
+
+html.light .alert-warning {
+  background-color: var(--warning-light) !important;
+  color: #92400e !important;
+  border-left: 4px solid var(--warning) !important;
+}
+
+html.light .alert-danger,
+html.light .alert-error {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: #7f1d1d !important;
+  border-left: 4px solid var(--danger) !important;
+}
+
+/* Table styling with color accents */
+html.light table {
+  border-collapse: collapse !important;
+}
+
+html.light tbody tr:nth-child(odd) {
+  background-color: rgba(var(--primary-rgb), 0.02) !important;
+}
+
+html.light tbody tr:hover {
+  background-color: rgba(var(--primary-rgb), 0.04) !important;
+}
+
+html.light th {
+  background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.1), rgba(var(--primary-rgb), 0.05)) !important;
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+  border-bottom: 2px solid var(--primary) !important;
+}
+
+/* Input fields with color accent on focus */
+html.light input:focus,
+html.light textarea:focus,
+html.light select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1) !important;
+  outline: none !important;
+}
+
 
 body {
   background: var(--background);

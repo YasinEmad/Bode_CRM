@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { addToast, updateToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -19,6 +20,22 @@ export default function LoginPage() {
   useEffect(() => {
     // Trigger logo entrance animation on mount only
     requestAnimationFrame(() => setLogoVisible(true));
+    
+    // Check for light mode on mount
+    const isLight = document.documentElement.classList.contains('light');
+    setIsLightMode(isLight);
+    
+    // Listen for changes to light mode
+    const observer = new MutationObserver(() => {
+      setIsLightMode(document.documentElement.classList.contains('light'));
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    
+    return () => observer.disconnect();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,7 +104,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center p-4">
           <div className="w-48 h-48 md:w-80 md:h-80 flex items-center">
             <img
-              src="/Off White.png"
+              src={isLightMode ? "/BodeLightModeLogo.png" : "/Off White.png"}
               alt="Bode logo"
               className="w-full h-full object-contain"
               style={{
