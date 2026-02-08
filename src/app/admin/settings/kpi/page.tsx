@@ -29,10 +29,10 @@ const indicatorLabels: Record<string, { ar: string; en: string; description: str
     en: 'Deals',
     description: 'Number of closed deals',
   },
-  calls: {
-    ar: 'عدد المكالمات',
-    en: 'Calls',
-    description: 'Number of calls made',
+  sheets: {
+    ar: 'عدد الأوراق',
+    en: 'Sheets',
+    description: 'Number of sheets completed',
   },
   meetings: {
     ar: 'عدد الاجتماعات',
@@ -322,7 +322,7 @@ export default function KPISettingsPage() {
                     <label className="block text-sm font-semibold text-slate-300 mb-2">
                       Target {indicator.name === 'attendance' && '(%)'}
                       {indicator.name === 'deals' && '(Count)'}
-                      {indicator.name === 'calls' && '(Count)'}
+                      {indicator.name === 'sheets' && '(Count)'}
                       {indicator.name === 'meetings' && '(Count)'}
                       {indicator.name === 'assessments' && '(Count)'}
                       {indicator.name === 'requests' && '(Count)'}
@@ -339,7 +339,7 @@ export default function KPISettingsPage() {
                     <p className="text-xs text-slate-400 mt-1">
                       {indicator.name === 'attendance' && 'Example: 95 for 95%'}
                       {indicator.name === 'deals' && 'Example: 2'}
-                      {indicator.name === 'calls' && 'Example: 20'}
+                      {indicator.name === 'sheets' && 'Example: 20'}
                       {indicator.name === 'meetings' && 'Example: 5'}
                       {indicator.name === 'assessments' && 'Example: 3'}
                       {indicator.name === 'requests' && 'Example: 10'}

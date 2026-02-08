@@ -16,7 +16,7 @@ interface MyKPIData {
   leadsCount: number;
   closedDealsCount: number;
   attendancePercentage: number;
-  callsCount: number;
+  sheetsCount: number;
   meetingsCount: number;
   assessmentsCount: number;
   requestsCount: number;
@@ -24,7 +24,7 @@ interface MyKPIData {
   kpiBreakdown?: {
     attendance: number;
     deals: number;
-    calls: number;
+    sheets: number;
     meetings: number;
     assessments: number;
     requests: number;
@@ -113,7 +113,7 @@ export default function MyMonthlyKPIs() {
 
       // Validate all required indicators are present
       // requests is optional for backward compatibility
-      const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
+      const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
 
@@ -244,8 +244,8 @@ export default function MyMonthlyKPIs() {
         attendancePercentage = Math.round((presentDays / daysInMonth) * 100);
       }
 
-      // Get calls, meetings, assessments, and requests
-      const callsCount = performanceData.performance?.callsCount || 0;
+      // Get sheets, meetings, assessments, and requests
+      const sheetsCount = performanceData.performance?.sheetsCount || 0;
       const meetingsCount = performanceData.performance?.meetingsCount || 0;
       const assessmentsCount = performanceData.performance?.assessmentsCount || 0;
       const requestsCount = performanceData.performance?.requestsCount || 0;
@@ -255,7 +255,7 @@ export default function MyMonthlyKPIs() {
       let kpiBreakdown = {
         attendance: 0,
         deals: 0,
-        calls: 0,
+        sheets: 0,
         meetings: 0,
         assessments: 0,
         requests: 0,
@@ -265,7 +265,7 @@ export default function MyMonthlyKPIs() {
         const metrics: EmployeeMetrics = {
           attendancePercentage,
           closedDealsCount: dealsCount,
-          callsCount,
+          sheetsCount,
           meetingsCount,
           assessmentsCount,
           requestsCount,
@@ -280,7 +280,7 @@ export default function MyMonthlyKPIs() {
         if (result) {
           kpiBreakdown.attendance = result.attendance;
           kpiBreakdown.deals = result.deals;
-          kpiBreakdown.calls = result.calls;
+          kpiBreakdown.sheets = result.sheets;
           kpiBreakdown.meetings = result.meetings;
           kpiBreakdown.assessments = result.assessments;
           kpiBreakdown.requests = result.requests;
@@ -299,7 +299,7 @@ export default function MyMonthlyKPIs() {
         leadsCount,
         closedDealsCount: dealsCount,
         attendancePercentage,
-        callsCount,
+        sheetsCount,
         meetingsCount,
         assessmentsCount,
         requestsCount,
@@ -330,7 +330,7 @@ export default function MyMonthlyKPIs() {
       ['Leads', kpiData.leadsCount],
       ['Closed Deals', kpiData.closedDealsCount],
       ['Attendance %', `${kpiData.attendancePercentage}%`],
-      ['Calls', kpiData.callsCount],
+      ['Sheets', kpiData.sheetsCount],
       ['Meetings', kpiData.meetingsCount],
       ['Assessments', kpiData.assessmentsCount],
       ['Requests', kpiData.requestsCount],
@@ -522,17 +522,17 @@ export default function MyMonthlyKPIs() {
                           </div>
                         </div>
 
-                        {/* Calls */}
+                        {/* Sheets */}
                         <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
                           <div className="flex items-center gap-3 flex-1">
-                            <span className="text-yellow-400 text-lg">☎️</span>
-                            <span className="text-slate-300 text-sm">Calls Made</span>
+                            <span className="text-yellow-400 text-lg">📄</span>
+                            <span className="text-slate-300 text-sm">Sheets</span>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
-                              <div className="bg-yellow-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.calls || 0, 100)}%`}}></div>
+                              <div className="bg-yellow-500 h-2 rounded-full transition-all" style={{width: `${Math.min(kpiData?.kpiBreakdown?.sheets || 0, 100)}%`}}></div>
                             </div>
-                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.calls || 0).toFixed(1)}%</span>
+                            <span className="text-white font-bold text-sm w-12 text-right">{(kpiData?.kpiBreakdown?.sheets || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -637,16 +637,16 @@ export default function MyMonthlyKPIs() {
 
                 {/* Activity Metrics - Second Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  {/* Calls */}
+                  {/* Sheets */}
                   <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-lg p-5 border-l-4 border-yellow-500 hover:shadow-xl hover:shadow-yellow-500/10 transition-all">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">☎️</span>
-                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Calls</h3>
+                        <span className="text-2xl">📄</span>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Sheets</h3>
                       </div>
                     </div>
-                    <p className="text-3xl font-bold text-white mb-1">{kpiData.callsCount}</p>
-                    <p className="text-slate-500 text-xs">Calls Made</p>
+                    <p className="text-3xl font-bold text-white mb-1">{kpiData.sheetsCount}</p>
+                    <p className="text-slate-500 text-xs">Sheets Completed</p>
                   </div>
 
                   {/* Meetings */}

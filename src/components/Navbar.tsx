@@ -107,7 +107,8 @@ export default function Navbar() {
     : [
         { href: '/sales/dashboard', label: 'Dashboard' },
         { href: '/sales/leads', label: 'My Leads' },
-        { href: '/sales/my-monthly-kpis', label: 'My KPIs' },
+    { href: '/sales/my-monthly-kpis', label: 'My KPIs' },
+    { href: '/sales/daily-report', label: 'Daily Report' },
         { href: '/sales/device-id', label: 'Device ID' },
         ...(isTeamLeader ? [
           { href: '/sales/my-team', label: 'My Team' },

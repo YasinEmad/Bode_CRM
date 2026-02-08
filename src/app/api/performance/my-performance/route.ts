@@ -39,11 +39,11 @@ export async function GET(req: NextRequest) {
       // Try falling back to team leader performance (for users who are leaders)
       const leaderPerf = await TeamLeaderPerformance.findOne({ userId: payload.userId, month });
       if (leaderPerf) {
-        const callsCount = (
-          (leaderPerf.calls?.week1 || 0) +
-          (leaderPerf.calls?.week2 || 0) +
-          (leaderPerf.calls?.week3 || 0) +
-          (leaderPerf.calls?.week4 || 0)
+        const sheetsCount = (
+          (leaderPerf.sheets?.week1 || 0) +
+          (leaderPerf.sheets?.week2 || 0) +
+          (leaderPerf.sheets?.week3 || 0) +
+          (leaderPerf.sheets?.week4 || 0)
         );
 
         const meetingsCount = (
@@ -68,14 +68,14 @@ export async function GET(req: NextRequest) {
         );
 
         return NextResponse.json({
-          performance: { callsCount, meetingsCount, assessmentsCount, requestsCount },
+          performance: { sheetsCount, meetingsCount, assessmentsCount, requestsCount },
         });
       }
 
       // Return default performance data if not found anywhere
       return NextResponse.json({
         performance: {
-          callsCount: 0,
+          sheetsCount: 0,
           meetingsCount: 0,
           assessmentsCount: 0,
           requestsCount: 0,
@@ -84,11 +84,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate total counts from weekly data
-    const callsCount = (
-      (performance.calls?.week1 || 0) +
-      (performance.calls?.week2 || 0) +
-      (performance.calls?.week3 || 0) +
-      (performance.calls?.week4 || 0)
+    const sheetsCount = (
+      (performance.sheets?.week1 || 0) +
+      (performance.sheets?.week2 || 0) +
+      (performance.sheets?.week3 || 0) +
+      (performance.sheets?.week4 || 0)
     );
 
     const meetingsCount = (
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       performance: {
-        callsCount,
+        sheetsCount,
         meetingsCount,
         assessmentsCount,
         requestsCount,

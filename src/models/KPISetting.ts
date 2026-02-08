@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface KPIIndicator {
-  name: string; // 'attendance' | 'deals' | 'calls' | 'meetings' | 'assessments' | 'requests'
+  name: string; // 'attendance' | 'deals' | 'sheets' | 'meetings' | 'assessments' | 'requests'
   target: number;
   weight: number;
 }
@@ -16,7 +16,7 @@ export interface IKPISetting extends Document {
 const KPIIndicatorSchema = new Schema<KPIIndicator>({
   name: {
     type: String,
-    enum: ['attendance', 'deals', 'calls', 'meetings', 'assessments', 'requests'],
+    enum: ['attendance', 'deals', 'sheets', 'meetings', 'assessments', 'requests'],
     required: true,
   },
   target: {

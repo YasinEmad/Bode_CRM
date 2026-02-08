@@ -12,7 +12,7 @@ export interface KPIIndicator {
 export interface EmployeeMetrics {
   attendancePercentage: number;
   closedDealsCount: number;
-  callsCount: number;
+  sheetsCount: number;
   meetingsCount: number;
   assessmentsCount: number;
   requestsCount: number;
@@ -21,7 +21,7 @@ export interface EmployeeMetrics {
 export interface KPIScores {
   attendance: number;
   deals: number;
-  calls: number;
+  sheets: number;
   meetings: number;
   assessments: number;
   requests: number;
@@ -69,7 +69,7 @@ export function calculateEmployeeKPI(
     return {
       attendance: 0,
       deals: 0,
-      calls: 0,
+      sheets: 0,
       meetings: 0,
       assessments: 0,
       requests: 0,
@@ -80,7 +80,7 @@ export function calculateEmployeeKPI(
   const scores: KPIScores = {
     attendance: 0,
     deals: 0,
-    calls: 0,
+    sheets: 0,
     meetings: 0,
     assessments: 0,
     requests: 0,
@@ -121,17 +121,17 @@ export function calculateEmployeeKPI(
     console.warn('⚠️ Deals indicator not found');
   }
 
-  const callsInd = indicatorMap.get('calls');
-  if (callsInd) {
-    scores.calls = calculateIndicatorScore(
-      metrics.callsCount,
-      callsInd.target,
-      callsInd.weight,
+  const sheetsInd = indicatorMap.get('sheets');
+  if (sheetsInd) {
+    scores.sheets = calculateIndicatorScore(
+      metrics.sheetsCount,
+      sheetsInd.target,
+      sheetsInd.weight,
       false
     );
-    console.log(`📊 Calls: ${metrics.callsCount} / target: ${callsInd.target} = ${scores.calls.toFixed(2)}`);
+    console.log(`📊 Sheets: ${metrics.sheetsCount} / target: ${sheetsInd.target} = ${scores.sheets.toFixed(2)}`);
   } else {
-    console.warn('⚠️ Calls indicator not found');
+    console.warn('⚠️ Sheets indicator not found');
   }
 
   const meetingsInd = indicatorMap.get('meetings');
@@ -174,7 +174,7 @@ export function calculateEmployeeKPI(
   }
 
   // Calculate total KPI
-  scores.total = scores.attendance + scores.deals + scores.calls + scores.meetings + scores.assessments + scores.requests;
+  scores.total = scores.attendance + scores.deals + scores.sheets + scores.meetings + scores.assessments + scores.requests;
 
   // Cap total at 100 (shouldn't happen if weights are correct, but just in case)
   scores.total = Math.min(scores.total, 100);
@@ -230,16 +230,16 @@ export function getKPIBreakdown(
     };
   }
 
-  // Calls
-  const callsInd = indicatorMap.get('calls');
-  if (callsInd) {
-    const achievement = calculateAchievementPercentage(metrics.callsCount, callsInd.target, false);
-    const score = (achievement / 100) * callsInd.weight;
-    breakdown.indicatorCalculations.calls = {
-      actual: metrics.callsCount,
-      target: callsInd.target,
+  // Sheets
+  const sheetsInd = indicatorMap.get('sheets');
+  if (sheetsInd) {
+    const achievement = calculateAchievementPercentage(metrics.sheetsCount, sheetsInd.target, false);
+    const score = (achievement / 100) * sheetsInd.weight;
+    breakdown.indicatorCalculations.sheets = {
+      actual: metrics.sheetsCount,
+      target: sheetsInd.target,
       achievement: achievement.toFixed(2),
-      weight: callsInd.weight,
+      weight: sheetsInd.weight,
       score: score.toFixed(2),
     };
   }

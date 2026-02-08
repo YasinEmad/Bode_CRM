@@ -17,82 +17,56 @@ async function fixKPISettings() {
 
     if (existingSettings) {
       console.log('Found existing settings:', existingSettings._id);
-      
-      // Check if requests exists
-      const hasRequests = existingSettings.indicators?.some((ind) => ind.name === 'requests');
-      
+
+      // Replace 'calls' with 'sheets' if needed
+      const hasCalls = existingSettings.indicators?.some((ind) => ind.name === 'calls');
+      const hasSheets = existingSettings.indicators?.some((ind) => ind.name === 'sheets');
+
+      let newIndicators = existingSettings.indicators || [];
+      let updated = false;
+
+      if (hasCalls && !hasSheets) {
+        console.log('🔄 Replacing calls with sheets indicator...');
+        newIndicators = newIndicators.map((ind) =>
+          ind.name === 'calls' ? { name: 'sheets', target: ind.target, weight: ind.weight } : ind
+        );
+        updated = true;
+      }
+
+      // Ensure requests exists for backward compatibility
+      const hasRequests = newIndicators.some((ind) => ind.name === 'requests');
       if (!hasRequests) {
         console.log('🔄 Adding requests indicator...');
-        
-        // Add requests
-        const newIndicators = [
-          ...existingSettings.indicators,
-          { name: 'requests', target: 10, weight: 20 }
-        ];
-        
+        newIndicators = [...newIndicators, { name: 'requests', target: 10, weight: 20 }];
+        updated = true;
+      }
+
+      if (updated) {
         // Normalize weights to 100%
-        const currentTotal = newIndicators.reduce((sum, ind) => sum + ind.weight, 0);
-        
+        const currentTotal = newIndicators.reduce((sum, ind) => sum + (Number(ind.weight) || 0), 0);
         if (currentTotal !== 100) {
           console.log(`Current total weight: ${currentTotal}%, normalizing...`);
           const normalized = newIndicators.map((ind) => {
             if (ind.name === 'requests') {
-              return {
-                name: ind.name,
-                target: Number(ind.target) || 10,
-                weight: Number(ind.weight) || 20,
-              };
+              return { name: ind.name, target: Number(ind.target) || 10, weight: Number(ind.weight) || 20 };
             }
-            const scale = 80 / (currentTotal - 20);
-            const newWeight = Math.round((ind.weight * scale) * 100) / 100;
-            return {
-              name: ind.name,
-              target: Number(ind.target) || 0,
-              weight: !isNaN(newWeight) ? newWeight : ind.weight,
-            };
+            const scale = 80 / (currentTotal - 20 || 1);
+            const newWeight = Math.round((Number(ind.weight) * scale) * 100) / 100;
+            return { name: ind.name, target: Number(ind.target) || 0, weight: !isNaN(newWeight) ? newWeight : Number(ind.weight) || 0 };
           });
-          
-          // Ensure total is exactly 100
-          let total = 0;
-          normalized.forEach((ind) => (total += ind.weight));
-          const difference = 100 - total;
-          if (Math.abs(difference) > 0.01) {
-            normalized[0].weight = Number(normalized[0].weight) + difference;
-          }
-          
-          console.log('Updated indicators:');
-          normalized.forEach((ind) => {
-            console.log(`  - ${ind.name}: target=${Number(ind.target)}, weight=${Number(ind.weight)}%`);
-          });
-          
-          await collection.updateOne(
-            { _id: existingSettings._id },
-            {
-              $set: {
-                indicators: normalized,
-                totalWeight: 100,
-              },
-            }
-          );
+
+          let total = normalized.reduce((s, i) => s + i.weight, 0);
+          const diff = 100 - total;
+          if (Math.abs(diff) > 0.01) normalized[0].weight = Number(normalized[0].weight) + diff;
+
+          await collection.updateOne({ _id: existingSettings._id }, { $set: { indicators: normalized, totalWeight: 100 } });
+          console.log('✅ KPI settings normalized and saved');
         } else {
-          await collection.updateOne(
-            { _id: existingSettings._id },
-            {
-              $set: {
-                indicators: newIndicators.map((ind) => ({
-                  name: ind.name,
-                  target: Number(ind.target) || 0,
-                  weight: Number(ind.weight) || 0,
-                })),
-                totalWeight: 100,
-              },
-            }
-          );
+          await collection.updateOne({ _id: existingSettings._id }, { $set: { indicators: newIndicators, totalWeight: 100 } });
+          console.log('✅ KPI settings updated');
         }
-        
-        console.log('✅ Successfully updated KPI settings with requests indicator');
       } else {
-        console.log('✅ Requests indicator already exists');
+        console.log('✅ KPI settings are already up to date');
       }
     } else {
       console.log('🔄 Creating default KPI settings...');
@@ -100,7 +74,7 @@ async function fixKPISettings() {
         indicators: [
           { name: 'attendance', target: 95, weight: 10 },
           { name: 'deals', target: 2, weight: 20 },
-          { name: 'calls', target: 20, weight: 15 },
+          { name: 'sheets', target: 20, weight: 15 },
           { name: 'meetings', target: 5, weight: 15 },
           { name: 'assessments', target: 3, weight: 20 },
           { name: 'requests', target: 10, weight: 20 },

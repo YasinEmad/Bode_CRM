@@ -4,30 +4,10 @@ export interface ITeamPerformance extends Document {
   userId: mongoose.Types.ObjectId;
   teamId: mongoose.Types.ObjectId;
   month: string; // Format: "2026-01"
-  calls: {
-    week1: number;
-    week2: number;
-    week3: number;
-    week4: number;
-  };
-  assessments: {
-    week1: number;
-    week2: number;
-    week3: number;
-    week4: number;
-  };
-  meetings: {
-    week1: number;
-    week2: number;
-    week3: number;
-    week4: number;
-  };
-  requests: {
-    week1: number;
-    week2: number;
-    week3: number;
-    week4: number;
-  };
+  sheets: Record<string, number>; // day1-day31
+  assessments: Record<string, number>; // day1-day31
+  meetings: Record<string, number>; // day1-day31
+  requests: Record<string, number>; // day1-day31
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,77 +28,25 @@ const TeamPerformanceSchema = new Schema<ITeamPerformance>(
       type: String,
       required: true, // Format: "2026-01"
     },
-    calls: {
-      week1: {
-        type: Number,
-        default: 0,
-      },
-      week2: {
-        type: Number,
-        default: 0,
-      },
-      week3: {
-        type: Number,
-        default: 0,
-      },
-      week4: {
-        type: Number,
-        default: 0,
-      },
+    sheets: {
+      type: Map,
+      of: Number,
+      default: () => ({}),
     },
     assessments: {
-      week1: {
-        type: Number,
-        default: 0,
-      },
-      week2: {
-        type: Number,
-        default: 0,
-      },
-      week3: {
-        type: Number,
-        default: 0,
-      },
-      week4: {
-        type: Number,
-        default: 0,
-      },
+      type: Map,
+      of: Number,
+      default: () => ({}),
     },
     meetings: {
-      week1: {
-        type: Number,
-        default: 0,
-      },
-      week2: {
-        type: Number,
-        default: 0,
-      },
-      week3: {
-        type: Number,
-        default: 0,
-      },
-      week4: {
-        type: Number,
-        default: 0,
-      },
+      type: Map,
+      of: Number,
+      default: () => ({}),
     },
     requests: {
-      week1: {
-        type: Number,
-        default: 0,
-      },
-      week2: {
-        type: Number,
-        default: 0,
-      },
-      week3: {
-        type: Number,
-        default: 0,
-      },
-      week4: {
-        type: Number,
-        default: 0,
-      },
+      type: Map,
+      of: Number,
+      default: () => ({}),
     },
   },
   {

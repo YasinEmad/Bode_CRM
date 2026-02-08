@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         indicators: [
           { name: 'attendance', target: 95, weight: 10 },
           { name: 'deals', target: 2, weight: 20 },
-          { name: 'calls', target: 20, weight: 15 },
+          { name: 'sheets', target: 20, weight: 15 },
           { name: 'meetings', target: 5, weight: 15 },
           { name: 'assessments', target: 3, weight: 20 },
           { name: 'requests', target: 10, weight: 20 },
@@ -115,8 +115,8 @@ export async function PUT(req: NextRequest) {
 
     // Check if all required indicators are present
     // requests is optional for backward compatibility
-    const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
-    const validIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments', 'requests'];
+    const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
+    const validIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments', 'requests'];
     const providedIndicators = indicators.map((ind: any) => ind.name);
     const missingIndicators = requiredIndicators.filter((ind) => !providedIndicators.includes(ind));
 

@@ -51,6 +51,10 @@ export async function GET(req: NextRequest) {
     // Create a map of performance data
     const performanceMap = new Map(performances.map((p: any) => [String(p.userId._id || p.userId), p]));
 
+    // Get number of days in the month
+    const [year, monthNum] = month.split('-');
+    const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+
     // Build response with all team leaders, creating empty records if needed
     const leaderPerformances = await Promise.all(
       validTeamLeaders.map(async (team) => {
@@ -63,22 +67,29 @@ export async function GET(req: NextRequest) {
             userId: String(performance.userId._id || performance.userId),
             leaderName: leader.name || '',
             month: performance.month,
-            calls: performance.calls,
-            assessments: performance.assessments,
-            meetings: performance.meetings,
-            requests: performance.requests,
+            daysInMonth,
+            sheets: Object.fromEntries(performance.sheets || new Map()),
+            assessments: Object.fromEntries(performance.assessments || new Map()),
+            meetings: Object.fromEntries(performance.meetings || new Map()),
+            requests: Object.fromEntries(performance.requests || new Map()),
           };
         }
 
         // Return empty performance record for new leaders
+        const emptyDays: Record<string, number> = {};
+        for (let i = 1; i <= daysInMonth; i++) {
+          emptyDays[`day${i}`] = 0;
+        }
+
         return {
           userId: leaderIdStr,
           month: month,
           leaderName: leader.name || '',
-          calls: { week1: 0, week2: 0, week3: 0, week4: 0 },
-          assessments: { week1: 0, week2: 0, week3: 0, week4: 0 },
-          meetings: { week1: 0, week2: 0, week3: 0, week4: 0 },
-          requests: { week1: 0, week2: 0, week3: 0, week4: 0 },
+          daysInMonth,
+          sheets: emptyDays,
+          assessments: emptyDays,
+          meetings: emptyDays,
+          requests: emptyDays,
         };
       })
     );
@@ -110,7 +121,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { userId, month, calls, assessments, meetings, requests } = await req.json();
+    const { userId, month, sheets, assessments, meetings, requests } = await req.json();
 
     if (!userId || !month) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -128,10 +139,10 @@ export async function POST(req: NextRequest) {
       {
         userId,
         month,
-        ...(calls && { calls }),
-        ...(assessments && { assessments }),
-        ...(meetings && { meetings }),
-        ...(requests && { requests }),
+        ...(sheets && { sheets: new Map(Object.entries(sheets)) }),
+        ...(assessments && { assessments: new Map(Object.entries(assessments)) }),
+        ...(meetings && { meetings: new Map(Object.entries(meetings)) }),
+        ...(requests && { requests: new Map(Object.entries(requests)) }),
       },
       { upsert: true, new: true }
     );

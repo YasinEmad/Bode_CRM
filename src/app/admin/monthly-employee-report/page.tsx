@@ -16,7 +16,7 @@ interface EmployeeReportData {
   leadsCount: number;
   closedDealsCount: number;
   attendancePercentage: number;
-  callsCount: number;
+  sheetsCount: number;
   meetingsCount: number;
   assessmentsCount: number;
   requestsCount: number;
@@ -121,7 +121,7 @@ export default function MonthlyEmployeeReport() {
 
       // Validate all required indicators are present
       // requests is optional for backward compatibility
-      const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
+      const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
 
@@ -178,7 +178,7 @@ export default function MonthlyEmployeeReport() {
 
       // Validate all required indicators are present
       // requests is optional for backward compatibility
-      const requiredIndicators = ['attendance', 'deals', 'calls', 'meetings', 'assessments'];
+      const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
 
@@ -351,9 +351,10 @@ export default function MonthlyEmployeeReport() {
         }
       });
 
-      // Calculate totals from team performance
-      const calculateTotal = (data: Record<string, number>): number => {
-        return Object.values(data).reduce((sum, val) => sum + val, 0);
+      // Calculate totals from team performance (null-safe)
+      const calculateTotal = (data?: Record<string, number> | null): number => {
+        if (!data || typeof data !== 'object') return 0;
+        return Object.values(data).reduce((sum, val) => sum + (Number(val) || 0), 0);
       };
 
       // Build report data
@@ -367,12 +368,12 @@ export default function MonthlyEmployeeReport() {
           ? Math.round((attendanceStats.presentDays / currentDaysInMonth) * 100)
           : 0;
 
-        // Get calls, meetings, assessments, requests from team performance (team members)
+        // Get sheets, meetings, assessments, requests from team performance (team members)
         // If not found, check team leader performance (for team leaders)
-        const callsCount = performanceStats
-          ? calculateTotal(performanceStats.calls)
+        const sheetsCount = performanceStats
+          ? calculateTotal(performanceStats.sheets)
           : leaderStats
-          ? calculateTotal(leaderStats.calls)
+          ? calculateTotal(leaderStats.sheets)
           : 0;
         
         const meetingsCount = performanceStats
@@ -399,7 +400,7 @@ export default function MonthlyEmployeeReport() {
           const metrics: EmployeeMetrics = {
             attendancePercentage,
             closedDealsCount: leadsStats.dealsCount,
-            callsCount,
+            sheetsCount,
             meetingsCount,
             assessmentsCount,
             requestsCount,
@@ -430,7 +431,7 @@ export default function MonthlyEmployeeReport() {
           leadsCount: leadsStats.leadsCount,
           closedDealsCount: leadsStats.dealsCount,
           attendancePercentage,
-          callsCount,
+          sheetsCount,
           meetingsCount,
           assessmentsCount,
           requestsCount,
@@ -461,7 +462,7 @@ export default function MonthlyEmployeeReport() {
       'Leads',
       'Deals',
       'Attendance %',
-      'Calls',
+      'Sheets',
       'Meetings',
       'Assessments',
       'Requests',
@@ -475,7 +476,7 @@ export default function MonthlyEmployeeReport() {
       emp.leadsCount,
       emp.closedDealsCount,
       `${emp.attendancePercentage}%`,
-      emp.callsCount,
+      emp.sheetsCount,
       emp.meetingsCount,
       emp.assessmentsCount,
       emp.requestsCount,
@@ -630,7 +631,7 @@ export default function MonthlyEmployeeReport() {
                       Attendance %
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-yellow-300 border-l border-slate-700 bg-yellow-600/10">
-                      Calls
+                      Sheets
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-pink-300 border-l border-slate-700 bg-pink-600/10">
                       Meetings
@@ -688,10 +689,10 @@ export default function MonthlyEmployeeReport() {
                         </span>
                       </td>
 
-                      {/* Calls Count */}
+                      {/* Sheets Count */}
                       <td className="px-6 py-4 text-center border-l border-slate-700 bg-yellow-600/10">
                         <span className="inline-block bg-gradient-to-br from-yellow-600 to-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-lg">
-                          {employee.callsCount}
+                          {employee.sheetsCount}
                         </span>
                       </td>
 

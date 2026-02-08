@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       const metrics: EmployeeMetrics = {
         attendancePercentage: 85,
         closedDealsCount: 2,
-        callsCount: 15,
+        sheetsCount: 15,
         meetingsCount: 4,
         assessmentsCount: 2,
         requestsCount: 1,

@@ -57,23 +57,46 @@ export async function GET(req: NextRequest) {
     // Create a map of performance data
     const performanceMap = new Map(performances.map((p) => [p.userId.toString(), p]));
 
+    // Get number of days in the month
+    const [year, monthNum] = month.split('-');
+    const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+
     // Build response with all team members, creating empty records if needed
     const teamData = teamMembers.map((member) => {
       const performance = performanceMap.get(member._id.toString());
+
+      const emptyDays: Record<string, number> = {};
+      for (let i = 1; i <= daysInMonth; i++) {
+        emptyDays[`day${i}`] = 0;
+      }
+
       if (performance) {
-        return performance;
+        return {
+          _id: performance._id,
+          userId: member._id,
+          name: member.name,
+          teamId: team._id,
+          month: month,
+          daysInMonth,
+          sheets: Object.fromEntries(performance.sheets || new Map()),
+          assessments: Object.fromEntries(performance.assessments || new Map()),
+          meetings: Object.fromEntries(performance.meetings || new Map()),
+          requests: Object.fromEntries(performance.requests || new Map()),
+        };
       }
 
       // Return empty performance record for new members
       return {
         _id: undefined,
         userId: member._id,
+        name: member.name,
         teamId: team._id,
         month: month,
-        calls: { week1: 0, week2: 0, week3: 0, week4: 0 },
-        assessments: { week1: 0, week2: 0, week3: 0, week4: 0 },
-        meetings: { week1: 0, week2: 0, week3: 0, week4: 0 },
-        requests: { week1: 0, week2: 0, week3: 0, week4: 0 },
+        daysInMonth,
+        sheets: emptyDays,
+        assessments: emptyDays,
+        meetings: emptyDays,
+        requests: emptyDays,
       };
     });
 
@@ -110,7 +133,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team leader access required' }, { status: 403 });
     }
 
-    const { userId, month, calls, assessments, meetings, requests } = await req.json();
+    const { userId, month, sheets, assessments, meetings, requests } = await req.json();
 
     if (!userId || !month) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -123,30 +146,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Find or create performance record
-    let performance = await TeamPerformance.findOne({
-      userId,
-      teamId: team._id,
-      month,
-    });
-
-    if (!performance) {
-      performance = new TeamPerformance({
+    const performance = await TeamPerformance.findOneAndUpdate(
+      {
         userId,
         teamId: team._id,
         month,
-        calls: calls || { week1: 0, week2: 0, week3: 0, week4: 0 },
-        assessments: assessments || { week1: 0, week2: 0, week3: 0, week4: 0 },
-        meetings: meetings || { week1: 0, week2: 0, week3: 0, week4: 0 },
-        requests: requests || { week1: 0, week2: 0, week3: 0, week4: 0 },
-      });
-    } else {
-      if (calls) performance.calls = calls;
-      if (assessments) performance.assessments = assessments;
-      if (meetings) performance.meetings = meetings;
-      if (requests) performance.requests = requests;
-    }
-
-    await performance.save();
+      },
+      {
+        userId,
+        teamId: team._id,
+        month,
+        ...(sheets && { sheets: new Map(Object.entries(sheets)) }),
+        ...(assessments && { assessments: new Map(Object.entries(assessments)) }),
+        ...(meetings && { meetings: new Map(Object.entries(meetings)) }),
+        ...(requests && { requests: new Map(Object.entries(requests)) }),
+      },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({ performance }, { status: 200 });
   } catch (error) {
