@@ -329,7 +329,12 @@ export default function MonthlyEmployeeReport() {
       leaderPerformanceData.performances?.forEach((perf: any) => {
         const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
         if (employeeId) {
-          leaderPerformanceByEmployee.set(employeeId, perf);
+          // If the API returned aggregated totals for the leader, prefer those for reporting
+          if (perf.aggregated) {
+            leaderPerformanceByEmployee.set(employeeId, perf.aggregated);
+          } else {
+            leaderPerformanceByEmployee.set(employeeId, perf);
+          }
         }
       });
 
@@ -364,42 +369,50 @@ export default function MonthlyEmployeeReport() {
         const performanceStats = performanceByEmployee.get(emp._id);
         const leaderStats = leaderPerformanceByEmployee.get(emp._id);
         
+        const isLeaderAggregatedLeads = leaderStats && typeof leaderStats.aggregatedLeads === 'number';
+        const isLeaderAggregatedDeals = leaderStats && typeof leaderStats.aggregatedDeals === 'number';
         const attendancePercentage = currentDaysInMonth > 0
           ? Math.round((attendanceStats.presentDays / currentDaysInMonth) * 100)
           : 0;
 
         // Get sheets, meetings, assessments, requests from team performance (team members)
         // If not found, check team leader performance (for team leaders)
-        const sheetsCount = performanceStats
-          ? calculateTotal(performanceStats.sheets)
-          : leaderStats
+        // Prefer leader aggregated totals (if provided by admin API) over personal team performance
+        const sheetsCount = leaderStats
           ? calculateTotal(leaderStats.sheets)
-          : 0;
-        
-        const meetingsCount = performanceStats
-          ? calculateTotal(performanceStats.meetings)
-          : leaderStats
-          ? calculateTotal(leaderStats.meetings)
-          : 0;
-        
-        const assessmentsCount = performanceStats
-          ? calculateTotal(performanceStats.assessments)
-          : leaderStats
-          ? calculateTotal(leaderStats.assessments)
+          : performanceStats
+          ? calculateTotal(performanceStats.sheets)
           : 0;
 
-        const requestsCount = performanceStats
-          ? calculateTotal(performanceStats.requests)
-          : leaderStats
-          ? calculateTotal(leaderStats.requests)
+        const meetingsCount = leaderStats
+          ? calculateTotal(leaderStats.meetings)
+          : performanceStats
+          ? calculateTotal(performanceStats.meetings)
           : 0;
+
+        const assessmentsCount = leaderStats
+          ? calculateTotal(leaderStats.assessments)
+          : performanceStats
+          ? calculateTotal(performanceStats.assessments)
+          : 0;
+
+        const requestsCount = leaderStats
+          ? calculateTotal(leaderStats.requests)
+          : performanceStats
+          ? calculateTotal(performanceStats.requests)
+          : 0;
+
+        // If leader aggregated lead/deal counts are available, prefer them
+        const finalLeadsCount = isLeaderAggregatedLeads ? leaderStats.aggregatedLeads : leadsStats.leadsCount;
+        const finalDealsCount = isLeaderAggregatedDeals ? leaderStats.aggregatedDeals : leadsStats.dealsCount;
 
         // Calculate KPI if settings are available (now guaranteed to have data)
         let kpiPercentage = 0;
         if (kpiSettingsData && kpiSettingsData.indicators && kpiSettingsData.indicators.length > 0) {
           const metrics: EmployeeMetrics = {
             attendancePercentage,
-            closedDealsCount: leadsStats.dealsCount,
+            leadsCount: finalLeadsCount,
+            closedDealsCount: finalDealsCount,
             sheetsCount,
             meetingsCount,
             assessmentsCount,
@@ -428,8 +441,8 @@ export default function MonthlyEmployeeReport() {
           name: emp.name,
           position: emp.position || 'N/A',
           salary: emp.salary || 0,
-          leadsCount: leadsStats.leadsCount,
-          closedDealsCount: leadsStats.dealsCount,
+          leadsCount: finalLeadsCount,
+          closedDealsCount: finalDealsCount,
           attendancePercentage,
           sheetsCount,
           meetingsCount,

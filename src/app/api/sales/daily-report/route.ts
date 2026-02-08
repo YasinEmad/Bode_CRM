@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Sales role required' }, { status: 403 });
     }
 
-    // Find the team the sales belongs to
-    const team = await Team.findOne({ members: user._id });
+    // Find the team the sales belongs to OR the team they lead
+    const team = await Team.findOne({ $or: [{ members: user._id }, { leader: user._id }] });
 
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -96,8 +96,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     }
 
-    // Find user's team
-    const team = await Team.findOne({ members: user._id });
+    // Find user's team (either as member or as leader)
+    const team = await Team.findOne({ $or: [{ members: user._id }, { leader: user._id }] });
     if (!team) return NextResponse.json({ error: 'User is not assigned to a team' }, { status: 403 });
 
     // Find or create performance for this user/team/month

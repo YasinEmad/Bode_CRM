@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Calendar, BarChart3 } from 'lucide-react';
+import { Loader, Calendar, BarChart3, ChevronDown } from 'lucide-react';
 
 interface PerformanceData {
   userId: string;
@@ -15,6 +15,8 @@ interface PerformanceData {
   assessments: Record<string, number>;
   meetings: Record<string, number>;
   requests: Record<string, number>;
+  aggregated?: boolean;
+  leaderPersonal?: boolean;
 }
 
 const months = [
@@ -37,7 +39,7 @@ const categories = [
   { key: 'assessments', label: 'Assessments', color: 'emerald' },
   { key: 'meetings', label: 'Meetings', color: 'purple' },
   { key: 'requests', label: 'Requests', color: 'orange' },
-];
+] as const;
 
 export default function TeamReport() {
   const { user, loading, token } = useAuth();
@@ -50,6 +52,9 @@ export default function TeamReport() {
   const [teamData, setTeamData] = useState<PerformanceData[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
+
+  // Derived state for UI logic
+  const selectedCategoryObj = categories.find((c) => c.key === selectedCategory);
 
   useEffect(() => {
     const now = new Date();
@@ -70,6 +75,20 @@ export default function TeamReport() {
       fetchTeamData();
     }
   }, [selectedMonth, selectedYear, token, user]);
+
+  // Helper Functions
+  const calculateTotal = (record: Record<string, number> = {}) => {
+    return Object.values(record).reduce((sum, val) => sum + (val || 0), 0);
+  };
+
+  const calculateWeekTotal = (record: Record<string, number> = {}, start: number, end: number) => {
+    let total = 0;
+    for (let i = start; i <= end; i++) {
+      const dayKey = `day${i}`;
+      total += record[dayKey] || 0;
+    }
+    return total;
+  };
 
   const fetchTeamData = async () => {
     try {
@@ -103,6 +122,43 @@ export default function TeamReport() {
         meetings: perf.meetings,
         requests: perf.requests,
       }));
+
+      // Add aggregated row if present
+      if (data.aggregatedLeader) {
+        const agg = data.aggregatedLeader;
+        formattedData.unshift({
+          userId: String(agg.userId),
+          name: agg.name || 'Team Totals',
+          month: agg.month,
+          daysInMonth: agg.daysInMonth,
+          sheets: agg.sheets,
+          assessments: agg.assessments,
+          meetings: agg.meetings,
+          requests: agg.requests,
+          aggregated: true,
+        });
+      }
+
+      // Add leader personal row if present
+      if (data.leaderPersonal) {
+        const lp = data.leaderPersonal;
+        const formattedLeader: PerformanceData = {
+          userId: String(lp.userId),
+          name: (lp.name || 'Leader') + ' (You)',
+          month: lp.month,
+          daysInMonth: lp.daysInMonth,
+          sheets: lp.sheets,
+          assessments: lp.assessments,
+          meetings: lp.meetings,
+          requests: lp.requests,
+          leaderPersonal: true,
+        };
+        if (formattedData.length > 0 && formattedData[0].aggregated) {
+          formattedData.splice(1, 0, formattedLeader);
+        } else {
+          formattedData.unshift(formattedLeader);
+        }
+      }
 
       setTeamData(formattedData);
     } catch (error) {
@@ -157,7 +213,6 @@ export default function TeamReport() {
             : emp
         )
       );
-
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {
       console.error('Error saving data:', error);
@@ -167,232 +222,207 @@ export default function TeamReport() {
     }
   };
 
-  const calculateTotal = (data?: Record<string, number> | null): number => {
-    if (!data || typeof data !== 'object') return 0;
-    return Object.values(data).reduce((sum, val) => sum + (Number(val) || 0), 0);
-  };
-
-  const calculateWeekTotal = (data: Record<string, number>, startDay: number, endDay: number): number => {
-    let total = 0;
-    for (let i = startDay; i <= endDay; i++) {
-      total += data[`day${i}`] || 0;
-    }
-    return total;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="animate-spin text-blue-600" size={40} />
-      </div>
-    );
-  }
-
-  const selectedMonthName = months.find((m) => m.value === selectedMonth)?.name;
-  const selectedCategoryObj = categories.find((c) => c.key === selectedCategory);
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950"><Loader className="animate-spin text-white" /></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
-      <style>{`
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-          -webkit-appearance: none !important;
-          margin: 0 !important;
-          display: none !important;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield !important;
-        }
-      `}</style>
-      <div className="max-w-full mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-gradient-to-br from-cyan-600 to-cyan-500 rounded-xl">
-              <BarChart3 className="text-white" size={32} />
-            </div>
-            <div>
-              <h1 className="text-5xl font-bold text-white mb-1">Team Daily Report</h1>
-              <p className="text-slate-400">Track team member performance metrics by day</p>
-            </div>
+    <div className="min-h-screen bg-slate-950 p-6 md:p-8 pb-24 text-white">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Header and Controls */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-3">
+              <BarChart3 className="text-blue-400" />
+              Team Performance Report
+            </h1>
+            <p className="text-slate-400 mt-2">Manage and view your team's monthly metrics.</p>
           </div>
-        </div>
 
-        {/* Month/Year Selection */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 mb-8 border border-slate-700">
-          <div className="flex flex-col md:flex-row gap-6 items-center md:items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Month</label>
+          <div className="flex gap-4">
+            <div className="relative">
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                className="appearance-none bg-slate-900 border border-slate-700 text-white pl-4 pr-10 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.name}
-                  </option>
+                {months.map((m) => (
+                  <option key={m.value} value={m.value}>{m.name}</option>
                 ))}
               </select>
+              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
             </div>
 
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Year</label>
-              <input
-                type="number"
+            <div className="relative">
+               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 bg-gradient-to-br from-cyan-600 to-cyan-500 px-4 py-3 rounded-lg border border-cyan-400">
-              <Calendar size={20} className="text-white" />
-              <span className="font-semibold text-white">
-                {selectedMonthName} {selectedYear}
-              </span>
+                className="appearance-none bg-slate-900 border border-slate-700 text-white pl-4 pr-10 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                {[2024, 2025, 2026].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
             </div>
           </div>
         </div>
 
-        {/* Category Selection */}
-        <div className="mb-8 flex flex-wrap gap-3">
-          {categories.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => setSelectedCategory(cat.key as any)}
-              className={`px-6 py-3 rounded-lg font-semibold transition ${
-                selectedCategory === cat.key
-                  ? `bg-${cat.color}-600 text-white shadow-lg`
-                  : `bg-slate-800 text-slate-300 hover:bg-slate-700`
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Category Tabs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {categories.map((cat) => {
+            const activeClass = 'bg-' + cat.color + '-500/10 border-' + cat.color + '-500 ring-1 ring-' + cat.color + '-500';
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setSelectedCategory(cat.key as any)}
+                className={`p-4 rounded-xl border transition-all duration-200 ${
+                  selectedCategory === cat.key ? activeClass : 'bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-800'
+                }`}
+              >
+                <div className="font-semibold text-lg">{cat.label}</div>
+                <div className={`text-sm ${selectedCategory === cat.key ? ('text-' + cat.color + '-400') : 'text-slate-500'}`}>
+                  {selectedCategory === cat.key ? 'Active View' : 'Switch View'}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Loading State */}
+        {/* Main Content Area */}
         {loadingData ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader className="animate-spin text-cyan-500" size={40} />
-          </div>
-        ) : teamData.length === 0 ? (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">
-            <p className="text-slate-400 text-lg">No team members found</p>
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <Loader className="animate-spin mb-4" size={48} />
+            <p>Loading team metrics...</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {teamData.map((employee) => (
-              <div
-                key={employee.userId}
-                className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700"
-              >
-                {/* Employee Header */}
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-600">
-                  <h3 className="text-2xl font-bold text-white">{employee.name}</h3>
-                  <div className="text-right">
-                    <p className="text-slate-400 text-sm mb-2">Total</p>
-                    <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
-                      {calculateTotal(employee[selectedCategory])}
-                    </p>
+            {teamData.map((employee) => {
+              const computedKey = `${employee.userId}-${employee.aggregated ? 'agg' : employee.leaderPersonal ? 'personal' : 'member'}`;
+              return (
+                <div
+                  key={computedKey}
+                  className={
+                    employee.aggregated
+                      ? 'bg-gradient-to-br from-yellow-900 to-yellow-800 rounded-2xl shadow-2xl p-6 border-2 border-yellow-500'
+                      : 'bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700'
+                  }
+                >
+                  {/* Employee Header */}
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-600">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-2xl font-bold text-white">{employee.name}</h3>
+                      {employee.aggregated && (
+                        <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded-lg font-semibold">Aggregated (Team + Admin + Leader)</span>
+                      )}
+                      {employee.leaderPersonal && (
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-lg">Your Entries</span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-slate-400 text-sm mb-2">Total</p>
+                      <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
+                        {calculateTotal(employee[selectedCategory])}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Daily Grid - Calendar View */}
-                <div className="mb-6">
-                  <div className="grid grid-cols-7 gap-2">
-                    {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
-                      const day = dayIndex + 1;
-                      const dayKey = `day${day}`;
-                      const value = employee[selectedCategory][dayKey] || 0;
-                      const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                      });
+                  {/* Daily Grid - Calendar View */}
+                  <div className="mb-6">
+                    <div className="grid grid-cols-7 gap-2">
+                      {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
+                        const day = dayIndex + 1;
+                        const dayKey = `day${day}`;
+                        const value = employee[selectedCategory][dayKey] || 0;
+                        const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                        });
 
-                      return (
-                        <div
-                          key={day}
-                          className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
-                            value > 0
-                              ? selectedCategoryObj?.color === 'blue'
-                                ? 'border-blue-500 bg-blue-500/10'
-                                : selectedCategoryObj?.color === 'emerald'
-                                ? 'border-emerald-500 bg-emerald-500/10'
-                                : selectedCategoryObj?.color === 'purple'
-                                ? 'border-purple-500 bg-purple-500/10'
-                                : 'border-orange-500 bg-orange-500/10'
-                              : 'border-slate-600 hover:border-slate-500'
-                          }`}
-                        >
-                          <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
-                          <div className="text-xs text-slate-500 mb-2">{day}</div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={value}
-                            onChange={(e) =>
-                              updateCellValue(
-                                employee,
-                                selectedCategory,
-                                dayKey,
-                                Math.max(0, parseInt(e.target.value) || 0)
-                              )
-                            }
-                            className={`w-full px-1 py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
-                              selectedCategoryObj?.color === 'blue'
-                                ? 'focus:ring-blue-500'
-                                : selectedCategoryObj?.color === 'emerald'
-                                ? 'focus:ring-emerald-500'
-                                : selectedCategoryObj?.color === 'purple'
-                                ? 'focus:ring-purple-500'
-                                : 'focus:ring-orange-500'
+                        return (
+                          <div
+                            key={day}
+                            className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
+                              value > 0
+                                ? selectedCategoryObj?.color === 'blue'
+                                  ? 'border-blue-500 bg-blue-500/10'
+                                  : selectedCategoryObj?.color === 'emerald'
+                                  ? 'border-emerald-500 bg-emerald-500/10'
+                                  : selectedCategoryObj?.color === 'purple'
+                                  ? 'border-purple-500 bg-purple-500/10'
+                                  : 'border-orange-500 bg-orange-500/10'
+                                : 'border-slate-600 hover:border-slate-500'
                             }`}
-                          />
-                        </div>
-                      );
-                    })}
+                          >
+                            <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
+                            <div className="text-xs text-slate-500 mb-2">{day}</div>
+                            <input
+                              type="number"
+                              min="0"
+                              value={value}
+                              disabled={!!employee.aggregated}
+                              onChange={(e) => {
+                                if (employee.aggregated) return;
+                                updateCellValue(
+                                  employee,
+                                  selectedCategory,
+                                  dayKey,
+                                  Math.max(0, parseInt(e.target.value) || 0)
+                                );
+                              }}
+                              className={`w-full px-1 py-2 ${employee.aggregated ? 'bg-yellow-800 border-yellow-600 text-yellow-100' : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'} rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                selectedCategoryObj?.color === 'blue'
+                                  ? 'focus:ring-blue-500'
+                                  : selectedCategoryObj?.color === 'emerald'
+                                  ? 'focus:ring-emerald-500'
+                                  : selectedCategoryObj?.color === 'purple'
+                                  ? 'focus:ring-purple-500'
+                                  : 'focus:ring-orange-500'
+                              }`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Weekly Summary */}
+                  <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
+                    <h4 className="text-sm font-semibold text-slate-300 mb-3">Weekly Summary</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[1, 2, 3, 4].map((week) => {
+                        const startDay = 1 + (week - 1) * 7;
+                        const endDay = Math.min(week * 7, employee.daysInMonth);
+                        const weekTotal = calculateWeekTotal(employee[selectedCategory], startDay, endDay);
+
+                        return (
+                          <div
+                            key={week}
+                            className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
+                              selectedCategoryObj?.color === 'blue'
+                                ? 'border-blue-500/50'
+                                : selectedCategoryObj?.color === 'emerald'
+                                ? 'border-emerald-500/50'
+                                : selectedCategoryObj?.color === 'purple'
+                                ? 'border-purple-500/50'
+                                : 'border-orange-500/50'
+                            }`}
+                          >
+                            <p className="text-xs text-slate-300 mb-2">Week {week}</p>
+                            <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
+                            <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-
-                {/* Weekly Summary */}
-                <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
-                  <h4 className="text-sm font-semibold text-slate-300 mb-3">Weekly Summary</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[1, 2, 3, 4].map((week) => {
-                      const startDay = 1 + (week - 1) * 7;
-                      const endDay = Math.min(week * 7, employee.daysInMonth);
-                      const weekTotal = calculateWeekTotal(employee[selectedCategory], startDay, endDay);
-
-                      return (
-                        <div
-                          key={week}
-                          className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
-                            selectedCategoryObj?.color === 'blue'
-                              ? 'border-blue-500/50'
-                              : selectedCategoryObj?.color === 'emerald'
-                              ? 'border-emerald-500/50'
-                              : selectedCategoryObj?.color === 'purple'
-                              ? 'border-purple-500/50'
-                              : 'border-orange-500/50'
-                          }`}
-                        >
-                          <p className="text-xs text-slate-300 mb-2">Week {week}</p>
-                          <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
-                          <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Saving Indicator */}
         {savingData && (
-          <div className="fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+          <div className="fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50">
             <Loader className="animate-spin" size={16} />
             <span>Saving...</span>
           </div>

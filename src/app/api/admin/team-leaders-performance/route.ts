@@ -3,6 +3,8 @@ import { connectDB } from '@/lib/mongodb';
 import TeamLeaderPerformance from '@/models/TeamLeaderPerformance';
 import Team from '@/models/Team';
 import User from '@/models/User';
+import TeamPerformance from '@/models/TeamPerformance';
+import Lead from '@/models/Lead';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -62,6 +64,70 @@ export async function GET(req: NextRequest) {
         const leaderIdStr = String(leader._id);
         const performance = performanceMap.get(leaderIdStr);
 
+        // Prepare empty day buckets
+        const emptyDays: Record<string, number> = {};
+        for (let i = 1; i <= daysInMonth; i++) {
+          emptyDays[`day${i}`] = 0;
+        }
+
+        // Fetch all team member performances for this team (members + leader + admin-added)
+        const teamPerformances = await TeamPerformance.find({ teamId: team._id, month });
+
+        // Build aggregated totals across all team performances
+        const aggregated = {
+          userId: leaderIdStr,
+          leaderName: leader.name || '',
+          month,
+          daysInMonth,
+          sheets: { ...emptyDays },
+          assessments: { ...emptyDays },
+          meetings: { ...emptyDays },
+          requests: { ...emptyDays },
+        } as any;
+
+        for (const p of teamPerformances) {
+          const sheets = Object.fromEntries(p.sheets || new Map());
+          const meetings = Object.fromEntries(p.meetings || new Map());
+          const requests = Object.fromEntries(p.requests || new Map());
+          const assessments = Object.fromEntries(p.assessments || new Map());
+
+          for (const [k, v] of Object.entries(sheets)) {
+            aggregated.sheets[k] = (aggregated.sheets[k] || 0) + Number(v || 0);
+          }
+          for (const [k, v] of Object.entries(meetings)) {
+            aggregated.meetings[k] = (aggregated.meetings[k] || 0) + Number(v || 0);
+          }
+          for (const [k, v] of Object.entries(requests)) {
+            aggregated.requests[k] = (aggregated.requests[k] || 0) + Number(v || 0);
+          }
+          for (const [k, v] of Object.entries(assessments)) {
+            aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
+          }
+        }
+
+        // Aggregate leads and closed deals for the whole team within the month
+        try {
+          const memberIds = Array.isArray(team.members)
+            ? team.members.map((m: any) => String(m))
+            : [];
+          // include leader in the member list to capture leader-assigned leads too
+          if (leader && leader._id) memberIds.push(String(leader._id));
+
+          const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+          const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
+
+          const teamLeads = await Lead.find({
+            assignedTo: { $in: memberIds },
+            createdAt: { $gte: monthStart, $lte: monthEnd },
+          });
+
+          aggregated.aggregatedLeads = teamLeads.length;
+          aggregated.aggregatedDeals = teamLeads.filter((l: any) => l.status === 'closed').length;
+        } catch (e) {
+          aggregated.aggregatedLeads = 0;
+          aggregated.aggregatedDeals = 0;
+        }
+
         if (performance) {
           return {
             userId: String(performance.userId._id || performance.userId),
@@ -72,15 +138,11 @@ export async function GET(req: NextRequest) {
             assessments: Object.fromEntries(performance.assessments || new Map()),
             meetings: Object.fromEntries(performance.meetings || new Map()),
             requests: Object.fromEntries(performance.requests || new Map()),
+            aggregated,
           };
         }
 
-        // Return empty performance record for new leaders
-        const emptyDays: Record<string, number> = {};
-        for (let i = 1; i <= daysInMonth; i++) {
-          emptyDays[`day${i}`] = 0;
-        }
-
+        // Return empty performance record for new leaders with aggregated totals
         return {
           userId: leaderIdStr,
           month: month,
@@ -90,6 +152,7 @@ export async function GET(req: NextRequest) {
           assessments: emptyDays,
           meetings: emptyDays,
           requests: emptyDays,
+          aggregated,
         };
       })
     );
