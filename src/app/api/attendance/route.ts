@@ -277,19 +277,20 @@ export async function POST(req: NextRequest) {
       const shiftEndTimeInMinutes = shiftStartTimeInMinutes + shiftDurationInMinutes;
       
       if (currentTimeInMinutes < shiftStartTimeInMinutes) {
-        // Before shift starts - allow if within early window, otherwise treat as previous day's shift ended
+        // Before shift starts - allow if within early window
         const earlyBy = shiftStartTimeInMinutes - currentTimeInMinutes;
         if (earlyBy <= allowedEarlyMinutes) {
           // Early arrival within allowed window — treat as on-time (not late)
           isLate = false;
           lateMinutes = 0;
         } else {
+          // Too early - not yet within the attendance window
           return NextResponse.json(
             {
-              error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
-              reason: 'SHIFT_ENDED',
+              error: `Attendance not yet open. Shift starts at ${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}. You can check in starting ${allowedEarlyMinutes} minutes before shift time.`,
+              reason: 'TOO_EARLY',
               shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
-              shiftEndTime: `${String(Math.floor(shiftEndTimeInMinutes / 60)).padStart(2, '0')}:${String(shiftEndTimeInMinutes % 60).padStart(2, '0')}`,
+              allowedEarlyMinutes: allowedEarlyMinutes,
             },
             { status: 400 }
           );
@@ -360,10 +361,15 @@ export async function POST(req: NextRequest) {
     console.log('Check-in Time:', checkInTime.toISOString(), `Local: ${checkInTime.toLocaleString()}`);
     console.log('Shift Start Time:', `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`);
     console.log('Shift Duration:', `${shiftDuration} hours`);
-    console.log('Current Time (minutes):', currentTimeInMinutes);
-    console.log('Shift Start (minutes):', shiftStartTimeInMinutes);
+    console.log('Current Time (minutes since midnight):', currentTimeInMinutes, `= ${Math.floor(currentTimeInMinutes / 60)}:${String(currentTimeInMinutes % 60).padStart(2, '0')}`);
+    console.log('Shift Start (minutes since midnight):', shiftStartTimeInMinutes, `= ${Math.floor(shiftStartTimeInMinutes / 60)}:${String(shiftStartTimeInMinutes % 60).padStart(2, '0')}`);
+    const logShiftEndInMinutes = shiftStartTimeInMinutes + shiftDurationInMinutes <= 24 * 60 
+      ? shiftStartTimeInMinutes + shiftDurationInMinutes
+      : (shiftStartTimeInMinutes + shiftDurationInMinutes) % (24 * 60);
+    console.log('Shift End (minutes since midnight):', logShiftEndInMinutes, `= ${Math.floor(logShiftEndInMinutes / 60)}:${String(logShiftEndInMinutes % 60).padStart(2, '0')}`);
     console.log('Is Late:', isLate);
     console.log('Late Hours:', lateHours, 'Minutes:', lateMinutes);
+    console.log('Allowed Early Minutes:', allowedEarlyMinutes);
     console.log('=== END DEBUG ===');
 
     // Determine which shift date this belongs to
