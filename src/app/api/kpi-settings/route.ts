@@ -35,24 +35,53 @@ export async function GET(req: NextRequest) {
     await connectDB();
     console.log('✅ Connected to DB');
 
+    // Allow requesting settings for a particular scope/role via ?role=team-leader
+    const role = req.nextUrl?.searchParams.get('role') || 'global';
+    console.log('Requested role/scope:', role);
+
     console.log('🔵 Finding KPI settings...');
-    let kpiSettings = await KPISetting.findOne();
-    console.log('Found existing:', !!kpiSettings);
+    let kpiSettings = await KPISetting.findOne({ scope: role });
+    console.log('Found existing for role:', role, !!kpiSettings);
 
     // If no settings exist, create default ones
     if (!kpiSettings) {
-      console.log('🔵 Creating default KPI settings...');
-      kpiSettings = await KPISetting.create({
-        indicators: [
-          { name: 'attendance', target: 95, weight: 10 },
-          { name: 'deals', target: 2, weight: 20 },
-          { name: 'sheets', target: 20, weight: 15 },
-          { name: 'meetings', target: 5, weight: 15 },
-          { name: 'assessments', target: 3, weight: 20 },
-          { name: 'requests', target: 10, weight: 20 },
-        ],
-      });
-      console.log('✅ Created default settings');
+      // If specific role settings not found, try to clone from global
+      console.log(`No settings for '${role}', attempting to fallback/clone from global`);
+      const globalSettings = await KPISetting.findOne({ scope: 'global' });
+      if (globalSettings) {
+        kpiSettings = await KPISetting.create({
+          indicators: globalSettings.indicators,
+          totalWeight: globalSettings.totalWeight,
+          scope: role,
+        });
+        console.log('✅ Cloned global settings for role:', role);
+      } else {
+        console.log('🔵 Creating default global KPI settings...');
+        // Create a default global and then clone for role if needed
+        const defaultGlobal = await KPISetting.create({
+          indicators: [
+            { name: 'attendance', target: 95, weight: 10 },
+            { name: 'deals', target: 2, weight: 20 },
+            { name: 'sheets', target: 20, weight: 15 },
+            { name: 'meetings', target: 5, weight: 15 },
+            { name: 'assessments', target: 3, weight: 20 },
+            { name: 'requests', target: 10, weight: 20 },
+          ],
+          scope: 'global',
+        });
+
+        if (role === 'global') {
+          kpiSettings = defaultGlobal;
+          console.log('✅ Created default global settings');
+        } else {
+          kpiSettings = await KPISetting.create({
+            indicators: defaultGlobal.indicators,
+            totalWeight: defaultGlobal.totalWeight,
+            scope: role,
+          });
+          console.log('✅ Created new settings for role by cloning defaults:', role);
+        }
+      }
     } else {
       // If settings exist but missing 'requests', add it
       const hasRequests = kpiSettings.indicators.some((ind: any) => ind.name === 'requests');
@@ -104,7 +133,11 @@ export async function PUT(req: NextRequest) {
     console.log('✅ Connected to DB');
 
     console.log('🟡 Parsing request body...');
-    const { indicators } = await req.json();
+    const body = await req.json();
+    const { indicators } = body;
+    // role can be supplied either as query param ?role=team-leader or in the body.role
+    const role = req.nextUrl?.searchParams.get('role') || body.role || 'global';
+    console.log('Saving KPI settings for role:', role);
     console.log('📦 Indicators received:', indicators);
 
     // Validate indicators
@@ -166,20 +199,20 @@ export async function PUT(req: NextRequest) {
 
     console.log('✅ All validations passed');
 
-    // Find and update or create
-    console.log('🟡 Finding existing KPI settings...');
-    let kpiSettings = await KPISetting.findOne();
-    
+    // Find and update or create for the requested role/scope
+    console.log('🟡 Finding existing KPI settings for scope...');
+    let kpiSettings = await KPISetting.findOne({ scope: role });
+
     // Ensure all values are valid numbers
     const sanitizedIndicators = indicators.map((ind: any) => ({
       name: ind.name,
       target: Number(ind.target) || 0,
       weight: Number(ind.weight) || 0,
     }));
-    
+
     if (!kpiSettings) {
-      console.log('🟡 Creating new KPI settings...');
-      kpiSettings = await KPISetting.create({ indicators: sanitizedIndicators });
+      console.log('🟡 Creating new KPI settings for scope...');
+      kpiSettings = await KPISetting.create({ indicators: sanitizedIndicators, scope: role });
       console.log('✅ New KPI settings created with ID:', kpiSettings._id);
     } else {
       console.log('🟡 Updating existing KPI settings...');
@@ -202,14 +235,14 @@ export async function PUT(req: NextRequest) {
     
     // Verify saved data
     console.log('🟡 Verifying saved data...');
-    const verifySettings = await KPISetting.findOne();
+    const verifySettings = await KPISetting.findOne({ scope: role });
     if (verifySettings) {
-      console.log('✅ Verification successful');
+      console.log('✅ Verification successful for scope:', role);
       console.log('   - Indicators in DB:', verifySettings.indicators.length);
       console.log('   - Total weight in DB:', verifySettings.totalWeight);
       console.log('   - Indicator names:', verifySettings.indicators.map((ind: any) => ind.name).join(', '));
     } else {
-      console.error('❌ Verification failed - no settings found in DB');
+      console.error('❌ Verification failed - no settings found in DB for scope:', role);
     }
 
     // Log the admin action
@@ -218,9 +251,10 @@ export async function PUT(req: NextRequest) {
       action: 'update',
       resourceType: 'kpi-settings',
       resourceId: kpiSettings._id.toString(),
-      resourceName: 'KPI Settings',
+      resourceName: `KPI Settings (${role})`,
       description: 'Updated KPI settings indicators and targets',
       details: {
+        scope: role,
         indicators: indicators.map((ind: any) => ({
           name: ind.name,
           target: ind.target,

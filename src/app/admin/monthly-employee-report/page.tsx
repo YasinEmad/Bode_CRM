@@ -155,50 +155,59 @@ export default function MonthlyEmployeeReport() {
   const fetchKpiSettingsAndReturn = async (): Promise<any> => {
     try {
       console.log('📊 Fetching KPI settings...');
-      const res = await fetch('/api/kpi-settings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Fetch both global and team-leader settings so we can apply team-leader logic where needed
+      const [globalRes, leaderRes] = await Promise.all([
+        fetch('/api/kpi-settings', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/kpi-settings?role=team-leader', { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error('❌ KPI API Error:', res.status, errorData);
-        throw new Error(errorData.error || 'Failed to load KPI settings');
+      if (!globalRes.ok) {
+        const err = await globalRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to load global KPI settings');
       }
 
-      const data = await res.json();
-      console.log('✅ KPI settings received:', data.kpiSettings);
-      
-      // Validate KPI settings structure
+      if (leaderRes.status !== 200 && leaderRes.status !== 404 && !leaderRes.ok) {
+        const err = await leaderRes.json().catch(() => ({}));
+        console.warn('Warning: failed to load team-leader KPI settings', err);
+      }
+
+      const globalData = await globalRes.json();
+      const leaderData = leaderRes.ok ? await leaderRes.json() : null;
+      console.log('✅ KPI settings received: global:', globalData.kpiSettings, 'team-leader:', leaderData?.kpiSettings);
+
+      const data = globalData; // base validations against global
       if (!data.kpiSettings || !Array.isArray(data.kpiSettings.indicators) || data.kpiSettings.indicators.length === 0) {
-        console.error('❌ Invalid KPI settings structure');
-        throw new Error('Invalid KPI settings format');
+        console.error('❌ Invalid KPI settings format');
+        setKpiLoadError('Invalid KPI settings format');
+        return;
       }
 
       // Validate all required indicators are present
-      // requests is optional for backward compatibility
       const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
 
       if (missingIndicators.length > 0) {
         console.error('❌ Missing indicators:', missingIndicators);
-        throw new Error(`Missing indicators: ${missingIndicators.join(', ')}`);
+        setKpiLoadError(`Missing indicators: ${missingIndicators.join(', ')}`);
+        return;
       }
 
       // Validate total weight
       const totalWeight = data.kpiSettings.indicators.reduce((sum: number, ind: any) => sum + ind.weight, 0);
       if (Math.abs(totalWeight - 100) > 0.01) {
         console.error('❌ Invalid total weight:', totalWeight);
-        throw new Error(`Total weight must be 100%, got ${totalWeight.toFixed(2)}%`);
+        setKpiLoadError(`Total weight must be 100%, got ${totalWeight.toFixed(2)}%`);
+        return;
       }
 
       console.log('✅ KPI settings validated successfully');
+      console.log('   - Indicators:', providedIndicators.join(', '));
+      console.log('   - Total Weight:', totalWeight.toFixed(2) + '%');
       setKpiSettings(data.kpiSettings);
       setKpiLoadError(null);
-      
-      return data.kpiSettings; // Return the KPI settings for use in report calculation
+      // Return both global and team-leader settings to caller
+      return { global: data.kpiSettings, teamLeader: leaderData?.kpiSettings || null };
     } catch (error) {
       console.error('❌ Error fetching KPI settings:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to load KPI settings';
@@ -329,8 +338,18 @@ export default function MonthlyEmployeeReport() {
       leaderPerformanceData.performances?.forEach((perf: any) => {
         const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
         if (employeeId) {
-          // If the API returned aggregated totals for the leader, prefer those for reporting
-          if (perf.aggregated) {
+          // Prefer explicit leader performance (admin edits) when present.
+          // Fall back to aggregated team totals only when the explicit leader record is empty.
+          const hasExplicit = !!(
+            (perf.sheets && Object.keys(perf.sheets).length > 0) ||
+            (perf.meetings && Object.keys(perf.meetings).length > 0) ||
+            (perf.assessments && Object.keys(perf.assessments).length > 0) ||
+            (perf.requests && Object.keys(perf.requests).length > 0)
+          );
+
+          if (hasExplicit) {
+            leaderPerformanceByEmployee.set(employeeId, perf);
+          } else if (perf.aggregated) {
             leaderPerformanceByEmployee.set(employeeId, perf.aggregated);
           } else {
             leaderPerformanceByEmployee.set(employeeId, perf);
@@ -406,9 +425,9 @@ export default function MonthlyEmployeeReport() {
         const finalLeadsCount = isLeaderAggregatedLeads ? leaderStats.aggregatedLeads : leadsStats.leadsCount;
         const finalDealsCount = isLeaderAggregatedDeals ? leaderStats.aggregatedDeals : leadsStats.dealsCount;
 
-        // Calculate KPI if settings are available (now guaranteed to have data)
+        // Calculate KPI if settings are available (now we may have global and teamLeader bundles)
         let kpiPercentage = 0;
-        if (kpiSettingsData && kpiSettingsData.indicators && kpiSettingsData.indicators.length > 0) {
+        if (kpiSettingsData && (kpiSettingsData.global || kpiSettingsData.teamLeader)) {
           const metrics: EmployeeMetrics = {
             attendancePercentage,
             closedDealsCount: finalDealsCount,
@@ -417,12 +436,16 @@ export default function MonthlyEmployeeReport() {
             assessmentsCount,
             requestsCount,
           };
+          // Decide which indicators to use: prefer team-leader settings for leaders (aggregated data)
+          const indicatorsToUse = leaderStats && kpiSettingsData.teamLeader && kpiSettingsData.teamLeader.indicators && kpiSettingsData.teamLeader.indicators.length > 0
+            ? kpiSettingsData.teamLeader.indicators
+            : kpiSettingsData.global.indicators;
 
           console.log(`\n📊 === KPI Calculation for ${emp.name} ===`);
           console.log('🔹 Metrics:', metrics);
-          console.log('🔹 Available Indicators:', kpiSettingsData.indicators.map((ind: any) => `${ind.name} (target: ${ind.target}, weight: ${ind.weight})`));
+          console.log('🔹 Using Indicators:', indicatorsToUse.map((ind: any) => `${ind.name} (target: ${ind.target}, weight: ${ind.weight})`));
 
-          const kpiScores: KPIScores = calculateEmployeeKPI(metrics, kpiSettingsData.indicators);
+          const kpiScores: KPIScores = calculateEmployeeKPI(metrics, indicatorsToUse);
           kpiPercentage = Math.round(kpiScores.total * 10) / 10; // Round to 1 decimal place
           
           // Debug logging
@@ -432,7 +455,7 @@ export default function MonthlyEmployeeReport() {
         } else {
           console.log(`⚠️ KPI Settings NOT available for ${emp.name}`);
           console.log('   - kpiSettingsData:', !!kpiSettingsData);
-          console.log('   - indicators:', kpiSettingsData?.indicators);
+          console.log('   - global indicators:', kpiSettingsData?.global?.indicators);
         }
 
         return {

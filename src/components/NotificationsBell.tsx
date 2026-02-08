@@ -23,7 +23,7 @@ interface Notification {
 }
 
 export default function NotificationsBell() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -31,12 +31,21 @@ export default function NotificationsBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let mounted = true;
     if (token) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      // Push notifications disabled — subscription removed
+
+      const interval = setInterval(() => {
+        if (!mounted) return;
+        fetchNotifications();
+      }, 30000);
+      return () => {
+        mounted = false;
+        clearInterval(interval);
+      };
     }
-  }, [token]);
+  }, [token, user]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

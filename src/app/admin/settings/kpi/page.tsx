@@ -57,6 +57,7 @@ export default function KPISettingsPage() {
   const { addToast, updateToast } = useToast();
 
   const [kpiSettings, setKpiSettings] = useState<KPISetting | null>(null);
+  const [scope, setScope] = useState<'global' | 'team-leader'>('global');
   const [loadingData, setLoadingData] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -79,8 +80,7 @@ export default function KPISettingsPage() {
     try {
       setLoadingData(true);
       console.log('Fetching KPI settings with token:', token?.substring(0, 20) + '...');
-      
-      const res = await fetch('/api/kpi-settings', {
+      const res = await fetch(`/api/kpi-settings?role=${encodeURIComponent(scope)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -174,10 +174,9 @@ export default function KPISettingsPage() {
         console.log('📤 Sending KPI settings update...');
         console.log('Indicators:', kpiSettings!.indicators);
 
-        const requestBody = { indicators: kpiSettings!.indicators };
+        const requestBody = { indicators: kpiSettings!.indicators, role: scope };
         console.log('Request body:', JSON.stringify(requestBody));
-
-        const res = await fetch('/api/kpi-settings', {
+        const res = await fetch(`/api/kpi-settings?role=${encodeURIComponent(scope)}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -248,6 +247,23 @@ export default function KPISettingsPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">KPI Settings</h1>
           <p className="text-slate-400">Configure KPI indicators and weights for employee evaluation</p>
+        </div>
+
+        <div className="mb-6 flex items-center gap-4">
+          <label className="text-sm text-slate-300 font-semibold">Scope</label>
+          <select
+            value={scope}
+            onChange={(e) => {
+              const val = e.target.value as 'global' | 'team-leader';
+              setScope(val);
+              fetchKpiSettings();
+            }}
+            className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white"
+          >
+            <option value="global">Global (Default)</option>
+            <option value="team-leader">Team Leader</option>
+          </select>
+          <p className="text-sm text-slate-400">Choose which role's KPI settings to edit</p>
         </div>
 
         {/* Error Messages */}

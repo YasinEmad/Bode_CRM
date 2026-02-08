@@ -221,6 +221,29 @@ export default function Navbar() {
               </Link>
             ))}
 
+            {/* Mobile-only actions: Notifications and Notes */}
+            {user && user.role === 'sales' && (
+              <div className="px-3 mt-2 flex items-center gap-3">
+                <div className="flex-1">
+                  <NotificationsBell />
+                </div>
+                <Link
+                  href="/sales/notes"
+                  onClick={() => setMenuOpen(false)}
+                  className="relative p-2 rounded-lg transition-all"
+                  title="Notes"
+                >
+                  <div className="relative">
+                    <Mail size={18} className="text-blue-400 hover:text-blue-300" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 border-2 border-white">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              </div>
+            )}
             {user && (
               <button
                 onClick={() => {

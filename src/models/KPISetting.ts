@@ -9,6 +9,9 @@ export interface KPIIndicator {
 export interface IKPISetting extends Document {
   indicators: KPIIndicator[];
   totalWeight: number;
+  // scope indicates which role or area this setting applies to.
+  // 'global' is default (used by Sales/Admin unless overridden)
+  scope?: 'global' | 'team-leader' | 'sales' | 'admin';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +40,12 @@ const KPISettingSchema = new Schema<IKPISetting>(
     totalWeight: {
       type: Number,
       default: 0,
+    },
+    scope: {
+      type: String,
+      enum: ['global', 'team-leader', 'sales', 'admin'],
+      default: 'global',
+      required: true,
     },
   },
   {

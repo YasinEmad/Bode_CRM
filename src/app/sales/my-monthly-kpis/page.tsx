@@ -90,11 +90,11 @@ export default function MyMonthlyKPIs() {
   const fetchKpiSettingsAndReturn = async (): Promise<any> => {
     try {
       console.log('📊 Fetching KPI settings...');
-      const res = await fetch('/api/kpi-settings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // If the current user appears to be a team leader (position contains leader/lead), fetch team-leader settings
+      const position = user?.position?.toLowerCase() || '';
+      const isLeader = position.includes('lead') || position.includes('leader');
+      const url = isLeader ? '/api/kpi-settings?role=team-leader' : '/api/kpi-settings';
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -103,7 +103,7 @@ export default function MyMonthlyKPIs() {
       }
 
       const data = await res.json();
-      console.log('✅ KPI settings received:', data.kpiSettings);
+      console.log('✅ KPI settings received:', data.kpiSettings, 'fetched for leader?', isLeader);
 
       // Validate KPI settings structure
       if (!data.kpiSettings || !Array.isArray(data.kpiSettings.indicators) || data.kpiSettings.indicators.length === 0) {
@@ -112,7 +112,6 @@ export default function MyMonthlyKPIs() {
       }
 
       // Validate all required indicators are present
-      // requests is optional for backward compatibility
       const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
       const providedIndicators = data.kpiSettings.indicators.map((ind: any) => ind.name);
       const missingIndicators = requiredIndicators.filter(ind => !providedIndicators.includes(ind));
