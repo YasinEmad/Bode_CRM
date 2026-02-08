@@ -61,11 +61,46 @@ export default function LeadCard({
 
   const handleWhatsApp = () => {
     try {
-      const digits = (phone || '').toString().replace(/\D/g, '');
-      // If number starts with a leading 0, strip it (common local format)
-      const normalized = digits.startsWith('0') ? digits.slice(1) : digits;
-      if (!normalized) return;
-      const url = `https://wa.me/${normalized}`;
+      if (!phone) {
+        console.error('No phone number available');
+        return;
+      }
+
+      let cleaned = phone.toString().trim();
+      
+      // Remove + if present (will add country code properly)
+      if (cleaned.startsWith('+')) {
+        cleaned = cleaned.substring(1);
+      }
+      
+      // Remove all non-digit characters (spaces, dashes, etc.)
+      let digits = cleaned.replace(/\D/g, '');
+      
+      let finalNumber = digits;
+      
+      // Handle different phone formats
+      if (digits.startsWith('00')) {
+        // International format like 00201256... → remove 00
+        finalNumber = digits.substring(2);
+      } else if (digits.startsWith('0')) {
+        // Local Egyptian format like 0125... → remove 0 and add country code 20
+        const localDigits = digits.substring(1);
+        finalNumber = '20' + localDigits;
+      } else if (digits.length === 10) {
+        // Local format without leading 0, like 125... (assume Egypt)
+        finalNumber = '20' + digits;
+      }
+      // else: assume it's already in international format (e.g., 201256...)
+      
+      // Validate: Egyptian number must be exactly 12 digits starting with 20
+      if (finalNumber.length !== 12 || !finalNumber.startsWith('20')) {
+        console.error('Invalid phone number. Expected format: 0XXXXXXXXXX or 201XXXXXXXXX');
+        return;
+      }
+      
+      // WhatsApp requires: https://wa.me/<number> without + or 00
+      const url = `https://wa.me/${finalNumber}`;
+      console.log('Opening WhatsApp with number:', finalNumber);
       window.open(url, '_blank');
     } catch (err) {
       console.error('Failed to open WhatsApp:', err);
