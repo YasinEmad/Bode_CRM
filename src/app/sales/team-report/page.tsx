@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Calendar, BarChart3, ChevronDown } from 'lucide-react';
+import { Loader, Calendar, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PerformanceData {
   userId: string;
@@ -52,6 +52,7 @@ export default function TeamReport() {
   const [teamData, setTeamData] = useState<PerformanceData[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
 
   // Derived state for UI logic
   const selectedCategoryObj = categories.find((c) => c.key === selectedCategory);
@@ -88,6 +89,18 @@ export default function TeamReport() {
       total += record[dayKey] || 0;
     }
     return total;
+  };
+
+  const toggleEmployee = (computedKey: string) => {
+    setExpandedEmployees((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(computedKey)) {
+        newSet.delete(computedKey);
+      } else {
+        newSet.add(computedKey);
+      }
+      return newSet;
+    });
   };
 
   const fetchTeamData = async () => {
@@ -295,125 +308,157 @@ export default function TeamReport() {
             <p>Loading team metrics...</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {teamData.map((employee) => {
               const computedKey = `${employee.userId}-${employee.aggregated ? 'agg' : employee.leaderPersonal ? 'personal' : 'member'}`;
+              const isExpanded = expandedEmployees.has(computedKey);
+
               return (
                 <div
                   key={computedKey}
-                  className={
+                  className={`rounded-2xl shadow-xl border transition-all duration-200 overflow-hidden ${
                     employee.aggregated
-                      ? 'bg-gradient-to-br from-yellow-900 to-yellow-800 rounded-2xl shadow-2xl p-6 border-2 border-yellow-500'
-                      : 'bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700'
-                  }
+                      ? 'bg-gradient-to-br from-yellow-900 to-yellow-800 border-yellow-500'
+                      : 'bg-gradient-to-br from-slate-800 to-slate-700 border-slate-700'
+                  }`}
                 >
-                  {/* Employee Header */}
-                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-600">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-2xl font-bold text-white">{employee.name}</h3>
-                      {employee.aggregated && (
-                        <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded-lg font-semibold">Aggregated (Team + Admin + Leader)</span>
-                      )}
-                      {employee.leaderPersonal && (
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-lg">Your Entries</span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-slate-400 text-sm mb-2">Total</p>
-                      <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
-                        {calculateTotal(employee[selectedCategory])}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Daily Grid - Calendar View */}
-                  <div className="mb-6">
-                    <div className="grid grid-cols-7 gap-2">
-                      {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
-                        const day = dayIndex + 1;
-                        const dayKey = `day${day}`;
-                        const value = employee[selectedCategory][dayKey] || 0;
-                        const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                        });
-
-                        return (
-                          <div
-                            key={day}
-                            className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
-                              value > 0
-                                ? selectedCategoryObj?.color === 'blue'
-                                  ? 'border-blue-500 bg-blue-500/10'
-                                  : selectedCategoryObj?.color === 'emerald'
-                                  ? 'border-emerald-500 bg-emerald-500/10'
-                                  : selectedCategoryObj?.color === 'purple'
-                                  ? 'border-purple-500 bg-purple-500/10'
-                                  : 'border-orange-500 bg-orange-500/10'
-                                : 'border-slate-600 hover:border-slate-500'
-                            }`}
-                          >
-                            <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
-                            <div className="text-xs text-slate-500 mb-2">{day}</div>
-                            <input
-                              type="number"
-                              min="0"
-                              value={value}
-                              disabled={!!employee.aggregated}
-                              onChange={(e) => {
-                                if (employee.aggregated) return;
-                                updateCellValue(
-                                  employee,
-                                  selectedCategory,
-                                  dayKey,
-                                  Math.max(0, parseInt(e.target.value) || 0)
-                                );
-                              }}
-                              className={`w-full px-1 py-2 ${employee.aggregated ? 'bg-yellow-800 border-yellow-600 text-yellow-100' : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'} rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
-                                selectedCategoryObj?.color === 'blue'
-                                  ? 'focus:ring-blue-500'
-                                  : selectedCategoryObj?.color === 'emerald'
-                                  ? 'focus:ring-emerald-500'
-                                  : selectedCategoryObj?.color === 'purple'
-                                  ? 'focus:ring-purple-500'
-                                  : 'focus:ring-orange-500'
-                              }`}
-                            />
-                          </div>
-                        );
-                      })}
+                  {/* Collapsible Header */}
+                  <div
+                    onClick={() => toggleEmployee(computedKey)}
+                    className={`p-6 cursor-pointer transition-colors duration-200 ${
+                      isExpanded
+                        ? employee.aggregated
+                          ? 'bg-yellow-900/80'
+                          : 'bg-slate-700/50'
+                        : employee.aggregated
+                        ? 'hover:bg-yellow-900/60'
+                        : 'hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                          {isExpanded ? (
+                            <ChevronUp size={24} className={employee.aggregated ? 'text-yellow-400' : 'text-blue-400'} />
+                          ) : (
+                            <ChevronDown size={24} className={employee.aggregated ? 'text-yellow-400' : 'text-blue-400'} />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-2xl font-bold text-white">{employee.name}</h3>
+                          {employee.aggregated && (
+                            <span className="text-xs bg-yellow-500 text-black px-2.5 py-1 rounded-lg font-semibold">
+                              Aggregated (Team + Admin + Leader)
+                            </span>
+                          )}
+                          {employee.leaderPersonal && (
+                            <span className="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg">Your Entries</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-sm mb-1">Total</p>
+                        <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
+                          {calculateTotal(employee[selectedCategory])}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Weekly Summary */}
-                  <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
-                    <h4 className="text-sm font-semibold text-slate-300 mb-3">Weekly Summary</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[1, 2, 3, 4].map((week) => {
-                        const startDay = 1 + (week - 1) * 7;
-                        const endDay = Math.min(week * 7, employee.daysInMonth);
-                        const weekTotal = calculateWeekTotal(employee[selectedCategory], startDay, endDay);
+                  {/* Collapsible Content */}
+                  {isExpanded && (
+                    <div className={`border-t ${employee.aggregated ? 'border-yellow-700' : 'border-slate-600'} p-6 space-y-6 animate-in fade-in duration-200`}>
+                      {/* Daily Grid - Calendar View */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
+                        <div className="grid grid-cols-7 gap-2">
+                          {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
+                            const day = dayIndex + 1;
+                            const dayKey = `day${day}`;
+                            const value = employee[selectedCategory][dayKey] || 0;
+                            const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                            });
 
-                        return (
-                          <div
-                            key={week}
-                            className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
-                              selectedCategoryObj?.color === 'blue'
-                                ? 'border-blue-500/50'
-                                : selectedCategoryObj?.color === 'emerald'
-                                ? 'border-emerald-500/50'
-                                : selectedCategoryObj?.color === 'purple'
-                                ? 'border-purple-500/50'
-                                : 'border-orange-500/50'
-                            }`}
-                          >
-                            <p className="text-xs text-slate-300 mb-2">Week {week}</p>
-                            <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
-                            <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
-                          </div>
-                        );
-                      })}
+                            return (
+                              <div
+                                key={day}
+                                className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
+                                  value > 0
+                                    ? selectedCategoryObj?.color === 'blue'
+                                      ? 'border-blue-500 bg-blue-500/10'
+                                      : selectedCategoryObj?.color === 'emerald'
+                                      ? 'border-emerald-500 bg-emerald-500/10'
+                                      : selectedCategoryObj?.color === 'purple'
+                                      ? 'border-purple-500 bg-purple-500/10'
+                                      : 'border-orange-500 bg-orange-500/10'
+                                    : 'border-slate-600 hover:border-slate-500'
+                                }`}
+                              >
+                                <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
+                                <div className="text-xs text-slate-500 mb-2">{day}</div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={value}
+                                  disabled={!!employee.aggregated}
+                                  onChange={(e) => {
+                                    if (employee.aggregated) return;
+                                    updateCellValue(
+                                      employee,
+                                      selectedCategory,
+                                      dayKey,
+                                      Math.max(0, parseInt(e.target.value) || 0)
+                                    );
+                                  }}
+                                  className={`w-full px-1 py-2 ${employee.aggregated ? 'bg-yellow-800 border-yellow-600 text-yellow-100' : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'} rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                    selectedCategoryObj?.color === 'blue'
+                                      ? 'focus:ring-blue-500'
+                                      : selectedCategoryObj?.color === 'emerald'
+                                      ? 'focus:ring-emerald-500'
+                                      : selectedCategoryObj?.color === 'purple'
+                                      ? 'focus:ring-purple-500'
+                                      : 'focus:ring-orange-500'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Weekly Summary */}
+                      <div className={`rounded-lg p-4 border ${employee.aggregated ? 'bg-yellow-900/20 border-yellow-700' : 'bg-slate-900/30 border-slate-600'}`}>
+                        <h4 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Weekly Summary</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {[1, 2, 3, 4].map((week) => {
+                            const startDay = 1 + (week - 1) * 7;
+                            const endDay = Math.min(week * 7, employee.daysInMonth);
+                            const weekTotal = calculateWeekTotal(employee[selectedCategory], startDay, endDay);
+
+                            return (
+                              <div
+                                key={week}
+                                className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
+                                  selectedCategoryObj?.color === 'blue'
+                                    ? 'border-blue-500/50'
+                                    : selectedCategoryObj?.color === 'emerald'
+                                    ? 'border-emerald-500/50'
+                                    : selectedCategoryObj?.color === 'purple'
+                                    ? 'border-purple-500/50'
+                                    : 'border-orange-500/50'
+                                }`}
+                              >
+                                <p className="text-xs text-slate-300 mb-2">Week {week}</p>
+                                <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
+                                <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}

@@ -63,7 +63,7 @@ export default function LeadCard({
     try {
       const digits = (phone || '').toString().replace(/\D/g, '');
       // If number starts with a leading 0, strip it (common local format)
-      const normalized = digits.startsWith('0') ? digits.replace(/^0+/, '') : digits;
+      const normalized = digits.startsWith('0') ? digits.slice(1) : digits;
       if (!normalized) return;
       const url = `https://wa.me/${normalized}`;
       window.open(url, '_blank');
