@@ -21,12 +21,12 @@ export interface DealClosingFormData {
   clientNumber: string;
   developer: string;
   project?: string;
-  unitCode: number;
+  unitCode: string;
   unitArea: number;
   unitType: string;
   contractPrice: number;
   contractDate: string;
-  finishingType: 'Fully finished' | 'Semi-finished' | 'Not finished';
+  finishingType: string;
   deliveryDate: number;
   paymentPlan: string;
   downPaymentPercentage: number;
@@ -36,24 +36,7 @@ export interface DealClosingFormData {
   info: string;
 }
 
-const unitTypes = [
-  'Apartment',
-  'Studio',
-  'Duplex',
-  'Penthouse',
-  'Villa',
-  'Twin House',
-  'Townhouse',
-  'Chalet',
-  'Loft',
-  'Shop',
-  'Retail',
-  'Showroom',
-  'Mall Unit',
-  'Office',
-  'Administrative Unit',
-  'Clinic',
-];
+// Unit type & finishing type are free-text fields now (no predefined choices)
 
 const paymentPlans = ['0', '1 year', '2 years', '3 years', '4 years', '5 years', '6 years', '7 years', '8 years', '9 years', '10 years', '11 years', '12 years', '13 years', '14 years', '15 years'];
 
@@ -76,12 +59,12 @@ export default function CloseDealModal({
     clientNumber: '',
     developer: '',
     project: leadProject || '',
-    unitCode: 0,
+    unitCode: '',
     unitArea: 0,
-    unitType: 'Apartment',
+    unitType: '',
     contractPrice: 0,
     contractDate: new Date().toISOString().split('T')[0],
-    finishingType: 'Not finished',
+    finishingType: '',
     deliveryDate: new Date().getFullYear(),
     paymentPlan: '0',
     downPaymentPercentage: 0,
@@ -254,12 +237,12 @@ export default function CloseDealModal({
         clientName: '',
         clientNumber: '',
         developer: '',
-        unitCode: 0,
+        unitCode: '',
         unitArea: 0,
-        unitType: 'Apartment',
+        unitType: '',
         contractPrice: 0,
         contractDate: new Date().toISOString().split('T')[0],
-        finishingType: 'Not finished',
+        finishingType: '',
         deliveryDate: new Date().getFullYear(),
         paymentPlan: '0',
         downPaymentPercentage: 0,
@@ -331,7 +314,7 @@ export default function CloseDealModal({
                 Client Number *
               </label>
               <input
-                type="number"
+                type="text"
                 name="clientNumber"
                 value={formData.clientNumber}
                 onChange={handleInputChange}
@@ -376,7 +359,7 @@ export default function CloseDealModal({
                 Unit Code *
               </label>
               <input
-                type="number"
+                type="text"
                 name="unitCode"
                 value={formData.unitCode}
                 onChange={handleInputChange}
@@ -403,18 +386,14 @@ export default function CloseDealModal({
               <label className="block text-sm font-semibold text-white mb-2">
                 Unit Type *
               </label>
-              <select
+              <input
+                type="text"
                 name="unitType"
                 value={formData.unitType}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700"
-              >
-                {unitTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+                placeholder="Unit Type"
+                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+              />
             </div>
           </div>
           )}
@@ -458,16 +437,14 @@ export default function CloseDealModal({
               <label className="block text-sm font-semibold text-white mb-2">
                 Finishing Type *
               </label>
-              <select
+              <input
+                type="text"
                 name="finishingType"
                 value={formData.finishingType}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700"
-              >
-                <option value="Fully finished">Fully Finished</option>
-                <option value="Semi-finished">Semi-finished</option>
-                <option value="Not finished">Not Finished</option>
-              </select>
+                placeholder="Finishing Type"
+                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+              />
             </div>
 
             <div>

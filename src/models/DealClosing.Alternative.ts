@@ -24,13 +24,13 @@ export interface IDealClosingWithGridFS extends Document {
   clientName: string;
   clientNumber: string;
   developer: string;
-  unitCode: number;
+  unitCode: string;
   unitArea: number;
   unitType: string;
   contractPrice: number;
   contractDate: Date;
   project?: string;
-  finishingType: 'Fully finished' | 'Semi-finished' | 'Not finished';
+  finishingType: string;
   deliveryDate: number;
   paymentPlan: string;
   downPaymentPercentage: number;
@@ -96,7 +96,7 @@ const DealClosingGridFSSchema = new Schema<IDealClosingWithGridFS>(
       required: true,
     },
     unitCode: {
-      type: Number,
+      type: String,
       required: function (this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -131,7 +131,6 @@ const DealClosingGridFSSchema = new Schema<IDealClosingWithGridFS>(
     },
     finishingType: {
       type: String,
-      enum: ['Fully finished', 'Semi-finished', 'Not finished'],
       required: function (this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -196,13 +195,13 @@ export interface IDealClosingBase64 extends Document {
   clientName: string;
   clientNumber: string;
   developer: string;
-  unitCode: number;
+  unitCode: string;
   unitArea: number;
   unitType: string;
   contractPrice: number;
   contractDate: Date;
   project?: string;
-  finishingType: 'Fully finished' | 'Semi-finished' | 'Not finished';
+  finishingType: string;
   deliveryDate: number;
   paymentPlan: string;
   downPaymentPercentage: number;
@@ -249,7 +248,7 @@ const DealClosingBase64Schema = new Schema<IDealClosingBase64>(
       required: true,
     },
     unitCode: {
-      type: Number,
+      type: String,
       required: function (this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -284,7 +283,6 @@ const DealClosingBase64Schema = new Schema<IDealClosingBase64>(
     },
     finishingType: {
       type: String,
-      enum: ['Fully finished', 'Semi-finished', 'Not finished'],
       required: function (this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -362,13 +360,13 @@ export interface IDealClosingHybrid extends Document {
   clientName: string;
   clientNumber: string;
   developer: string;
-  unitCode: number;
+  unitCode: string;
   unitArea: number;
   unitType: string;
   contractPrice: number;
   contractDate: Date;
   project?: string;
-  finishingType: 'Fully finished' | 'Semi-finished' | 'Not finished';
+  finishingType: string;
   deliveryDate: number;
   paymentPlan: string;
   downPaymentPercentage: number;
@@ -417,7 +415,7 @@ const DealClosingHybridSchema = new Schema<IDealClosingHybrid>(
       required: true,
     },
     unitCode: {
-      type: Number,
+      type: String,
       required: function (this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -452,7 +450,6 @@ const DealClosingHybridSchema = new Schema<IDealClosingHybrid>(
     },
     finishingType: {
       type: String,
-      enum: ['Fully finished', 'Semi-finished', 'Not finished'],
       required: function (this: any): boolean {
         return this.tcrType !== 'EOI';
       },

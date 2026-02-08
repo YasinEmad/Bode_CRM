@@ -7,13 +7,13 @@ export interface IDealClosing extends Document {
   clientName: string;
   clientNumber: string;
   developer: string;
-  unitCode: number;
+  unitCode: string;
   unitArea: number;
-  unitType: 'Apartment' | 'Studio' | 'Duplex' | 'Penthouse' | 'Villa' | 'Twin House' | 'Townhouse' | 'Chalet' | 'Loft' | 'Shop' | 'Retail' | 'Showroom' | 'Mall Unit' | 'Office' | 'Administrative Unit' | 'Clinic';
+  unitType: string;
   contractPrice: number;
   contractDate: Date;
   project?: string;
-  finishingType: 'Fully finished' | 'Semi-finished' | 'Not finished';
+  finishingType: string;
   deliveryDate: number; // Year
   paymentPlan: '0' | '1 year' | '2 years' | '3 years' | '4 years' | '5 years' | '6 years' | '7 years' | '8 years' | '9 years' | '10 years' | '11 years' | '12 years' | '13 years' | '14 years' | '15 years';
   downPaymentPercentage: number;
@@ -55,7 +55,7 @@ const DealClosingSchema = new Schema<IDealClosing>(
       required: true,
     },
     unitCode: {
-      type: Number,
+      type: String,
       required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -68,24 +68,6 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     unitType: {
       type: String,
-      enum: [
-        'Apartment',
-        'Studio',
-        'Duplex',
-        'Penthouse',
-        'Villa',
-        'Twin House',
-        'Townhouse',
-        'Chalet',
-        'Loft',
-        'Shop',
-        'Retail',
-        'Showroom',
-        'Mall Unit',
-        'Office',
-        'Administrative Unit',
-        'Clinic',
-      ],
       required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
@@ -108,7 +90,6 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     finishingType: {
       type: String,
-      enum: ['Fully finished', 'Semi-finished', 'Not finished'],
       required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },

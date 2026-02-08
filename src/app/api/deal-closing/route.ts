@@ -63,15 +63,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Normalize some fields to expected types before validation/creation
+    const normalizedUnitCode = unitCode !== undefined && unitCode !== null ? String(unitCode) : unitCode;
+    const normalizedUnitType = unitType !== undefined && unitType !== null ? String(unitType) : unitType;
+    const normalizedFinishingType = finishingType !== undefined && finishingType !== null ? String(finishingType) : finishingType;
+
     // For non-EOI types, validate additional required fields
     if (tcrType !== 'EOI') {
       if (
-        !unitCode ||
+        !normalizedUnitCode ||
         !unitArea ||
-        !unitType ||
+        !normalizedUnitType ||
         !contractPrice ||
         !contractDate ||
-        !finishingType ||
+        !normalizedFinishingType ||
         !deliveryDate ||
         !paymentPlan ||
         downPaymentPercentage === undefined ||
@@ -96,12 +101,12 @@ export async function POST(req: NextRequest) {
       clientName,
       clientNumber,
       developer,
-      unitCode,
+      unitCode: normalizedUnitCode,
       unitArea,
-      unitType,
+      unitType: normalizedUnitType,
       contractPrice,
       contractDate: new Date(contractDate),
-      finishingType,
+      finishingType: normalizedFinishingType,
       deliveryDate,
       paymentPlan,
       downPaymentPercentage,
