@@ -411,7 +411,6 @@ export default function MonthlyEmployeeReport() {
         if (kpiSettingsData && kpiSettingsData.indicators && kpiSettingsData.indicators.length > 0) {
           const metrics: EmployeeMetrics = {
             attendancePercentage,
-            leadsCount: finalLeadsCount,
             closedDealsCount: finalDealsCount,
             sheetsCount,
             meetingsCount,
