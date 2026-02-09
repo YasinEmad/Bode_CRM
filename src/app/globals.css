@@ -58,7 +58,7 @@ html.dark {
 
 /* Light mode override when the html element has the `light` class. */
 html.light {
-  --background: #f8f8f5; /* off-white main color for light mode */
+  --background: #ffffff; /* white background for light mode */
   --foreground: #111827; /* dark text for readability */
   --primary: #1e40af; /* deeper blue for accents */
   --primary-rgb: 30,64,175;
