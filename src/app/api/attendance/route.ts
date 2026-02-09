@@ -251,7 +251,26 @@ export async function POST(req: NextRequest) {
 
     // Calculate if late based ONLY on the time set by admin
     // Ignore the date/calendar day - only compare the time of day
-    const checkInTime = new Date();
+    // Prefer client-provided local time (safer for users in different timezones)
+    let checkInTime = new Date();
+    const clientLocalTimeISO = (body as any).clientLocalTimeISO;
+    const clientTimezoneOffset = (body as any).timezoneOffsetMinutes;
+    let timezoneSource = 'server';
+    if (clientLocalTimeISO) {
+      const parsedClientTime = new Date(clientLocalTimeISO);
+      if (!isNaN(parsedClientTime.getTime())) {
+        checkInTime = parsedClientTime;
+        timezoneSource = 'clientLocalTimeISO';
+      }
+    } else if (typeof clientTimezoneOffset !== 'undefined' && clientTimezoneOffset !== null && clientTimezoneOffset !== '') {
+      const offset = Number(clientTimezoneOffset);
+      if (!Number.isNaN(offset)) {
+        // JS Date.getTimezoneOffset() returns minutes to add to local time to get UTC
+        // To compute client local time from server UTC, subtract the offset (in minutes)
+        checkInTime = new Date(Date.now() - offset * 60000);
+        timezoneSource = `clientTimezoneOffset(${offset})`;
+      }
+    }
 
     // Robustly parse the shift start time (supports "9", "9:00", "9 AM", "21:00", etc.)
     const parsedShift = parseTimeString((settings as any).attendanceTime, 18, 0);
@@ -358,7 +377,7 @@ export async function POST(req: NextRequest) {
 
     console.log('=== SHIFT CHECK-IN DEBUG ===');
     console.log('User:', user.name);
-    console.log('Check-in Time:', checkInTime.toISOString(), `Local: ${checkInTime.toLocaleString()}`);
+    console.log('Check-in Time:', checkInTime.toISOString(), `Local: ${checkInTime.toLocaleString()}`, 'timezoneSource:', timezoneSource);
     console.log('Shift Start Time:', `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`);
     console.log('Shift Duration:', `${shiftDuration} hours`);
     console.log('Current Time (minutes since midnight):', currentTimeInMinutes, `= ${Math.floor(currentTimeInMinutes / 60)}:${String(currentTimeInMinutes % 60).padStart(2, '0')}`);
