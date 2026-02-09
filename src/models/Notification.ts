@@ -35,7 +35,7 @@ const NotificationSchema = new Schema<INotification>(
     leadId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Lead',
-      required: true,
+      required: false,
     },
     fromUser: {
       type: mongoose.Schema.Types.ObjectId,

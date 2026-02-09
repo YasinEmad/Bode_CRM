@@ -5,6 +5,8 @@ import Commission from '@/models/Commission';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
 import Notification from '@/models/Notification';
+import PushSubscription from '@/models/PushSubscription';
+import { sendPushToSubscription } from '@/lib/push';
 import { verifyToken } from '@/lib/auth';
 import { logAdminAction } from '@/lib/adminLogger';
 
@@ -71,8 +73,9 @@ export async function PUT(req: NextRequest) {
         
         // إنشاء إشعار واحد لكل lead أو إشعار واحد عام إذا كانت العدد كبيراً
         if (leadIds.length <= 5) {
+          const created: any[] = [];
           for (const lead of leads) {
-            await Notification.create({
+            const n = await Notification.create({
               userId: employeeId,
               type: 'new_lead',
               title: 'New Lead',
@@ -80,10 +83,24 @@ export async function PUT(req: NextRequest) {
               leadId: lead._id,
               fromUser: payload.userId,
             });
+            created.push({ n, lead });
           }
+
+          // send pushes for each created notification
+          (async () => {
+            try {
+              const subs = await PushSubscription.find({ userId: employeeId });
+              for (const c of created) {
+                const payloadToSend = { title: c.n.title, message: c.n.message, url: `/sales/leads`, data: { leadId: c.lead._id } };
+                await Promise.all(subs.map(s => sendPushToSubscription(s.subscription, payloadToSend)));
+              }
+            } catch (e) {
+              console.warn('Failed to send push on bulk assign (per lead)', e);
+            }
+          })();
         } else {
           // إشعار واحد عام عن عدد الـ leads
-          await Notification.create({
+          const notif = await Notification.create({
             userId: employeeId,
             type: 'new_lead',
             title: 'Multiple New Leads',
@@ -91,6 +108,16 @@ export async function PUT(req: NextRequest) {
             leadId: leads[0]?._id || leadIds[0],
             fromUser: payload.userId,
           });
+
+          (async () => {
+            try {
+              const subs = await PushSubscription.find({ userId: employeeId });
+              const payloadToSend = { title: notif.title, message: notif.message, url: `/sales/leads`, data: { leadCount: leadIds.length } };
+              await Promise.all(subs.map(s => sendPushToSubscription(s.subscription, payloadToSend)));
+            } catch (e) {
+              console.warn('Failed to send push on bulk assign (summary)', e);
+            }
+          })();
         }
       }
     }

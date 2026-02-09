@@ -3,6 +3,9 @@ import { connectDB } from '@/lib/mongodb';
 import Note from '@/models/Note';
 import User from '@/models/User';
 import Team from '@/models/Team';
+import Notification from '@/models/Notification';
+import PushSubscription from '@/models/PushSubscription';
+import { sendPushToSubscription } from '@/lib/push';
 import { verifyToken, extractTokenFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -81,6 +84,44 @@ export async function POST(req: NextRequest) {
     // Populate sender and receiver details
     await note.populate('sender', 'name username role');
     await note.populate('receiver', 'name username role');
+
+      // Create a Notification for the receiver and send web-push
+      try {
+        const senderUser = await User.findById(payload.userId);
+        const notif = await Notification.create({
+          userId: receiverId,
+          type: 'lead_reassigned',
+          title: `New message from ${senderUser?.name || 'Sender'}`,
+          message: message,
+          // leadId not applicable for notes
+        });
+
+        // fire-and-forget push send with debug logs
+        (async () => {
+          try {
+            const subs = await PushSubscription.find({ userId: receiverId });
+            console.log('[notes/send] found subscriptions for receiver', receiverId, subs.length);
+            const payloadToSend = { title: notif.title, message: notif.message, url: '/sales/notes', data: { noteId: note._id } };
+
+            const results = await Promise.all(subs.map(async (s) => {
+              try {
+                const ok = await sendPushToSubscription(s.subscription, payloadToSend);
+                console.log('[notes/send] push result', { userId: receiverId, endpoint: s.endpoint, ok });
+                return { endpoint: s.endpoint, ok };
+              } catch (err) {
+                console.error('[notes/send] push send error for', s.endpoint, err);
+                return { endpoint: s.endpoint, ok: false, err };
+              }
+            }));
+
+            console.log('[notes/send] push results summary', { receiverId, count: results.length });
+          } catch (e) {
+            console.warn('Failed to send push for note', e);
+          }
+        })();
+      } catch (e) {
+        console.warn('Failed to create/send notification for note', e);
+      }
 
     return NextResponse.json(
       { message: 'Note sent successfully', note },
