@@ -99,9 +99,9 @@ export async function POST(req: NextRequest) {
 
       // Validate source enum
       const validSources = ['website', 'referral', 'phone', 'email', 'facebook', 'instagram', 'google ads', 'other'];
-      const finalSource = validSources.includes(String(source).toLowerCase())
-        ? String(source).toLowerCase()
-        : 'other';
+      const normalizedSource = String(source).toLowerCase();
+      const finalSource = validSources.includes(normalizedSource) ? normalizedSource : 'other';
+      const finalSourceText = finalSource === 'other' ? String(source).trim() : '';
 
       leadsToInsert.push({
         name: String(name).trim(),
@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
         status: finalStatus,
         email: email,
         source: finalSource,
+        sourceText: finalSourceText,
         notes: String(notes).trim(),
         assignedTo: assignedTo ? String(assignedTo).trim() : null,
       });

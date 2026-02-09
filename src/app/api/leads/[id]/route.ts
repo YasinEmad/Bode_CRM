@@ -30,7 +30,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { name, project, phone, email, status, source, notes, info, assignedTo, proofImage } = await req.json();
+    const { name, project, phone, email, status, source, sourceText, notes, info, assignedTo, proofImage } = await req.json();
 
     // Only admin can edit name, project, phone, source, assignedTo
     // Sales can only edit status and notes for their assigned leads
@@ -135,6 +135,7 @@ export async function PUT(
       }
     }
     if (source) updateData.source = source;
+    if (sourceText !== undefined) updateData.sourceText = sourceText;
     // Apply notes only when not performing a sales close operation.
     if (notes !== undefined) {
       // If sales user is trying to close, ignore notes field for that operation to avoid overwriting old notes.

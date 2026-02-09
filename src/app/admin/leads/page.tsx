@@ -62,6 +62,7 @@ export default function AdminLeads() {
     email: '',
     status: 'new' as LeadStatus,
     source: 'other' as const,
+    sourceText: '',
     notes: '',
     assignedTo: '',
   });
@@ -72,6 +73,7 @@ export default function AdminLeads() {
     email: '',
     status: 'new' as LeadStatus,
     source: 'other' as const,
+    sourceText: '',
     notes: '',
     assignedTo: '',
   });
@@ -98,7 +100,13 @@ export default function AdminLeads() {
       try {
         console.log('[AdminLeads] fetched leads emails:', Array.isArray(data.leads) ? data.leads.map((l: any) => l.email) : data.leads);
       } catch (e) {}
-      setLeads(Array.isArray(data.leads) ? data.leads : []);
+      const normalized = Array.isArray(data.leads)
+        ? data.leads.map((l: any) => ({
+            ...l,
+            displaySource: l.sourceText && String(l.sourceText).trim().length > 0 ? l.sourceText : l.source,
+          }))
+        : [];
+      setLeads(normalized);
     } catch (error) {
       console.error('Error fetching leads:', error);
       addToast('Failed to fetch leads', 'error');
@@ -123,23 +131,36 @@ export default function AdminLeads() {
     e.preventDefault();
     const toastId = addToast('Creating lead...', 'loading');
 
+    // If user selected 'other' as source, require custom text
+    if (formData.source === 'other' && (!formData.sourceText || formData.sourceText.trim() === '')) {
+      updateToast(toastId, 'Please provide a custom source when Source is Other', 'error');
+      return;
+    }
+
     try {
+      const payload = {
+        ...formData,
+        sourceText: formData.sourceText || '',
+        project: formData.project || '',
+      };
+      console.log('[Admin] creating lead payload:', payload);
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          project: formData.project || '',
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create lead');
-      setLeads([...leads, data.lead]);
-      setFormData({ name: '', project: '', phone: '', email: '', status: 'new', source: 'other', notes: '', assignedTo: '' });
+      const created = {
+        ...data.lead,
+        displaySource: data.lead?.sourceText && String(data.lead.sourceText).trim().length > 0 ? data.lead.sourceText : data.lead.source,
+      };
+      setLeads([...leads, created]);
+      setFormData({ name: '', project: '', phone: '', email: '', status: 'new', source: 'other', sourceText: '', notes: '', assignedTo: '' });
       setShowForm(false);
       updateToast(toastId, 'Lead created successfully!', 'success');
     } catch (error) {
@@ -276,6 +297,7 @@ export default function AdminLeads() {
       email: lead.email || '',
       status: lead.status,
       source: lead.source as any,
+      sourceText: (lead as any).sourceText || '',
       notes: lead.notes,
       assignedTo: lead.assignedTo?._id || '',
     });
@@ -306,6 +328,7 @@ export default function AdminLeads() {
           email: editFormData.email,
           status: editFormData.status,
           source: editFormData.source,
+          sourceText: editFormData.sourceText || '',
           notes: editFormData.notes,
           assignedTo: editFormData.assignedTo === '' ? null : editFormData.assignedTo,
         }),
@@ -334,11 +357,12 @@ export default function AdminLeads() {
       return;
     }
 
-    const filteredLeads = leads.filter((lead) => {
+    const filteredLeads = leads.filter((lead: any) => {
       const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           lead.phone.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = filterStatus === 'all' || lead.status === filterStatus;
-      const matchesSource = filterSource === 'all' || lead.source === filterSource;
+      const displayedSource = (lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : lead.source;
+      const matchesSource = filterSource === 'all' || displayedSource === filterSource;
       return matchesSearch && matchesStatus && matchesSource;
     });
 
@@ -347,13 +371,13 @@ export default function AdminLeads() {
       return;
     }
 
-    const exportData = filteredLeads.map((lead) => ({
+    const exportData = filteredLeads.map((lead: any) => ({
       'Lead Name': lead.name,
       'Project': lead.project || '',
       'Email': lead.email || '',
       'Phone': lead.phone,
       'Status': lead.status,
-      'Source': lead.source,
+      'Source': lead.displaySource || ((lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : lead.source),
       'Created By': lead.createdBy?.name || 'Admin',
       'Assigned To': lead.assignedTo?.name || 'Unassigned',
       'Notes': lead.notes || '',
@@ -398,12 +422,13 @@ export default function AdminLeads() {
   }
 
   // Filter leads based on search and filters
-  const filteredLeads = leads.filter((lead) => {
+    const filteredLeads = leads.filter((lead: any) => {
     const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          lead.phone.includes(searchQuery) ||
                          lead.notes.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || lead.status === filterStatus;
-    const matchesSource = filterSource === 'all' || lead.source === filterSource;
+    const displayedSource = lead.displaySource || ((lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : lead.source);
+    const matchesSource = filterSource === 'all' || displayedSource === filterSource;
     return matchesSearch && matchesStatus && matchesSource;
   });
 
@@ -588,6 +613,18 @@ export default function AdminLeads() {
                     <option value="google ads">Google Ads</option>
                     <option value="other">Other</option>
                   </select>
+                </div>
+                
+                {/* Make the custom source input full-width and obvious */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-300 mb-2">Specify Source (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter custom source (e.g. 'Local walk-in', 'Event XYZ', etc.)"
+                    value={formData.sourceText}
+                    onChange={(e) => setFormData({ ...formData, sourceText: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-300 mb-2">Assign to Employee</label>
@@ -890,7 +927,7 @@ export default function AdminLeads() {
                             {lead.status === 'new' ? '✨' : lead.status === 'connected' ? '✓' : lead.status === 'negotiation' ? '💬' : lead.status === 'closed' ? '🎉' : '✗'} {lead.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-300 capitalize text-sm">{lead.source}</td>
+                        <td className="px-4 py-3 text-slate-300 capitalize text-sm">{(lead as any).displaySource || ((lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : lead.source)}</td>
                         <td className="px-4 py-3">
                           {lead.createdBy ? (
                             <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-medium inline-block">
@@ -1024,6 +1061,16 @@ export default function AdminLeads() {
                       <option value="google ads">Google Ads</option>
                       <option value="other">Other</option>
                     </select>
+                    <div className="mt-3">
+                      <label className="block text-sm font-semibold text-slate-300 mb-2">Specify Source (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="Enter custom source"
+                        value={editFormData.sourceText}
+                        onChange={(e) => setEditFormData({ ...editFormData, sourceText: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Assign to Employee</label>

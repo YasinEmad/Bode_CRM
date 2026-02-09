@@ -82,7 +82,9 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const { name, project, phone, email, status, source, notes, assignedTo } = await req.json();
+    const body = await req.json();
+    const { name, project, phone, email, status, source, sourceText, notes, assignedTo } = body;
+    console.log('[API /api/leads] received full payload:', JSON.stringify(body));
 
     if (!name || !phone) {
       return NextResponse.json({ error: 'Missing required fields (name and phone)' }, { status: 400 });
@@ -120,9 +122,46 @@ export async function POST(req: NextRequest) {
       email: email || '',
       status: status || 'new',
       source: source || 'other',
+      sourceText: sourceText || '',
       notes: notes || '',
       assignedTo: assignedToId,
     });
+    try {
+      console.log('[API /api/leads] created lead (raw):', JSON.stringify(lead.toObject()));
+    } catch (e) {
+      console.log('[API /api/leads] created lead raw (fallback):', lead);
+    }
+
+    // Re-query the created lead to ensure we return a plain JS object with populated refs and all fields
+    let fullLead = await Lead.findById(lead._id).populate('assignedTo', 'name email');
+    try {
+      console.log('[API /api/leads] created lead (full):', JSON.stringify(fullLead?.toObject()));
+    } catch (e) {
+      console.log('[API /api/leads] created lead (full fallback):', fullLead);
+    }
+
+    // If the request included a custom sourceText but the retrieved lead lacks it,
+    // persist it explicitly and refresh the lead so the response includes it.
+    if (body && body.sourceText && (!fullLead || !fullLead.sourceText || String(fullLead.sourceText).trim() === '')) {
+      try {
+        console.log('[API /api/leads] fullLead missing sourceText; persisting fallback from request');
+        await Lead.findByIdAndUpdate(lead._id, { sourceText: body.sourceText }, { new: true });
+        const refreshed = await Lead.findById(lead._id).populate('assignedTo', 'name email');
+        try {
+          console.log('[API /api/leads] refreshed lead after persisting sourceText:', JSON.stringify(refreshed?.toObject()));
+        } catch (e) {
+          console.log('[API /api/leads] refreshed lead after persisting sourceText (fallback):', refreshed);
+        }
+        // Use refreshed lead going forward
+        // Assign to fullLead variable for later use in response/logging
+        // Note: TypeScript typing not required in this runtime file
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        fullLead = refreshed;
+      } catch (err) {
+        console.error('[API /api/leads] failed to persist sourceText fallback:', err);
+      }
+    }
 
     // If an admin created the lead, log the action for the admin logs page
     if (payload.role === 'admin') {
@@ -143,7 +182,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ lead }, { status: 201 });
+    return NextResponse.json({ lead: fullLead }, { status: 201 });
   } catch (error) {
     console.error('Error creating lead:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to create lead';

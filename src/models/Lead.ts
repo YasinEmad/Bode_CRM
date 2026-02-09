@@ -10,6 +10,7 @@ export interface ILead extends Document {
   email?: string;
   status: LeadStatus;
   source: LeadSource;
+  sourceText?: string;
   assignedTo?: mongoose.Types.ObjectId;
   notes: string;
   info?: string; // New field for closing-specific information
@@ -45,6 +46,10 @@ const LeadSchema = new Schema<ILead>(
       type: String,
       enum: ['website', 'referral', 'phone', 'email', 'facebook', 'instagram', 'google ads', 'other'],
       default: 'other',
+    },
+    sourceText: {
+      type: String,
+      default: '',
     },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,

@@ -245,7 +245,7 @@ export default function SalesDashboard() {
                 name={lead.name}
                 email={lead.email}
                 phone={lead.phone}
-                property={lead.property}
+                property={(lead as any).displaySource || ((lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : ((lead as any).source || lead.property))}
                 project={lead.project}
                 status={lead.status}
                 notes={lead.notes}
@@ -264,7 +264,11 @@ export default function SalesDashboard() {
                       throw new Error(err.error || 'Failed to assign');
                     }
                     const data = await res.json();
-                    setLeads((prev) => prev.map((l) => (l._id === lead._id ? data.lead : l)));
+                    const updated = {
+                      ...data.lead,
+                      displaySource: data.lead?.sourceText && String(data.lead.sourceText).trim().length > 0 ? data.lead.sourceText : data.lead.source,
+                    };
+                    setLeads((prev) => prev.map((l) => (l._id === lead._id ? updated : l)));
                     // Refresh leads after assignment to ensure assigned members can see their new leads
                     setTimeout(() => fetchLeads(), 500);
                   } catch (err) {

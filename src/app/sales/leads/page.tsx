@@ -52,6 +52,7 @@ export default function SalesLeads() {
     email: '',
     project: '',
     source: 'other',
+    sourceText: '',
     notes: '',
   });
   const [callConfirmation, setCallConfirmation] = useState<{ isOpen: boolean; phone: string; leadName: string }>({
@@ -78,7 +79,13 @@ export default function SalesLeads() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setLeads(Array.isArray(data.leads) ? data.leads : []);
+      const normalized = Array.isArray(data.leads)
+        ? data.leads.map((l: any) => ({
+            ...l,
+            displaySource: l.sourceText && String(l.sourceText).trim().length > 0 ? l.sourceText : l.source,
+          }))
+        : [];
+      setLeads(normalized);
     } catch (error) {
       console.error('Error fetching leads:', error);
       addToast('Failed to fetch leads', 'error');
@@ -114,7 +121,11 @@ export default function SalesLeads() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save notes');
-      setLeads((prev) => prev.map((l) => (l._id === leadId ? data.lead : l)));
+      const updated = {
+        ...data.lead,
+        displaySource: data.lead?.sourceText && String(data.lead.sourceText).trim().length > 0 ? data.lead.sourceText : data.lead.source,
+      };
+      setLeads((prev) => prev.map((l) => (l._id === leadId ? updated : l)));
       updateToast(toastId, '✅ Notes saved', 'success');
     } catch (err) {
       updateToast(toastId, err instanceof Error ? err.message : 'Failed to save notes', 'error');
@@ -127,29 +138,52 @@ export default function SalesLeads() {
       return;
     }
 
+    // If user selected 'other' as source, require custom text
+    if (newLeadData.source === 'other' && (!newLeadData.sourceText || newLeadData.sourceText.trim() === '')) {
+      addToast('Please provide a custom source when Source is Other', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     const toastId = addToast('Creating lead...', 'loading');
 
     try {
+      // Prepare payload explicitly so `sourceText` is always sent when provided
+      const payload = {
+        name: newLeadData.name,
+        phone: newLeadData.phone,
+        email: newLeadData.email || '',
+        project: newLeadData.project || '',
+        source: newLeadData.source || 'other',
+        sourceText: newLeadData.source === 'other' ? (newLeadData.sourceText || '') : (newLeadData.sourceText || ''),
+        notes: newLeadData.notes || '',
+      };
+
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(newLeadData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create lead');
 
-      setLeads([data.lead, ...leads]);
+      const created = {
+        ...data.lead,
+        displaySource: data.lead?.sourceText && String(data.lead.sourceText).trim().length > 0 ? data.lead.sourceText : data.lead.source,
+      };
+
+      setLeads([created, ...leads]);
       setNewLeadData({
         name: '',
         phone: '',
         email: '',
         project: '',
         source: 'other',
+        sourceText: '',
         notes: '',
       });
       setIsCreatingLead(false);
@@ -186,7 +220,12 @@ export default function SalesLeads() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update status');
 
-      setLeads(leads.map((l) => (l._id === leadId ? data.lead : l)));
+      const updated = {
+        ...data.lead,
+        displaySource: data.lead?.sourceText && String(data.lead.sourceText).trim().length > 0 ? data.lead.sourceText : data.lead.source,
+      };
+
+      setLeads(leads.map((l) => (l._id === leadId ? updated : l)));
       addToast('✅ Status updated!', 'success');
     } catch (error) {
       addToast(
@@ -221,7 +260,12 @@ export default function SalesLeads() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update notes');
 
-      setLeads(leads.map((l) => (l._id === editingLead._id ? data.lead : l)));
+      const updated = {
+        ...data.lead,
+        displaySource: data.lead?.sourceText && String(data.lead.sourceText).trim().length > 0 ? data.lead.sourceText : data.lead.source,
+      };
+
+      setLeads(leads.map((l) => (l._id === editingLead._id ? updated : l)));
       updateToast(toastId, '✅ Notes updated successfully!', 'success');
       setEditingLead(null);
     } catch (error) {
@@ -326,7 +370,7 @@ export default function SalesLeads() {
                     name={lead.name}
                     email={lead.email || ''}
                     phone={lead.phone}
-                    property={lead.source}
+                    property={(lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : lead.source}
                     project={lead.project}
                     status={lead.status}
                     notes={lead.notes}
@@ -413,6 +457,16 @@ export default function SalesLeads() {
                     <option value="google ads">Google Ads</option>
                     <option value="other">Other</option>
                   </select>
+                <div className="mt-3">
+                  <label className="block text-sm font-semibold text-white mb-2">Specify Source (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter custom source"
+                    value={newLeadData.sourceText}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, sourceText: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
                 </div>
 
                 <div>
@@ -535,7 +589,11 @@ export default function SalesLeads() {
                 const updatedLead = data.updatedLead;
                 if (updatedLead) {
                   const updatedId = typeof updatedLead._id === 'string' ? updatedLead._id : String((updatedLead as any)._id);
-                  setLeads((prev) => prev.map((l) => (l._id === updatedId ? updatedLead : l)));
+                  const normalized = {
+                    ...updatedLead,
+                    displaySource: updatedLead?.sourceText && String(updatedLead.sourceText).trim().length > 0 ? updatedLead.sourceText : updatedLead.source,
+                  };
+                  setLeads((prev) => prev.map((l) => (l._id === updatedId ? normalized : l)));
                 }
 
                 setClosingLeadId(null);
