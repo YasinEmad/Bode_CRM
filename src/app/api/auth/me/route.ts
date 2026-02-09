@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
         name: user.name,
         role: user.role,
         position: user.position || '',
+        salary: typeof user.salary === 'number' ? user.salary : 0,
         teamId: user.teamId ? String(user.teamId) : null,
         deviceId: user.deviceId || null,
         deviceIds: Array.isArray(user.deviceIds) ? user.deviceIds : (user.deviceId ? [user.deviceId] : []),
