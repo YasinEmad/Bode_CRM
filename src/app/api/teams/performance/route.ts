@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import TeamPerformance from '@/models/TeamPerformance';
+import Lead from '@/models/Lead';
 import User from '@/models/User';
 import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
@@ -86,6 +87,9 @@ export async function GET(req: NextRequest) {
           assessments: Object.fromEntries(performance.assessments || new Map()),
           meetings: Object.fromEntries(performance.meetings || new Map()),
           requests: Object.fromEntries(performance.requests || new Map()),
+          // leads/deals will be attached below from Lead collection (read-only)
+          leadsCount: 0,
+          dealsCount: 0,
         };
       }
 
@@ -119,6 +123,9 @@ export async function GET(req: NextRequest) {
       assessments: { ...emptyAgg },
       meetings: { ...emptyAgg },
       requests: { ...emptyAgg },
+      // leads/deals aggregated across team (from Lead collection)
+      aggregatedLeads: 0,
+      aggregatedDeals: 0,
     } as any;
 
     // Also extract the leader's personal performance (if any) so UI can show both personal and aggregated rows
@@ -162,6 +169,60 @@ export async function GET(req: NextRequest) {
       for (const [k, v] of Object.entries(assessments)) {
         aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
       }
+    }
+
+    // --- Compute leads/deals from Lead collection (read-only) ---
+    try {
+      const memberIdStrings = teamMembers.map((m) => String(m._id));
+      // include leader in the member list to capture leader-assigned leads too
+      if (team.leader) memberIdStrings.push(String(team.leader));
+
+      const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+      const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
+
+      const teamLeads = await Lead.find({
+        assignedTo: { $in: memberIdStrings },
+        createdAt: { $gte: monthStart, $lte: monthEnd },
+      });
+
+      const leadsByUser = new Map<string, { leadsCount: number; dealsCount: number }>();
+      for (const l of teamLeads) {
+        const assignee = String((l as any).assignedTo || '');
+        if (!assignee) continue;
+        const cur = leadsByUser.get(assignee) || { leadsCount: 0, dealsCount: 0 };
+        cur.leadsCount += 1;
+        if ((l as any).status === 'closed') cur.dealsCount += 1;
+        leadsByUser.set(assignee, cur);
+      }
+
+      // Attach to teamData rows
+      for (const row of teamData) {
+        const id = String(row.userId);
+        const stats = leadsByUser.get(id) || { leadsCount: 0, dealsCount: 0 };
+        row.leadsCount = stats.leadsCount;
+        row.dealsCount = stats.dealsCount;
+        aggregated.aggregatedLeads += stats.leadsCount;
+        aggregated.aggregatedDeals += stats.dealsCount;
+      }
+
+      // Attach leader personal counts if present
+      if (leaderPersonal) {
+        const leaderIdStr = String(team.leader);
+        const leaderStats = leadsByUser.get(leaderIdStr) || { leadsCount: 0, dealsCount: 0 };
+        (leaderPersonal as any).leaderOwnLeads = leaderStats.leadsCount;
+        (leaderPersonal as any).leaderOwnDeals = leaderStats.dealsCount;
+      }
+      // Ensure leader's own leads/deals are included in aggregated totals
+      try {
+        const leaderIdStr = String(team.leader);
+        const leaderStats = leadsByUser.get(leaderIdStr) || { leadsCount: 0, dealsCount: 0 };
+        aggregated.aggregatedLeads += leaderStats.leadsCount;
+        aggregated.aggregatedDeals += leaderStats.dealsCount;
+      } catch (e) {
+        // ignore
+      }
+    } catch (e) {
+      // ignore and keep zeros
     }
 
     return NextResponse.json({ performances: teamData, teamMembers, aggregatedLeader: aggregated, leaderPersonal });

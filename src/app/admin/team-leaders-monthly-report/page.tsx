@@ -15,6 +15,16 @@ interface TeamLeaderPerformance {
   assessments: Record<string, number>;
   meetings: Record<string, number>;
   requests: Record<string, number>;
+  aggregated?: {
+    aggregatedLeads: number;
+    aggregatedDeals: number;
+    leaderLeads?: number;
+    leaderDeals?: number;
+  };
+  leaderOwnLeads?: number;
+  leaderOwnDeals?: number;
+  teamLeadsCount?: number;
+  teamDealsCount?: number;
 }
 
 const months = [
@@ -37,6 +47,8 @@ const categories = [
   { key: 'assessments', label: 'Assessments', color: 'emerald' },
   { key: 'meetings', label: 'Meetings', color: 'purple' },
   { key: 'requests', label: 'Requests', color: 'orange' },
+  { key: 'leads', label: 'Leads', color: 'pink' },
+  { key: 'deals', label: 'Deals', color: 'cyan' },
 ];
 
 export default function TeamLeadersMonthlyReport() {
@@ -46,7 +58,7 @@ export default function TeamLeadersMonthlyReport() {
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<'sheets' | 'assessments' | 'meetings' | 'requests'>('sheets');
+  const [selectedCategory, setSelectedCategory] = useState<'sheets' | 'assessments' | 'meetings' | 'requests' | 'leads' | 'deals'>('sheets');
   const [leaderData, setLeaderData] = useState<TeamLeaderPerformance[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
@@ -151,7 +163,8 @@ export default function TeamLeadersMonthlyReport() {
     }
   };
 
-  const calculateTotal = (data?: Record<string, number> | null): number => {
+  const calculateTotal = (data?: Record<string, number> | null | number): number => {
+    if (typeof data === 'number') return data;
     if (!data || typeof data !== 'object') return 0;
     return Object.values(data).reduce((sum, val) => sum + (Number(val) || 0), 0);
   };
@@ -176,6 +189,7 @@ export default function TeamLeadersMonthlyReport() {
   const selectedCategoryObj = categories.find((c) => c.key === selectedCategory);
 
   return (
+
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <style>{`
         input[type="number"]::-webkit-outer-spin-button,
@@ -278,12 +292,33 @@ export default function TeamLeadersMonthlyReport() {
                   <div className="text-right">
                     <p className="text-slate-400 text-sm mb-2">Total</p>
                     <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
-                      {calculateTotal(leader[selectedCategory])}
+                      {selectedCategory === 'leads'
+                        ? `${leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? 0} (team: ${leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? 0})`
+                        : selectedCategory === 'deals'
+                        ? `${leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? 0} (team: ${leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? 0})`
+                        : calculateTotal(leader[selectedCategory])}
                     </p>
                   </div>
                 </div>
 
-                {/* Daily Grid - Calendar View */}
+                {/* Display Content - Leads & Deals or Daily Grid */}
+                {(selectedCategory === 'leads' || selectedCategory === 'deals') ? (
+                  // Aggregated Display for Leads and Deals
+                  <div className="bg-slate-900/30 rounded-lg p-6 border border-slate-600 text-center">
+                    <p className="text-slate-400 text-sm mb-4">Team {selectedCategory === 'leads' ? 'Leads' : 'Deals'} for {selectedMonthName} {selectedYear}</p>
+                    <p className={`text-5xl font-bold text-${selectedCategoryObj?.color}-400 mb-2`}>
+                      {selectedCategory === 'leads'
+                        ? `${leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? 0} (team: ${leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? 0})`
+                        : `${leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? 0} (team: ${leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? 0})`}
+                    </p>
+                    <p className="text-slate-500 text-sm">
+                      {selectedCategory === 'leads' 
+                        ? 'Total leads assigned to team members for this month'
+                        : 'Total deals closed by team members for this month'}
+                    </p>
+                  </div>
+                ) : (
+                  // Daily Grid - Calendar View for other categories
                 <div className="mb-6">
                   <div className="grid grid-cols-7 gap-2">
                     {Array.from({ length: leader.daysInMonth }).map((_, dayIndex) => {
@@ -338,50 +373,47 @@ export default function TeamLeadersMonthlyReport() {
                     })}
                   </div>
                 </div>
+                )}
 
-                {/* Weekly Summary */}
-                <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
-                  <h4 className="text-sm font-semibold text-slate-300 mb-3">Weekly Summary</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[1, 2, 3, 4].map((week) => {
-                      const startDay = 1 + (week - 1) * 7;
-                      const endDay = Math.min(week * 7, leader.daysInMonth);
-                      const weekTotal = calculateWeekTotal(leader[selectedCategory], startDay, endDay);
+                {/* Weekly Summary - Only for non-aggregated categories */}
+                {selectedCategory !== 'leads' && selectedCategory !== 'deals' && (
+                  <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
+                    <h4 className="text-sm font-semibold text-slate-300 mb-3">Weekly Summary</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[1, 2, 3, 4].map((week) => {
+                        const startDay = 1 + (week - 1) * 7;
+                        const endDay = Math.min(week * 7, leader.daysInMonth);
+                        const weekTotal = calculateWeekTotal(leader[selectedCategory], startDay, endDay);
 
-                      return (
-                        <div
-                          key={week}
-                          className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
-                            selectedCategoryObj?.color === 'blue'
-                              ? 'border-blue-500/50'
-                              : selectedCategoryObj?.color === 'emerald'
-                              ? 'border-emerald-500/50'
-                              : selectedCategoryObj?.color === 'purple'
-                              ? 'border-purple-500/50'
-                              : 'border-orange-500/50'
-                          }`}
-                        >
-                          <p className="text-xs text-slate-300 mb-2">Week {week}</p>
-                          <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
-                          <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
-                        </div>
-                      );
-                    })}
+                        return (
+                          <div
+                            key={week}
+                            className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
+                              selectedCategoryObj?.color === 'blue'
+                                ? 'border-blue-500/50'
+                                : selectedCategoryObj?.color === 'emerald'
+                                ? 'border-emerald-500/50'
+                                : selectedCategoryObj?.color === 'purple'
+                                ? 'border-purple-500/50'
+                                : 'border-orange-500/50'
+                            }`}
+                          >
+                            <p className="text-xs text-slate-300 mb-2">Week {week}</p>
+                            <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
+                            <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+            
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Saving Indicator */}
-        {savingData && (
-          <div className="fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
-            <Loader className="animate-spin" size={16} />
-            <span>Saving...</span>
           </div>
         )}
       </div>
     </div>
   );
 }
+

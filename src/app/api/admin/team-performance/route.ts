@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import TeamPerformance from '@/models/TeamPerformance';
+import Lead from '@/models/Lead';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 
@@ -41,7 +42,39 @@ export async function GET(req: NextRequest) {
       '_id name'
     );
 
-    return NextResponse.json({ performances });
+    // Attach leads/deals counts to each performance (read-only derived from Lead collection)
+    try {
+      const ids = performances.map((p: any) => String(p.userId?._id || p.userId));
+      // Determine month range
+      const [year, monthNum] = month.split('-');
+      const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+      const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
+
+      const leads = await Lead.find({
+        assignedTo: { $in: ids },
+        createdAt: { $gte: monthStart, $lte: monthEnd },
+      });
+
+      const leadsMap = new Map<string, { leadsCount: number; dealsCount: number }>();
+      for (const l of leads) {
+        const a = String((l as any).assignedTo || '');
+        if (!a) continue;
+        const cur = leadsMap.get(a) || { leadsCount: 0, dealsCount: 0 };
+        cur.leadsCount += 1;
+        if ((l as any).status === 'closed') cur.dealsCount += 1;
+        leadsMap.set(a, cur);
+      }
+
+      const augmented = performances.map((p: any) => {
+        const id = String(p.userId?._id || p.userId);
+        const stats = leadsMap.get(id) || { leadsCount: 0, dealsCount: 0 };
+        return { ...p.toObject(), leadsCount: stats.leadsCount, dealsCount: stats.dealsCount };
+      });
+
+      return NextResponse.json({ performances: augmented });
+    } catch (e) {
+      return NextResponse.json({ performances });
+    }
   } catch (error) {
     console.error('Error fetching team performances:', error);
     return NextResponse.json({ error: 'Failed to fetch team performances' }, { status: 500 });

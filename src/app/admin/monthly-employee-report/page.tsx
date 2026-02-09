@@ -334,27 +334,24 @@ export default function MonthlyEmployeeReport() {
       });
 
       // Create map of team leader performance data by userId (guard when userId is missing)
-      const leaderPerformanceByEmployee = new Map<string, any>();
+      // Store both explicit (admin-edited) and aggregated data so UI can choose appropriately.
+      const leaderPerformanceByEmployee = new Map<string, { explicit?: any; aggregated?: any }>();
       leaderPerformanceData.performances?.forEach((perf: any) => {
         const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
-        if (employeeId) {
-          // Prefer explicit leader performance (admin edits) when present.
-          // Fall back to aggregated team totals only when the explicit leader record is empty.
-          const hasExplicit = !!(
-            (perf.sheets && Object.keys(perf.sheets).length > 0) ||
-            (perf.meetings && Object.keys(perf.meetings).length > 0) ||
-            (perf.assessments && Object.keys(perf.assessments).length > 0) ||
-            (perf.requests && Object.keys(perf.requests).length > 0)
-          );
+        if (!employeeId) return;
 
-          if (hasExplicit) {
-            leaderPerformanceByEmployee.set(employeeId, perf);
-          } else if (perf.aggregated) {
-            leaderPerformanceByEmployee.set(employeeId, perf.aggregated);
-          } else {
-            leaderPerformanceByEmployee.set(employeeId, perf);
-          }
-        }
+        const explicit = (
+          (perf.sheets && Object.keys(perf.sheets).length > 0) ||
+          (perf.meetings && Object.keys(perf.meetings).length > 0) ||
+          (perf.assessments && Object.keys(perf.assessments).length > 0) ||
+          (perf.requests && Object.keys(perf.requests).length > 0)
+        )
+          ? perf
+          : undefined;
+
+        const aggregated = perf.aggregated ? perf.aggregated : undefined;
+
+        leaderPerformanceByEmployee.set(employeeId, { explicit, aggregated });
       });
 
       // Calculate attendance percentage for each employee
@@ -388,8 +385,8 @@ export default function MonthlyEmployeeReport() {
         const performanceStats = performanceByEmployee.get(emp._id);
         const leaderStats = leaderPerformanceByEmployee.get(emp._id);
         
-        const isLeaderAggregatedLeads = leaderStats && typeof leaderStats.aggregatedLeads === 'number';
-        const isLeaderAggregatedDeals = leaderStats && typeof leaderStats.aggregatedDeals === 'number';
+        const isLeaderAggregatedLeads = aggregatedLeader && typeof aggregatedLeader.aggregatedLeads === 'number';
+        const isLeaderAggregatedDeals = aggregatedLeader && typeof aggregatedLeader.aggregatedDeals === 'number';
         const attendancePercentage = currentDaysInMonth > 0
           ? Math.round((attendanceStats.presentDays / currentDaysInMonth) * 100)
           : 0;
@@ -397,33 +394,47 @@ export default function MonthlyEmployeeReport() {
         // Get sheets, meetings, assessments, requests from team performance (team members)
         // If not found, check team leader performance (for team leaders)
         // Prefer leader aggregated totals (if provided by admin API) over personal team performance
-        const sheetsCount = leaderStats
-          ? calculateTotal(leaderStats.sheets)
+        // For leader rows: prefer explicit admin-edited values for daily metrics; fall back to personal/team performance.
+        const explicitLeader = leaderStats && (leaderStats as any).explicit ? (leaderStats as any).explicit : null;
+        const aggregatedLeader = leaderStats && (leaderStats as any).aggregated ? (leaderStats as any).aggregated : null;
+
+        const sheetsCount = explicitLeader
+          ? calculateTotal(explicitLeader.sheets)
           : performanceStats
           ? calculateTotal(performanceStats.sheets)
           : 0;
 
-        const meetingsCount = leaderStats
-          ? calculateTotal(leaderStats.meetings)
+        const meetingsCount = explicitLeader
+          ? calculateTotal(explicitLeader.meetings)
           : performanceStats
           ? calculateTotal(performanceStats.meetings)
           : 0;
 
-        const assessmentsCount = leaderStats
-          ? calculateTotal(leaderStats.assessments)
+        const assessmentsCount = explicitLeader
+          ? calculateTotal(explicitLeader.assessments)
           : performanceStats
           ? calculateTotal(performanceStats.assessments)
           : 0;
 
-        const requestsCount = leaderStats
-          ? calculateTotal(leaderStats.requests)
+        const requestsCount = explicitLeader
+          ? calculateTotal(explicitLeader.requests)
           : performanceStats
           ? calculateTotal(performanceStats.requests)
           : 0;
 
-        // If leader aggregated lead/deal counts are available, prefer them
-        const finalLeadsCount = isLeaderAggregatedLeads ? leaderStats.aggregatedLeads : leadsStats.leadsCount;
-        const finalDealsCount = isLeaderAggregatedDeals ? leaderStats.aggregatedDeals : leadsStats.dealsCount;
+        // For team leaders prefer the Aggregated totals (Team + Admin + Leader) for leads/deals.
+        // Fall back to explicit leaderOwn fields (admin edits) or personal leads count.
+        const finalLeadsCount = aggregatedLeader && typeof aggregatedLeader.aggregatedLeads === 'number'
+          ? aggregatedLeader.aggregatedLeads
+          : typeof (explicitLeader as any)?.leaderOwnLeads === 'number'
+          ? (explicitLeader as any).leaderOwnLeads
+          : leadsStats.leadsCount;
+
+        const finalDealsCount = aggregatedLeader && typeof aggregatedLeader.aggregatedDeals === 'number'
+          ? aggregatedLeader.aggregatedDeals
+          : typeof (explicitLeader as any)?.leaderOwnDeals === 'number'
+          ? (explicitLeader as any).leaderOwnDeals
+          : leadsStats.dealsCount;
 
         // Calculate KPI if settings are available (now we may have global and teamLeader bundles)
         let kpiPercentage = 0;

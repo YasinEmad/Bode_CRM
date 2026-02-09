@@ -17,6 +17,8 @@ interface PerformanceData {
   requests: Record<string, number>;
   aggregated?: boolean;
   leaderPersonal?: boolean;
+  leadsCount?: number;
+  dealsCount?: number;
 }
 
 const months = [
@@ -134,6 +136,8 @@ export default function TeamReport() {
         assessments: perf.assessments,
         meetings: perf.meetings,
         requests: perf.requests,
+        leadsCount: perf.leadsCount || 0,
+        dealsCount: perf.dealsCount || 0,
       }));
 
       // Add aggregated row if present
@@ -149,6 +153,8 @@ export default function TeamReport() {
           meetings: agg.meetings,
           requests: agg.requests,
           aggregated: true,
+          leadsCount: agg.aggregatedLeads || 0,
+          dealsCount: agg.aggregatedDeals || 0,
         });
       }
 
@@ -165,6 +171,8 @@ export default function TeamReport() {
           meetings: lp.meetings,
           requests: lp.requests,
           leaderPersonal: true,
+          leadsCount: (lp as any).leaderOwnLeads ?? 0,
+          dealsCount: (lp as any).leaderOwnDeals ?? 0,
         };
         if (formattedData.length > 0 && formattedData[0].aggregated) {
           formattedData.splice(1, 0, formattedLeader);
@@ -361,6 +369,16 @@ export default function TeamReport() {
                         <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
                           {calculateTotal(employee[selectedCategory])}
                         </p>
+                        <div className="mt-2 text-sm text-slate-300">
+                          <div className="flex items-center justify-end gap-3">
+                            <span className="text-slate-400">Leads</span>
+                            <span className="font-bold text-white">{employee.leadsCount ?? 0}</span>
+                          </div>
+                          <div className="flex items-center justify-end gap-3 mt-1">
+                            <span className="text-slate-400">Deals</span>
+                            <span className="font-bold text-white">{employee.dealsCount ?? 0}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -123,9 +123,19 @@ export async function GET(req: NextRequest) {
 
           aggregated.aggregatedLeads = teamLeads.length;
           aggregated.aggregatedDeals = teamLeads.filter((l: any) => l.status === 'closed').length;
+          // Compute leader's own leads/deals by filtering the already-fetched teamLeads
+          try {
+            aggregated.leaderLeads = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr).length;
+            aggregated.leaderDeals = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr && l.status === 'closed').length;
+          } catch (e) {
+            aggregated.leaderLeads = 0;
+            aggregated.leaderDeals = 0;
+          }
         } catch (e) {
           aggregated.aggregatedLeads = 0;
           aggregated.aggregatedDeals = 0;
+          aggregated.leaderLeads = 0;
+          aggregated.leaderDeals = 0;
         }
 
         if (performance) {
@@ -139,6 +149,11 @@ export async function GET(req: NextRequest) {
             meetings: Object.fromEntries(performance.meetings || new Map()),
             requests: Object.fromEntries(performance.requests || new Map()),
             aggregated,
+            // explicit top-level counts for convenience (avoid relying on nested aggregated)
+            leaderOwnLeads: aggregated.leaderLeads ?? 0,
+            leaderOwnDeals: aggregated.leaderDeals ?? 0,
+            teamLeadsCount: aggregated.aggregatedLeads ?? 0,
+            teamDealsCount: aggregated.aggregatedDeals ?? 0,
           };
         }
 
@@ -153,6 +168,11 @@ export async function GET(req: NextRequest) {
           meetings: emptyDays,
           requests: emptyDays,
           aggregated,
+          // explicit top-level counts for convenience
+          leaderOwnLeads: aggregated.leaderLeads ?? 0,
+          leaderOwnDeals: aggregated.leaderDeals ?? 0,
+          teamLeadsCount: aggregated.aggregatedLeads ?? 0,
+          teamDealsCount: aggregated.aggregatedDeals ?? 0,
         };
       })
     );

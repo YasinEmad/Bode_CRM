@@ -365,7 +365,7 @@ export default function KPISettingsPage() {
                   {/* Weight Input */}
                   <div>
                     <label className="block text-sm font-semibold text-slate-300 mb-2">
-                      Weight (%)
+                      Percentage
                     </label>
                     <div className="relative">
                       <input
