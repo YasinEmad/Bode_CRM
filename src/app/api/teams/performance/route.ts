@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import TeamPerformance from '@/models/TeamPerformance';
+import TeamLeaderPerformance from '@/models/TeamLeaderPerformance';
 import Lead from '@/models/Lead';
 import User from '@/models/User';
 import Team from '@/models/Team';
@@ -128,10 +129,32 @@ export async function GET(req: NextRequest) {
       aggregatedDeals: 0,
     } as any;
 
-    // Also extract the leader's personal performance (if any) so UI can show both personal and aggregated rows
+    // Try to fetch any admin-edited leader performance (TeamLeaderPerformance).
+    // We'll prefer admin-edited values for displaying the leader's personal row.
+    let adminLeaderPerf: any = null;
+    try {
+      adminLeaderPerf = await TeamLeaderPerformance.findOne({ userId: team.leader, month });
+    } catch (e) {
+      // ignore
+    }
+
+    // Also extract the leader's personal performance (if any) so UI can show both personal and aggregated rows.
     const leaderPerf = performances.find((p) => p.userId.toString() === team.leader.toString());
     let leaderPersonal = null;
-    if (leaderPerf) {
+    if (adminLeaderPerf) {
+      leaderPersonal = {
+        _id: adminLeaderPerf._id,
+        userId: adminLeaderPerf.userId,
+        name: leaderUser?.name || 'Leader',
+        teamId: undefined,
+        month: adminLeaderPerf.month,
+        daysInMonth,
+        sheets: Object.fromEntries(adminLeaderPerf.sheets || new Map()),
+        assessments: Object.fromEntries(adminLeaderPerf.assessments || new Map()),
+        meetings: Object.fromEntries(adminLeaderPerf.meetings || new Map()),
+        requests: Object.fromEntries(adminLeaderPerf.requests || new Map()),
+      };
+    } else if (leaderPerf) {
       leaderPersonal = {
         _id: leaderPerf._id,
         userId: leaderPerf.userId,
@@ -168,6 +191,31 @@ export async function GET(req: NextRequest) {
       const assessments = Object.fromEntries(p.assessments || new Map());
       for (const [k, v] of Object.entries(assessments)) {
         aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
+      }
+    }
+
+    // Include admin-edited leader performance values in the aggregated totals as well
+    if (adminLeaderPerf) {
+      try {
+        const sheets = Object.fromEntries(adminLeaderPerf.sheets || new Map());
+        const meetings = Object.fromEntries(adminLeaderPerf.meetings || new Map());
+        const requests = Object.fromEntries(adminLeaderPerf.requests || new Map());
+        const assessments = Object.fromEntries(adminLeaderPerf.assessments || new Map());
+
+        for (const [k, v] of Object.entries(sheets)) {
+          aggregated.sheets[k] = (aggregated.sheets[k] || 0) + Number(v || 0);
+        }
+        for (const [k, v] of Object.entries(meetings)) {
+          aggregated.meetings[k] = (aggregated.meetings[k] || 0) + Number(v || 0);
+        }
+        for (const [k, v] of Object.entries(requests)) {
+          aggregated.requests[k] = (aggregated.requests[k] || 0) + Number(v || 0);
+        }
+        for (const [k, v] of Object.entries(assessments)) {
+          aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
+        }
+      } catch (e) {
+        // ignore
       }
     }
 

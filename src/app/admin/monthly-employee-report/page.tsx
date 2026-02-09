@@ -384,7 +384,11 @@ export default function MonthlyEmployeeReport() {
         const attendanceStats = attendanceByEmployee.get(emp._id) || { presentDays: 0, lateMinutes: 0 };
         const performanceStats = performanceByEmployee.get(emp._id);
         const leaderStats = leaderPerformanceByEmployee.get(emp._id);
-        
+
+        // For leader rows: prefer explicit admin-edited values for daily metrics; fall back to personal/team performance.
+        const explicitLeader = leaderStats && (leaderStats as any).explicit ? (leaderStats as any).explicit : null;
+        const aggregatedLeader = leaderStats && (leaderStats as any).aggregated ? (leaderStats as any).aggregated : null;
+
         const isLeaderAggregatedLeads = aggregatedLeader && typeof aggregatedLeader.aggregatedLeads === 'number';
         const isLeaderAggregatedDeals = aggregatedLeader && typeof aggregatedLeader.aggregatedDeals === 'number';
         const attendancePercentage = currentDaysInMonth > 0
@@ -394,9 +398,7 @@ export default function MonthlyEmployeeReport() {
         // Get sheets, meetings, assessments, requests from team performance (team members)
         // If not found, check team leader performance (for team leaders)
         // Prefer leader aggregated totals (if provided by admin API) over personal team performance
-        // For leader rows: prefer explicit admin-edited values for daily metrics; fall back to personal/team performance.
-        const explicitLeader = leaderStats && (leaderStats as any).explicit ? (leaderStats as any).explicit : null;
-        const aggregatedLeader = leaderStats && (leaderStats as any).aggregated ? (leaderStats as any).aggregated : null;
+        
 
         const sheetsCount = explicitLeader
           ? calculateTotal(explicitLeader.sheets)

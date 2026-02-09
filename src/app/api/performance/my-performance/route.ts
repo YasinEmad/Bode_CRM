@@ -39,33 +39,18 @@ export async function GET(req: NextRequest) {
       // Try falling back to team leader performance (for users who are leaders)
       const leaderPerf = await TeamLeaderPerformance.findOne({ userId: payload.userId, month });
       if (leaderPerf) {
-        const sheetsCount = (
-          (leaderPerf.sheets?.week1 || 0) +
-          (leaderPerf.sheets?.week2 || 0) +
-          (leaderPerf.sheets?.week3 || 0) +
-          (leaderPerf.sheets?.week4 || 0)
-        );
+        const toObj = (m: any) => (m ? Object.fromEntries(m) : {});
+        const sheets = toObj(leaderPerf.sheets);
+        const meetings = toObj(leaderPerf.meetings);
+        const assessments = toObj(leaderPerf.assessments);
+        const requests = toObj(leaderPerf.requests);
 
-        const meetingsCount = (
-          (leaderPerf.meetings?.week1 || 0) +
-          (leaderPerf.meetings?.week2 || 0) +
-          (leaderPerf.meetings?.week3 || 0) +
-          (leaderPerf.meetings?.week4 || 0)
-        );
+        const sum = (o: Record<string, any>) => Object.values(o).reduce((s, v) => s + (Number(v) || 0), 0);
 
-        const assessmentsCount = (
-          (leaderPerf.assessments?.week1 || 0) +
-          (leaderPerf.assessments?.week2 || 0) +
-          (leaderPerf.assessments?.week3 || 0) +
-          (leaderPerf.assessments?.week4 || 0)
-        );
-
-        const requestsCount = (
-          (leaderPerf.requests?.week1 || 0) +
-          (leaderPerf.requests?.week2 || 0) +
-          (leaderPerf.requests?.week3 || 0) +
-          (leaderPerf.requests?.week4 || 0)
-        );
+        const sheetsCount = sum(sheets);
+        const meetingsCount = sum(meetings);
+        const assessmentsCount = sum(assessments);
+        const requestsCount = sum(requests);
 
         return NextResponse.json({
           performance: { sheetsCount, meetingsCount, assessmentsCount, requestsCount },
@@ -83,34 +68,19 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Calculate total counts from weekly data
-    const sheetsCount = (
-      (performance.sheets?.week1 || 0) +
-      (performance.sheets?.week2 || 0) +
-      (performance.sheets?.week3 || 0) +
-      (performance.sheets?.week4 || 0)
-    );
+    // Calculate total counts from day-keyed maps
+    const toObj = (m: any) => (m ? Object.fromEntries(m) : {});
+    const sheets = toObj(performance.sheets);
+    const meetings = toObj(performance.meetings);
+    const assessments = toObj(performance.assessments);
+    const requests = toObj(performance.requests);
 
-    const meetingsCount = (
-      (performance.meetings?.week1 || 0) +
-      (performance.meetings?.week2 || 0) +
-      (performance.meetings?.week3 || 0) +
-      (performance.meetings?.week4 || 0)
-    );
+    const sum = (o: Record<string, any>) => Object.values(o).reduce((s, v) => s + (Number(v) || 0), 0);
 
-    const assessmentsCount = (
-      (performance.assessments?.week1 || 0) +
-      (performance.assessments?.week2 || 0) +
-      (performance.assessments?.week3 || 0) +
-      (performance.assessments?.week4 || 0)
-    );
-
-    const requestsCount = (
-      (performance.requests?.week1 || 0) +
-      (performance.requests?.week2 || 0) +
-      (performance.requests?.week3 || 0) +
-      (performance.requests?.week4 || 0)
-    );
+    const sheetsCount = sum(sheets);
+    const meetingsCount = sum(meetings);
+    const assessmentsCount = sum(assessments);
+    const requestsCount = sum(requests);
 
     return NextResponse.json({
       performance: {
