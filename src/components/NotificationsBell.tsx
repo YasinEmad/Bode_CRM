@@ -159,7 +159,7 @@ export default function NotificationsBell() {
 
       {/* Dropdown */}
       {isDropdownOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-slate-800 rounded-lg shadow-2xl border border-slate-700 z-50 max-h-96 overflow-y-auto">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-800 rounded-lg shadow-2xl border border-slate-700 z-50 max-h-96 overflow-y-auto">
           {/* Header */}
           <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
             <h3 className="text-white font-semibold">Notifications</h3>

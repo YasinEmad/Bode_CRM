@@ -41,6 +41,21 @@
   }
 }
 
+/* Force dark mode variables when dark class is present */
+html.dark {
+  --background: #0a0a0a !important;
+  --foreground: #ededed !important;
+  --primary: #60a5fa !important;
+  --primary-rgb: 96,165,250 !important;
+  --accent: #fbbf24 !important;
+  --success: #34d399 !important;
+  --danger: #f87171 !important;
+  --surface: #0b0b0b !important;
+  --muted: #9ca3af !important;
+  --border: rgba(255,255,255,0.06) !important;
+  --card: #0b0b0b !important;
+}
+
 /* Light mode override when the html element has the `light` class. */
 html.light {
   --background: #f8f8f5; /* off-white main color for light mode */
@@ -483,4 +498,28 @@ input[type="number"]::-webkit-inner-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield !important;
+}
+
+/* ========================================
+   PROTECT DARK MODE FROM LIGHT MODE
+   ======================================== */
+/* When dark mode is active, completely ignore light mode CSS */
+html.dark,
+html.dark * {
+  --background: #0a0a0a !important;
+  --foreground: #ededed !important;
+}
+
+html.dark body {
+  background: #0a0a0a !important;
+  color: #ededed !important;
+}
+
+html.dark [class*="bg-"],
+html.dark [class*="from-"],
+html.dark [class*="to-"],
+html.dark [class*="via-"],
+html.dark [class*="text-"],
+html.dark [class*="border-"] {
+  /* Let Tailwind dark mode utilities work */
 }

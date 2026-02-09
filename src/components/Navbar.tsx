@@ -151,42 +151,49 @@ export default function Navbar() {
           </div>
 
           {/* User Info & Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-4">
             {user && (
-              <div className="hidden sm:flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-xs sm:text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+              <>
+                {/* Desktop user info - hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-xs sm:text-sm font-medium">{user.name}</p>
+                    <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+                  </div>
                 </div>
-                {user.role === 'sales' && <NotificationsBell />}
-                {/* Theme toggle - minimal styling to avoid changing navbar appearance */}
-                <ThemeToggle className="p-2 rounded-lg hidden sm:inline-flex" />
-                {user.role === 'sales' && (
-                  <Link
-                    href="/sales/notes"
-                    className="relative p-2 rounded-lg transition-all"
-                    title="Notes"
+
+                {/* Icons - visible on all screen sizes */}
+                <div className="flex items-center gap-1 sm:gap-3">
+                  {user.role === 'sales' && <NotificationsBell />}
+                  {/* Theme toggle - minimal styling to avoid changing navbar appearance */}
+                  <ThemeToggle className="p-2 rounded-lg" />
+                  {user.role === 'sales' && (
+                    <Link
+                      href="/sales/notes"
+                      className="relative p-2 rounded-lg transition-all"
+                      title="Notes"
+                    >
+                      <div className="relative">
+                        <Mail size={18} className="text-blue-400 hover:text-blue-300" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-3 -right-3 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white text-xs">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      logout();
+                    }}
+                    className="p-2 rounded-lg transition-all"
+                    title="Logout"
                   >
-                    <div className="relative">
-                      <Mail size={18} className="text-blue-400 hover:text-blue-300" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-3 -right-3 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white text-xs">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                )}
-                <button
-                  onClick={() => {
-                    logout();
-                  }}
-                  className="p-2 rounded-lg transition-all"
-                  title="Logout"
-                >
-                  <LogOut size={18} className="text-red-400 hover:text-red-300" />
-                </button>
-              </div>
+                    <LogOut size={18} className="text-red-400 hover:text-red-300" />
+                  </button>
+                </div>
+              </>
             )}
 
             {/* Mobile Menu Button */}
@@ -220,31 +227,10 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* Mobile-only actions: Notifications and Notes */}
+            {/* Mobile-only actions: Remove since icons are now visible on all screens */}
             {user && user.role === 'sales' && (
-              <div className="px-3 mt-2 flex items-center gap-3">
-                <div className="flex-1">
-                  <NotificationsBell />
-                </div>
-                <Link
-                  href="/sales/notes"
-                  onClick={() => setMenuOpen(false)}
-                  className="relative p-2 rounded-lg transition-all"
-                  title="Notes"
-                >
-                  <div className="relative">
-                    <Mail size={18} className="text-blue-400 hover:text-blue-300" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 border-2 border-white">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-                {/* Mobile theme toggle */}
-                <div className="p-1">
-                  <ThemeToggle />
-                </div>
+              <div className="flex items-center gap-2 mt-3 px-3">
+                <p className="text-xs text-slate-400">Notifications and messages available in navbar above</p>
               </div>
             )}
             {user && (
