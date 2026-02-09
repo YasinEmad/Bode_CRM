@@ -94,7 +94,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-black to-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
+    <div
+      className={
+        isLightMode
+          ? 'min-h-screen bg-gradient-to-br from-white via-slate-50 to-white flex items-center justify-center p-6 relative overflow-hidden'
+          : 'min-h-screen bg-gradient-to-br from-slate-900 via-black to-slate-900 flex items-center justify-center p-6 relative overflow-hidden'
+      }
+    >
       {/* Animated background elements */}
       <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 to-purple-600/5 via-transparent"></div>
       <div className="absolute top-0 left-1/2 w-96 h-96 bg-indigo-600/10 rounded-full filter blur-3xl opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
@@ -121,23 +127,32 @@ export default function LoginPage() {
 
         {/* Right Side - Login Form */}
         <div className="relative mx-auto md:mx-0 w-full max-w-md">
-          <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8 w-full relative overflow-hidden">
+          <div
+            className={
+              isLightMode
+                ? 'bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-lg p-8 w-full relative overflow-hidden text-slate-900'
+                : 'bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8 w-full relative overflow-hidden'
+            }
+          >
             {/* Form header with logo */}
             <div className="mb-8">
-              <h2 className="text-2xl text-white font-bold text-center">Welcome back</h2>
-              <p className="text-center text-slate-300 text-sm mt-2">Sign in to your account</p>
+              <h2 className={isLightMode ? 'text-2xl font-bold text-center text-slate-900' : 'text-2xl text-white font-bold text-center'}>Welcome back</h2>
+              <p className={isLightMode ? 'text-center text-slate-600 text-sm mt-2' : 'text-center text-slate-300 text-sm mt-2'}>Sign in to your account</p>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-2">Username</label>
+                <label className={isLightMode ? 'block text-sm font-semibold text-slate-800 mb-2' : 'block text-sm font-semibold text-slate-200 mb-2'}>Username</label>
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-700 bg-slate-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-500 transition-all"
+                  className={isLightMode
+                    ? 'w-full px-4 py-3 border border-slate-200 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-900 placeholder-slate-400 transition-all'
+                    : 'w-full px-4 py-3 border border-slate-700 bg-slate-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-500 transition-all'
+                  }
                   placeholder="your-username"
                   required
                   disabled={loading}
@@ -146,24 +161,27 @@ export default function LoginPage() {
 
               <div>
                 <div className="mb-2">
-                  <label className="block text-sm font-semibold text-slate-200">Password</label>
+                  <label className={isLightMode ? 'block text-sm font-semibold text-slate-800' : 'block text-sm font-semibold text-slate-200'}>Password</label>
                 </div>
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-700 bg-slate-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-500 transition-all"
+                  className={isLightMode
+                    ? 'w-full px-4 py-3 border border-slate-200 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-900 placeholder-slate-400 transition-all'
+                    : 'w-full px-4 py-3 border border-slate-700 bg-slate-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-500 transition-all'
+                  }
                   placeholder="Enter your password"
                   required
                   disabled={loading}
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+              <label className={isLightMode ? 'flex items-center gap-2 text-sm text-slate-700 cursor-pointer' : 'flex items-center gap-2 text-sm text-slate-300 cursor-pointer'}>
                 <input 
                   type="checkbox" 
-                  className="form-checkbox h-4 w-4 text-indigo-500 rounded border-slate-600 bg-slate-800 cursor-pointer"
+                  className={isLightMode ? 'form-checkbox h-4 w-4 text-indigo-500 rounded border-slate-300 bg-white cursor-pointer' : 'form-checkbox h-4 w-4 text-indigo-500 rounded border-slate-600 bg-slate-800 cursor-pointer'}
                   disabled={loading}
                 />
                 <span>Remember me</span>
@@ -191,7 +209,7 @@ export default function LoginPage() {
             {/* Social login removed: Google/GitHub buttons and divider hidden because not used */}
 
             {/* Help text */}
-            <div className="mt-6 pt-6 border-t border-slate-700/50 text-center text-slate-400 text-sm">
+              <div className={isLightMode ? 'mt-6 pt-6 border-t border-slate-200 text-center text-slate-600 text-sm' : 'mt-6 pt-6 border-t border-slate-700/50 text-center text-slate-400 text-sm'}>
               <p>Don't have an account?</p>
               <p className="mt-1">Contact your administrator for access</p>
             </div>

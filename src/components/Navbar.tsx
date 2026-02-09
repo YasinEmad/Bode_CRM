@@ -125,15 +125,7 @@ export default function Navbar() {
       ];
 
   if (isAuthPage) {
-    return (
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-center py-4">
-          <Link href="/" className="flex items-center gap-3 text-2xl font-bold hover:opacity-90 transition">
-            <img src={logoSrc} alt="Bode CRM" className="h-10 w-auto" />
-          </Link>
-        </div>
-      </header>
-    );
+    return null;
   }
 
   return (
