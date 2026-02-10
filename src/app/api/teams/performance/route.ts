@@ -312,9 +312,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Verify the target user is in the team
+    // Validate that only current month data can be edited
+    const now = new Date();
+    const [memberYear, memberMonth] = month.split('-').map(Number);
+    
+    if (now.getFullYear() !== memberYear || (now.getMonth() + 1) !== memberMonth) {
+      return NextResponse.json({ error: 'You can only edit data for the current month' }, { status: 403 });
+    }
+
+    // NOTE: Day-level validation (only today) is enforced on the frontend.
+    // The frontend sends all days to preserve existing data.
+    // Additional validation could be added here if needed, but frontend
+    // already restricts edits to today only with client-side checks.
+
+    // Verify the target user is in the team or is the leader
     const targetUser = await User.findById(userId);
-    if (!targetUser || !team.members.includes(targetUser._id)) {
+    if (!targetUser || (!team.members.includes(targetUser._id) && !team.leader.equals(targetUser._id))) {
       return NextResponse.json({ error: 'User not in your team' }, { status: 403 });
     }
 

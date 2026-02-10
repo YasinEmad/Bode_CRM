@@ -139,17 +139,20 @@ export async function GET(req: NextRequest) {
         }
 
         if (performance) {
+          // Expose aggregated team day-buckets as the primary per-day fields
+          // while keeping aggregated metadata and leader counts available.
           return {
             userId: String(performance.userId._id || performance.userId),
             leaderName: leader.name || '',
             month: performance.month,
             daysInMonth,
-            sheets: Object.fromEntries(performance.sheets || new Map()),
-            assessments: Object.fromEntries(performance.assessments || new Map()),
-            meetings: Object.fromEntries(performance.meetings || new Map()),
-            requests: Object.fromEntries(performance.requests || new Map()),
+            // show team-aggregated day buckets (leader + members)
+            sheets: aggregated.sheets,
+            assessments: aggregated.assessments,
+            meetings: aggregated.meetings,
+            requests: aggregated.requests,
             aggregated,
-            // explicit top-level counts for convenience (avoid relying on nested aggregated)
+            // explicit top-level counts for convenience
             leaderOwnLeads: aggregated.leaderLeads ?? 0,
             leaderOwnDeals: aggregated.leaderDeals ?? 0,
             teamLeadsCount: aggregated.aggregatedLeads ?? 0,
@@ -163,10 +166,11 @@ export async function GET(req: NextRequest) {
           month: month,
           leaderName: leader.name || '',
           daysInMonth,
-          sheets: emptyDays,
-          assessments: emptyDays,
-          meetings: emptyDays,
-          requests: emptyDays,
+          // For leaders without a saved personal record, still expose team-aggregated buckets
+          sheets: aggregated.sheets || emptyDays,
+          assessments: aggregated.assessments || emptyDays,
+          meetings: aggregated.meetings || emptyDays,
+          requests: aggregated.requests || emptyDays,
           aggregated,
           // explicit top-level counts for convenience
           leaderOwnLeads: aggregated.leaderLeads ?? 0,

@@ -154,6 +154,8 @@ export default function TeamLeadersMonthlyReport() {
         )
       );
 
+      // After saving leader's own record, re-fetch to update team-aggregated buckets
+      await fetchLeaderData();
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {
       console.error('Error saving data:', error);
@@ -293,9 +295,9 @@ export default function TeamLeadersMonthlyReport() {
                     <p className="text-slate-400 text-sm mb-2">Total</p>
                     <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
                       {selectedCategory === 'leads'
-                        ? `${leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? 0} (team: ${leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? 0})`
+                        ? `${leader.aggregated?.leaderLeads ?? 0} (team: ${leader.aggregated?.aggregatedLeads ?? 0})`
                         : selectedCategory === 'deals'
-                        ? `${leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? 0} (team: ${leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? 0})`
+                        ? `${leader.aggregated?.leaderDeals ?? 0} (team: ${leader.aggregated?.aggregatedDeals ?? 0})`
                         : calculateTotal(leader[selectedCategory])}
                     </p>
                   </div>
@@ -308,8 +310,8 @@ export default function TeamLeadersMonthlyReport() {
                     <p className="text-slate-400 text-sm mb-4">Team {selectedCategory === 'leads' ? 'Leads' : 'Deals'} for {selectedMonthName} {selectedYear}</p>
                     <p className={`text-5xl font-bold text-${selectedCategoryObj?.color}-400 mb-2`}>
                       {selectedCategory === 'leads'
-                        ? `${leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? 0} (team: ${leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? 0})`
-                        : `${leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? 0} (team: ${leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? 0})`}
+                        ? `${leader.aggregated?.leaderLeads ?? 0} (team: ${leader.aggregated?.aggregatedLeads ?? 0})`
+                        : `${leader.aggregated?.leaderDeals ?? 0} (team: ${leader.aggregated?.aggregatedDeals ?? 0})`}
                     </p>
                     <p className="text-slate-500 text-sm">
                       {selectedCategory === 'leads' 

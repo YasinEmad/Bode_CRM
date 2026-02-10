@@ -190,6 +190,17 @@ export default function TeamReport() {
     }
   };
 
+  const canEditDay = (dayNumber: number, monthString: string): boolean => {
+    const now = new Date();
+    const [year, month] = monthString.split('-').map(Number);
+    
+    // Only allow editing if viewing current month and editing today
+    if (now.getFullYear() === year && (now.getMonth() + 1) === month) {
+      return now.getDate() === dayNumber;
+    }
+    return false;
+  };
+
   const updateCellValue = async (
     employee: PerformanceData,
     category: 'sheets' | 'assessments' | 'meetings' | 'requests',
@@ -198,6 +209,16 @@ export default function TeamReport() {
   ) => {
     try {
       setSavingData(true);
+
+      // Extract day number from "day1", "day2", etc.
+      const dayNumber = parseInt(day.replace('day', ''));
+
+      // Validate that this is today
+      if (!canEditDay(dayNumber, employee.month)) {
+        addToast('❌ You can only edit data for today', 'error');
+        setSavingData(false);
+        return;
+      }
 
       const updatedData = {
         userId: employee.userId,
@@ -218,7 +239,9 @@ export default function TeamReport() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save data');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to save data`;
+        throw new Error(errorMessage);
       }
 
       setTeamData((prevData) =>
@@ -389,11 +412,13 @@ export default function TeamReport() {
                       {/* Daily Grid - Calendar View */}
                       <div>
                         <h4 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
+                        <p className="text-xs text-amber-400 mb-3">📝 You can only edit today's data</p>
                         <div className="grid grid-cols-7 gap-2">
                           {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
                             const day = dayIndex + 1;
                             const dayKey = `day${day}`;
                             const value = employee[selectedCategory][dayKey] || 0;
+                            const isToday = canEditDay(day, employee.month);
                             const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
                               weekday: 'short',
                             });
@@ -402,15 +427,17 @@ export default function TeamReport() {
                               <div
                                 key={day}
                                 className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
-                                  value > 0
-                                    ? selectedCategoryObj?.color === 'blue'
-                                      ? 'border-blue-500 bg-blue-500/10'
-                                      : selectedCategoryObj?.color === 'emerald'
-                                      ? 'border-emerald-500 bg-emerald-500/10'
-                                      : selectedCategoryObj?.color === 'purple'
-                                      ? 'border-purple-500 bg-purple-500/10'
-                                      : 'border-orange-500 bg-orange-500/10'
-                                    : 'border-slate-600 hover:border-slate-500'
+                                  isToday
+                                    ? value > 0
+                                      ? selectedCategoryObj?.color === 'blue'
+                                        ? 'border-blue-500 bg-blue-500/10'
+                                        : selectedCategoryObj?.color === 'emerald'
+                                        ? 'border-emerald-500 bg-emerald-500/10'
+                                        : selectedCategoryObj?.color === 'purple'
+                                        ? 'border-purple-500 bg-purple-500/10'
+                                        : 'border-orange-500 bg-orange-500/10'
+                                      : 'border-slate-600 hover:border-slate-500'
+                                    : 'border-slate-700 bg-slate-800/50 opacity-60'
                                 }`}
                               >
                                 <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
@@ -419,9 +446,9 @@ export default function TeamReport() {
                                   type="number"
                                   min="0"
                                   value={value}
-                                  disabled={!!employee.aggregated}
+                                  disabled={!!employee.aggregated || !isToday}
                                   onChange={(e) => {
-                                    if (employee.aggregated) return;
+                                    if (employee.aggregated || !isToday) return;
                                     updateCellValue(
                                       employee,
                                       selectedCategory,
@@ -429,7 +456,13 @@ export default function TeamReport() {
                                       Math.max(0, parseInt(e.target.value) || 0)
                                     );
                                   }}
-                                  className={`w-full px-1 py-2 ${employee.aggregated ? 'bg-yellow-800 border-yellow-600 text-yellow-100' : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'} rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                  className={`w-full px-1 py-2 ${
+                                    employee.aggregated 
+                                      ? 'bg-yellow-800 border-yellow-600 text-yellow-100' 
+                                      : !isToday
+                                      ? 'bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed'
+                                      : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'
+                                  } rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
                                     selectedCategoryObj?.color === 'blue'
                                       ? 'focus:ring-blue-500'
                                       : selectedCategoryObj?.color === 'emerald'
@@ -438,6 +471,7 @@ export default function TeamReport() {
                                       ? 'focus:ring-purple-500'
                                       : 'focus:ring-orange-500'
                                   }`}
+                                  title={!isToday ? 'You can only edit today\'s data' : ''}
                                 />
                               </div>
                             );
