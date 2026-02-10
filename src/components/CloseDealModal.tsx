@@ -257,34 +257,34 @@ export default function CloseDealModal({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-slate-800/90 rounded-xl shadow-lg max-w-4xl w-full border border-slate-700/30 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-3 sm:p-6 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white rounded-xl shadow-lg w-full max-w-lg sm:max-w-2xl md:max-w-4xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-slate-700/20 bg-slate-800/70 sticky top-0">
+        <div className="flex justify-between items-center px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-700/20 bg-white/90 dark:bg-slate-800/70 sticky top-0 backdrop-blur-sm">
           <div>
-            <h2 className="text-2xl font-bold text-white">Close Deal</h2>
-            <p className="text-slate-400 text-sm mt-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Close Deal</h2>
+            <p className="text-slate-500 dark:text-slate-300 text-xs sm:text-sm mt-1">
               {leadName} • {leadPhone}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition p-2">
-            <X size={24} />
+          <button onClick={onClose} className="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition p-2 rounded-md">
+            <X size={20} />
           </button>
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-6 space-y-5">
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 TCR Type *
               </label>
               <select
                 name="tcrType"
                 value={formData.tcrType}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
               >
                 <option value="Reservation">Reservation</option>
                 <option value="Contract">Contract</option>
@@ -293,7 +293,7 @@ export default function CloseDealModal({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Client Name *
               </label>
               <input
@@ -302,7 +302,7 @@ export default function CloseDealModal({
                 value={formData.clientName}
                 onChange={handleInputChange}
                 placeholder="Client Name"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
           </div>
@@ -310,21 +310,21 @@ export default function CloseDealModal({
           {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
-                Client Number *
-              </label>
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
+                  Client Number *
+                </label>
               <input
                 type="text"
                 name="clientNumber"
                 value={formData.clientNumber}
                 onChange={handleInputChange}
                 placeholder="Client Number"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Developer *
               </label>
               <input
@@ -333,11 +333,11 @@ export default function CloseDealModal({
                 value={formData.developer}
                 onChange={handleInputChange}
                 placeholder="Developer"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Project
               </label>
               <input
@@ -346,7 +346,7 @@ export default function CloseDealModal({
                 value={formData.project}
                 onChange={handleInputChange}
                 placeholder="Project Name"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
           </div>
@@ -355,7 +355,7 @@ export default function CloseDealModal({
           {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Unit Code *
               </label>
               <input
@@ -363,13 +363,13 @@ export default function CloseDealModal({
                 name="unitCode"
                 value={formData.unitCode}
                 onChange={handleInputChange}
-                placeholder="كود الوحدة"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                placeholder="Unit Code"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Unit Area (sq.m) *
               </label>
               <input
@@ -377,13 +377,13 @@ export default function CloseDealModal({
                 name="unitArea"
                 value={formData.unitArea}
                 onChange={handleInputChange}
-                placeholder="مساحة الوحدة"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                placeholder="Unit Area"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Unit Type *
               </label>
               <input
@@ -392,7 +392,7 @@ export default function CloseDealModal({
                 value={formData.unitType}
                 onChange={handleInputChange}
                 placeholder="Unit Type"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
           </div>
@@ -402,7 +402,7 @@ export default function CloseDealModal({
           {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Contract Price *
               </label>
               <input
@@ -411,12 +411,12 @@ export default function CloseDealModal({
                 value={formData.contractPrice}
                 onChange={handleInputChange}
                 placeholder="Contract Price"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Contract Date *
               </label>
               <input
@@ -424,7 +424,7 @@ export default function CloseDealModal({
                 name="contractDate"
                 value={formData.contractDate}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
               />
             </div>
           </div>
@@ -434,7 +434,7 @@ export default function CloseDealModal({
           {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Finishing Type *
               </label>
               <input
@@ -443,12 +443,12 @@ export default function CloseDealModal({
                 value={formData.finishingType}
                 onChange={handleInputChange}
                 placeholder="Finishing Type"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Delivery Date (Year) *
               </label>
               <input
@@ -459,7 +459,7 @@ export default function CloseDealModal({
                 placeholder="Delivery Year"
                 min="2025"
                 max="2050"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
           </div>
@@ -469,14 +469,14 @@ export default function CloseDealModal({
           {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Payment Plan *
               </label>
               <select
                 name="paymentPlan"
                 value={formData.paymentPlan}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
               >
                 {paymentPlans.map((plan) => (
                   <option key={plan} value={plan}>
@@ -487,7 +487,7 @@ export default function CloseDealModal({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Down Payment Percentage (%) *
               </label>
               <input
@@ -498,7 +498,7 @@ export default function CloseDealModal({
                 placeholder="نسبة الدفعة المقدمة"
                 min="0"
                 max="100"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
           </div>
@@ -508,7 +508,7 @@ export default function CloseDealModal({
           {formData.tcrType !== 'EOI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Down Payment Amount *
               </label>
               <input
@@ -517,12 +517,12 @@ export default function CloseDealModal({
                 value={formData.downPaymentAmount}
                 onChange={handleInputChange}
                 placeholder="Down Payment Amount"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 Payment by Month (Monthly Installment) *
               </label>
               <input
@@ -531,7 +531,7 @@ export default function CloseDealModal({
                 value={formData.paymentByMonth}
                 onChange={handleInputChange}
                 placeholder="Monthly installment amount"
-                className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
               />
             </div>
           </div>
@@ -539,7 +539,7 @@ export default function CloseDealModal({
 
           {/* Attachments */}
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">
+            <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Attachments (Multiple Images)
             </label>
             <input
@@ -555,7 +555,7 @@ export default function CloseDealModal({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingImages}
-              className="w-full px-4 py-2 border-2 border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-white hover:border-blue-500 transition flex items-center justify-center gap-2"
+              className="w-full px-3 py-2 border-2 border-dashed rounded-lg text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-500 hover:text-slate-900 dark:hover:text-white transition flex items-center justify-center gap-2"
             >
               <Upload size={18} />
               {uploadingImages ? 'Uploading...' : 'Click to upload images'}
@@ -569,7 +569,7 @@ export default function CloseDealModal({
                     <img
                       src={url}
                       alt={`Attachment ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border border-slate-600"
+                      className="w-full h-24 object-cover rounded-lg border border-slate-200 dark:border-slate-600"
                     />
                     <button
                       type="button"
@@ -586,7 +586,7 @@ export default function CloseDealModal({
 
           {/* Info */}
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">
+            <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Additional Information *
             </label>
             <textarea
@@ -595,13 +595,13 @@ export default function CloseDealModal({
               onChange={handleInputChange}
               placeholder="Additional deal information"
               rows={4}
-              className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 placeholder-slate-400"
             />
           </div>
         </form>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-700/20 bg-slate-900/70 flex gap-3 flex-col sm:flex-row sticky bottom-0">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-t border-slate-200 dark:border-slate-700/20 bg-white/90 dark:bg-slate-900/70 flex gap-3 flex-col sm:flex-row sticky bottom-0">
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
@@ -611,7 +611,7 @@ export default function CloseDealModal({
           </button>
           <button
             onClick={onClose}
-            className="w-full sm:flex-1 bg-slate-700/80 hover:bg-slate-700 text-white py-3 rounded-lg font-semibold transition border border-slate-600/30"
+            className="w-full sm:flex-1 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 py-3 rounded-lg font-semibold transition border border-slate-200 dark:border-slate-600/30"
           >
             Cancel
           </button>
