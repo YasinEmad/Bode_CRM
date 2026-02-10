@@ -374,27 +374,35 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // Before shift start (early morning)
-        // This could be part of current shift (if it wraps to this morning) or past shift
-        const shiftEndTimeActual = (shiftStartTimeInMinutes + shiftDurationInMinutes) % (24 * 60);
-        
-        if (currentTimeInMinutes < shiftEndTimeActual) {
-          // Still within shift that started yesterday
-          const minutesAfterStart = currentTimeInMinutes + (24 * 60) - shiftStartTimeInMinutes;
-          isLate = true;
-          lateMinutes = minutesAfterStart;
-          lateHours = Math.floor(lateMinutes / 60);
-          lateMinutes = lateMinutes % 60;
+        // Could be an early check-in (allowed by admin), part of a shift started yesterday,
+        // or past the shift. Respect `allowedEarlyMinutes` for wrap-around shifts as well.
+        const earlyBy = shiftStartTimeInMinutes - currentTimeInMinutes;
+        if (earlyBy <= allowedEarlyMinutes) {
+          // Early arrival within allowed window — treat as on-time (not late)
+          isLate = false;
+          lateMinutes = 0;
         } else {
-          // Past the shift - REJECT
-          return NextResponse.json(
-            {
-              error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
-              reason: 'SHIFT_ENDED',
-              shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
-              shiftEndTime: `${String(Math.floor(shiftEndTimeActual / 60)).padStart(2, '0')}:${String(shiftEndTimeActual % 60).padStart(2, '0')}`,
-            },
-            { status: 400 }
-          );
+          // Not within early window; check if this time falls inside the wrapped shift
+          const shiftEndTimeActual = (shiftStartTimeInMinutes + shiftDurationInMinutes) % (24 * 60);
+          if (currentTimeInMinutes < shiftEndTimeActual) {
+            // Still within shift that started yesterday
+            const minutesAfterStart = currentTimeInMinutes + (24 * 60) - shiftStartTimeInMinutes;
+            isLate = true;
+            lateMinutes = minutesAfterStart;
+            lateHours = Math.floor(lateMinutes / 60);
+            lateMinutes = lateMinutes % 60;
+          } else {
+            // Past the shift - REJECT
+            return NextResponse.json(
+              {
+                error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
+                reason: 'SHIFT_ENDED',
+                shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
+                shiftEndTime: `${String(Math.floor(shiftEndTimeActual / 60)).padStart(2, '0')}:${String(shiftEndTimeActual % 60).padStart(2, '0')}`,
+              },
+              { status: 400 }
+            );
+          }
         }
       }
     }

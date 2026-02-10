@@ -112,14 +112,7 @@ html.light article {
   -webkit-text-fill-color: var(--foreground) !important;
 }
 
-/* Override Tailwind utility backgrounds and gradients */
-html.light [class*="bg-"] ,
-html.light [class*="from-"],
-html.light [class*="to-"],
-html.light [class*="via-"] {
-  background-image: none !important;
-  background-color: var(--background) !important;
-}
+
 
 /* Override text utility classes */
 html.light [class*="text-"] {
@@ -255,11 +248,7 @@ html.light [class*="rounded"] {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease !important;
 }
 
-html.light [class*="rounded"]:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 10px 30px rgba(16,24,40,0.06) !important;
-  border-color: rgba(16,24,40,0.08) !important;
-}
+
 
 /* Make main headings pop with varied colors */
 html.light h1 {
