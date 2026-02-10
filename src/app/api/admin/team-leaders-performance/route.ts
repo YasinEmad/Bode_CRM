@@ -70,6 +70,19 @@ export async function GET(req: NextRequest) {
           emptyDays[`day${i}`] = 0;
         }
 
+        // Get leader's personal performance data (from TeamLeaderPerformance model)
+        let leaderPersonalSheets = { ...emptyDays };
+        let leaderPersonalAssessments = { ...emptyDays };
+        let leaderPersonalMeetings = { ...emptyDays };
+        let leaderPersonalRequests = { ...emptyDays };
+
+        if (performance) {
+          leaderPersonalSheets = Object.fromEntries(performance.sheets || new Map());
+          leaderPersonalAssessments = Object.fromEntries(performance.assessments || new Map());
+          leaderPersonalMeetings = Object.fromEntries(performance.meetings || new Map());
+          leaderPersonalRequests = Object.fromEntries(performance.requests || new Map());
+        }
+
         // Fetch all team member performances for this team (members + leader + admin-added)
         const teamPerformances = await TeamPerformance.find({ teamId: team._id, month });
 
@@ -138,39 +151,23 @@ export async function GET(req: NextRequest) {
           aggregated.leaderDeals = 0;
         }
 
-        if (performance) {
-          // Expose aggregated team day-buckets as the primary per-day fields
-          // while keeping aggregated metadata and leader counts available.
-          return {
-            userId: String(performance.userId._id || performance.userId),
-            leaderName: leader.name || '',
-            month: performance.month,
-            daysInMonth,
-            // show team-aggregated day buckets (leader + members)
-            sheets: aggregated.sheets,
-            assessments: aggregated.assessments,
-            meetings: aggregated.meetings,
-            requests: aggregated.requests,
-            aggregated,
-            // explicit top-level counts for convenience
-            leaderOwnLeads: aggregated.leaderLeads ?? 0,
-            leaderOwnDeals: aggregated.leaderDeals ?? 0,
-            teamLeadsCount: aggregated.aggregatedLeads ?? 0,
-            teamDealsCount: aggregated.aggregatedDeals ?? 0,
-          };
-        }
-
-        // Return empty performance record for new leaders with aggregated totals
         return {
-          userId: leaderIdStr,
-          month: month,
+          userId: performance ? String(performance.userId._id || performance.userId) : leaderIdStr,
           leaderName: leader.name || '',
+          month: performance?.month || month,
           daysInMonth,
-          // For leaders without a saved personal record, still expose team-aggregated buckets
-          sheets: aggregated.sheets || emptyDays,
-          assessments: aggregated.assessments || emptyDays,
-          meetings: aggregated.meetings || emptyDays,
-          requests: aggregated.requests || emptyDays,
+          // Team-aggregated day buckets (leader + all members)
+          sheets: aggregated.sheets,
+          assessments: aggregated.assessments,
+          meetings: aggregated.meetings,
+          requests: aggregated.requests,
+          // Leader's personal day buckets 
+          leaderPersonal: {
+            sheets: leaderPersonalSheets,
+            assessments: leaderPersonalAssessments,
+            meetings: leaderPersonalMeetings,
+            requests: leaderPersonalRequests,
+          },
           aggregated,
           // explicit top-level counts for convenience
           leaderOwnLeads: aggregated.leaderLeads ?? 0,

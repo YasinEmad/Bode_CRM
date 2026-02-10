@@ -140,7 +140,12 @@ export async function GET(req: NextRequest) {
 
     // Also extract the leader's personal performance (if any) so UI can show both personal and aggregated rows.
     const leaderPerf = performances.find((p) => p.userId.toString() === team.leader.toString());
-    let leaderPersonal = null;
+    
+    // Create empty day buckets for fallback
+    const emptyLeaderDays: Record<string, number> = {};
+    for (let i = 1; i <= daysInMonth; i++) emptyLeaderDays[`day${i}`] = 0;
+    
+    let leaderPersonal: any = null;
     if (adminLeaderPerf) {
       leaderPersonal = {
         _id: adminLeaderPerf._id,
@@ -166,6 +171,20 @@ export async function GET(req: NextRequest) {
         assessments: Object.fromEntries(leaderPerf.assessments || new Map()),
         meetings: Object.fromEntries(leaderPerf.meetings || new Map()),
         requests: Object.fromEntries(leaderPerf.requests || new Map()),
+      };
+    } else {
+      // Always create an empty leader personal record for UI display
+      leaderPersonal = {
+        _id: undefined,
+        userId: team.leader,
+        name: leaderUser?.name || 'Leader',
+        teamId: undefined,
+        month: month,
+        daysInMonth,
+        sheets: { ...emptyLeaderDays },
+        assessments: { ...emptyLeaderDays },
+        meetings: { ...emptyLeaderDays },
+        requests: { ...emptyLeaderDays },
       };
     }
 

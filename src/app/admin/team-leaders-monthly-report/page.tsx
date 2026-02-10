@@ -15,6 +15,12 @@ interface TeamLeaderPerformance {
   assessments: Record<string, number>;
   meetings: Record<string, number>;
   requests: Record<string, number>;
+  leaderPersonal?: {
+    sheets: Record<string, number>;
+    assessments: Record<string, number>;
+    meetings: Record<string, number>;
+    requests: Record<string, number>;
+  };
   aggregated?: {
     aggregatedLeads: number;
     aggregatedDeals: number;
@@ -292,13 +298,13 @@ export default function TeamLeadersMonthlyReport() {
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-600">
                   <h3 className="text-2xl font-bold text-white">{leader.leaderName}</h3>
                   <div className="text-right">
-                    <p className="text-slate-400 text-sm mb-2">Total</p>
+                    <p className="text-slate-400 text-sm mb-2">Personal / Team Total</p>
                     <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
                       {selectedCategory === 'leads'
-                        ? `${leader.aggregated?.leaderLeads ?? 0} (team: ${leader.aggregated?.aggregatedLeads ?? 0})`
+                        ? `${leader.aggregated?.leaderLeads ?? 0} / ${leader.aggregated?.aggregatedLeads ?? 0}`
                         : selectedCategory === 'deals'
-                        ? `${leader.aggregated?.leaderDeals ?? 0} (team: ${leader.aggregated?.aggregatedDeals ?? 0})`
-                        : calculateTotal(leader[selectedCategory])}
+                        ? `${leader.aggregated?.leaderDeals ?? 0} / ${leader.aggregated?.aggregatedDeals ?? 0}`
+                        : `${calculateTotal(leader.leaderPersonal?.[selectedCategory])} / ${calculateTotal(leader[selectedCategory])}`}
                     </p>
                   </div>
                 </div>
@@ -321,93 +327,181 @@ export default function TeamLeadersMonthlyReport() {
                   </div>
                 ) : (
                   // Daily Grid - Calendar View for other categories
-                <div className="mb-6">
-                  <div className="grid grid-cols-7 gap-2">
-                    {Array.from({ length: leader.daysInMonth }).map((_, dayIndex) => {
-                      const day = dayIndex + 1;
-                      const dayKey = `day${day}`;
-                      const value = leader[selectedCategory][dayKey] || 0;
-                      const dayOfWeek = new Date(parseInt(leader.month.split('-')[0]), parseInt(leader.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                      });
+                  <>
+                    {/* Debug: Show if personal data exists */}
+                    {!leader.leaderPersonal && (
+                      <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600 rounded text-yellow-200 text-sm">
+                        Warning: leaderPersonal data not available
+                      </div>
+                    )}
 
-                      return (
-                        <div
-                          key={day}
-                          className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
-                            value > 0
-                              ? selectedCategoryObj?.color === 'blue'
-                                ? 'border-blue-500 bg-blue-500/10'
-                                : selectedCategoryObj?.color === 'emerald'
-                                ? 'border-emerald-500 bg-emerald-500/10'
-                                : selectedCategoryObj?.color === 'purple'
-                                ? 'border-purple-500 bg-purple-500/10'
-                                : 'border-orange-500 bg-orange-500/10'
-                              : 'border-slate-600 hover:border-slate-500'
-                          }`}
-                        >
-                          <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
-                          <div className="text-xs text-slate-500 mb-2">{day}</div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={value}
-                            onChange={(e) =>
-                              updateCellValue(
-                                leader,
-                                selectedCategory,
-                                dayKey,
-                                Math.max(0, parseInt(e.target.value) || 0)
-                              )
-                            }
-                            className={`w-full px-1 py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
-                              selectedCategoryObj?.color === 'blue'
-                                ? 'focus:ring-blue-500'
-                                : selectedCategoryObj?.color === 'emerald'
-                                ? 'focus:ring-emerald-500'
-                                : selectedCategoryObj?.color === 'purple'
-                                ? 'focus:ring-purple-500'
-                                : 'focus:ring-orange-500'
-                            }`}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                    {/* Leader's Personal Data Section */}
+                    <div className="mb-8">
+                      <h4 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-slate-600">
+                        👤 {leader.leaderName}'s Personal Performance
+                      </h4>
+                      <div className="grid grid-cols-7 gap-2">
+                        {Array.from({ length: leader.daysInMonth }).map((_, dayIndex) => {
+                          const day = dayIndex + 1;
+                          const dayKey = `day${day}`;
+                          const personalData = leader.leaderPersonal?.[selectedCategory] || {};
+                          const value = personalData[dayKey] || 0;
+                          const dayOfWeek = new Date(parseInt(leader.month.split('-')[0]), parseInt(leader.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                          });
+
+                          return (
+                            <div
+                              key={`personal-${day}`}
+                              className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
+                                value > 0
+                                  ? selectedCategoryObj?.color === 'blue'
+                                    ? 'border-blue-500 bg-blue-500/10'
+                                    : selectedCategoryObj?.color === 'emerald'
+                                    ? 'border-emerald-500 bg-emerald-500/10'
+                                    : selectedCategoryObj?.color === 'purple'
+                                    ? 'border-purple-500 bg-purple-500/10'
+                                    : 'border-orange-500 bg-orange-500/10'
+                                  : 'border-slate-600 hover:border-slate-500'
+                              }`}
+                            >
+                              <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
+                              <div className="text-xs text-slate-500 mb-2">{day}</div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={value}
+                                onChange={(e) =>
+                                  updateCellValue(
+                                    leader,
+                                    selectedCategory,
+                                    dayKey,
+                                    Math.max(0, parseInt(e.target.value) || 0)
+                                  )
+                                }
+                                className={`w-full px-1 py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                  selectedCategoryObj?.color === 'blue'
+                                    ? 'focus:ring-blue-500'
+                                    : selectedCategoryObj?.color === 'emerald'
+                                    ? 'focus:ring-emerald-500'
+                                    : selectedCategoryObj?.color === 'purple'
+                                    ? 'focus:ring-purple-500'
+                                    : 'focus:ring-orange-500'
+                                }`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Team Aggregated Data Section */}
+                    <div>
+                      <h4 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-slate-600">
+                        👥 Team Aggregated Performance (Leader + All Members)
+                      </h4>
+                      <div className="grid grid-cols-7 gap-2">
+                        {Array.from({ length: leader.daysInMonth }).map((_, dayIndex) => {
+                          const day = dayIndex + 1;
+                          const dayKey = `day${day}`;
+                          const value = leader[selectedCategory][dayKey] || 0;
+                          const dayOfWeek = new Date(parseInt(leader.month.split('-')[0]), parseInt(leader.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                          });
+
+                          return (
+                            <div
+                              key={`team-${day}`}
+                              className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
+                                value > 0
+                                  ? selectedCategoryObj?.color === 'blue'
+                                    ? 'border-blue-500 bg-blue-500/10'
+                                    : selectedCategoryObj?.color === 'emerald'
+                                    ? 'border-emerald-500 bg-emerald-500/10'
+                                    : selectedCategoryObj?.color === 'purple'
+                                    ? 'border-purple-500 bg-purple-500/10'
+                                    : 'border-orange-500 bg-orange-500/10'
+                                  : 'border-slate-600 hover:border-slate-500'
+                              }`}
+                            >
+                              <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
+                              <div className="text-xs text-slate-500 mb-2">{day}</div>
+                              <div className={`w-full px-1 py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-lg font-bold`}>
+                                {value}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {/* Weekly Summary - Only for non-aggregated categories */}
                 {selectedCategory !== 'leads' && selectedCategory !== 'deals' && (
-                  <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
-                    <h4 className="text-sm font-semibold text-slate-300 mb-3">Weekly Summary</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[1, 2, 3, 4].map((week) => {
-                        const startDay = 1 + (week - 1) * 7;
-                        const endDay = Math.min(week * 7, leader.daysInMonth);
-                        const weekTotal = calculateWeekTotal(leader[selectedCategory], startDay, endDay);
+                  <>
+                    {/* Leader's Personal Weekly Summary */}
+                    <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600 mb-6">
+                      <h4 className="text-sm font-semibold text-slate-300 mb-3">📊 {leader.leaderName}'s Weekly Summary</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[1, 2, 3, 4].map((week) => {
+                          const startDay = 1 + (week - 1) * 7;
+                          const endDay = Math.min(week * 7, leader.daysInMonth);
+                          const weekTotal = calculateWeekTotal(leader.leaderPersonal?.[selectedCategory] || {}, startDay, endDay);
 
-                        return (
-                          <div
-                            key={week}
-                            className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
-                              selectedCategoryObj?.color === 'blue'
-                                ? 'border-blue-500/50'
-                                : selectedCategoryObj?.color === 'emerald'
-                                ? 'border-emerald-500/50'
-                                : selectedCategoryObj?.color === 'purple'
-                                ? 'border-purple-500/50'
-                                : 'border-orange-500/50'
-                            }`}
-                          >
-                            <p className="text-xs text-slate-300 mb-2">Week {week}</p>
-                            <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
-                            <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
-                          </div>
-                        );
-                      })}
+                          return (
+                            <div
+                              key={`leader-week-${week}`}
+                              className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
+                                selectedCategoryObj?.color === 'blue'
+                                  ? 'border-blue-500/50'
+                                  : selectedCategoryObj?.color === 'emerald'
+                                  ? 'border-emerald-500/50'
+                                  : selectedCategoryObj?.color === 'purple'
+                                  ? 'border-purple-500/50'
+                                  : 'border-orange-500/50'
+                              }`}
+                            >
+                              <p className="text-xs text-slate-300 mb-2">Week {week}</p>
+                              <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
+                              <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Team Aggregated Weekly Summary */}
+                    <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-600">
+                      <h4 className="text-sm font-semibold text-slate-300 mb-3">📊 Team Weekly Summary (Leader + All Members)</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[1, 2, 3, 4].map((week) => {
+                          const startDay = 1 + (week - 1) * 7;
+                          const endDay = Math.min(week * 7, leader.daysInMonth);
+                          const weekTotal = calculateWeekTotal(leader[selectedCategory], startDay, endDay);
+
+                          return (
+                            <div
+                              key={`team-week-${week}`}
+                              className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
+                                selectedCategoryObj?.color === 'blue'
+                                  ? 'border-blue-500/50'
+                                  : selectedCategoryObj?.color === 'emerald'
+                                  ? 'border-emerald-500/50'
+                                  : selectedCategoryObj?.color === 'purple'
+                                  ? 'border-purple-500/50'
+                                  : 'border-orange-500/50'
+                              }`}
+                            >
+                              <p className="text-xs text-slate-300 mb-2">Week {week}</p>
+                              <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
+                              <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
             
               </div>
