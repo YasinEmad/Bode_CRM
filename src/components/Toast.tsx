@@ -85,7 +85,8 @@ function ToastContainer({ messages, onRemove }: { messages: ToastMessage[]; onRe
           <span>{msg.message}</span>
           <button
             onClick={() => onRemove(msg.id)}
-            className="ml-auto text-lg font-bold hover:opacity-70"
+            className="ml-auto text-lg font-bold hover:opacity-70 text-indigo-400 dark:text-indigo-200"
+            aria-label="close-toast"
           >
             ×
           </button>

@@ -120,7 +120,7 @@ export default function LoginPage() {
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className='w-full px-4 py-3 border border-slate-700 bg-slate-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-500 transition-all'
+                  className='w-full px-4 py-3 border border-indigo-500 bg-indigo-900/30 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent text-slate-100 placeholder-indigo-300 transition-all'
                   placeholder="your-username"
                   required
                   disabled={loading}
@@ -136,7 +136,7 @@ export default function LoginPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className='w-full px-4 py-3 border border-slate-700 bg-slate-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100 placeholder-slate-500 transition-all'
+                  className='w-full px-4 py-3 border border-indigo-500 bg-indigo-900/30 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent text-slate-100 placeholder-indigo-300 transition-all'
                   placeholder="Enter your password"
                   required
                   disabled={loading}
