@@ -309,15 +309,34 @@ export async function POST(req: NextRequest) {
     // Calculate shift boundaries in minutes
     const shiftStartTimeInMinutes = shiftStartHours * 60 + shiftStartMinutes;
     const shiftDurationInMinutes = shiftDuration * 60;
+    // Allow small grace period after shift end to tolerate minor clock skew
+    const shiftEndGraceMinutes = (settings as any).shiftEndGraceMinutes ?? 15;
+    const shiftDurationInMinutesWithGrace = shiftDurationInMinutes + shiftEndGraceMinutes;
     // Allow employees to check in up to this many minutes early (default 60)
     const allowedEarlyMinutes = (settings as any).allowedEarlyMinutes ?? 60;
     
     // Get current time in minutes from start of day
-    const currentTimeInMinutes = checkInTime.getHours() * 60 + checkInTime.getMinutes();
+    // If client provided timezone information, compute minutes using UTC + client's offset
+    let currentTimeInMinutes: number;
+    if (timezoneSource.startsWith('client')) {
+      const offset = typeof clientTimezoneOffset !== 'undefined' && clientTimezoneOffset !== null && clientTimezoneOffset !== ''
+        ? Number(clientTimezoneOffset)
+        : 0;
+      // clientLocalTimeISO is sent as an ISO string (UTC timestamp), so use UTC components
+      const utcMinutes = checkInTime.getUTCHours() * 60 + checkInTime.getUTCMinutes();
+      // JS getTimezoneOffset convention: offset = UTC - local (minutes)
+      // localMinutes = utcMinutes - offset
+      currentTimeInMinutes = utcMinutes - offset;
+      // normalize to 0..(24*60-1)
+      const DAY_MINUTES = 24 * 60;
+      currentTimeInMinutes = ((currentTimeInMinutes % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+    } else {
+      currentTimeInMinutes = checkInTime.getHours() * 60 + checkInTime.getMinutes();
+    }
     
     // Case 1: Shift does NOT wrap around midnight (e.g., 9 AM - 5 PM)
-    if (shiftStartTimeInMinutes + shiftDurationInMinutes <= 24 * 60) {
-      const shiftEndTimeInMinutes = shiftStartTimeInMinutes + shiftDurationInMinutes;
+    if (shiftStartTimeInMinutes + shiftDurationInMinutesWithGrace <= 24 * 60) {
+      const shiftEndTimeInMinutes = shiftStartTimeInMinutes + shiftDurationInMinutesWithGrace;
       
       if (currentTimeInMinutes < shiftStartTimeInMinutes) {
         // Before shift starts - allow if within early window
@@ -339,13 +358,23 @@ export async function POST(req: NextRequest) {
           );
         }
       } else if (currentTimeInMinutes >= shiftEndTimeInMinutes) {
-        // After shift ends
+        // After shift ends — add debug log to capture context for troubleshooting
+        console.error('SHIFT_ENDED triggered (non-wrap):', {
+          clientLocalTimeISO,
+          clientTimezoneOffset,
+          timezoneSource,
+          checkInTimeISOString: checkInTime.toISOString(),
+          currentTimeInMinutes,
+          shiftStartTimeInMinutes,
+          shiftEndTimeInMinutes,
+          allowedEarlyMinutes,
+        });
         return NextResponse.json(
           {
             error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
             reason: 'SHIFT_ENDED',
             shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
-            shiftEndTime: `${String(Math.floor(shiftEndTimeInMinutes / 60)).padStart(2, '0')}:${String(shiftEndTimeInMinutes % 60).padStart(2, '0')}`,
+            shiftEndTime: `${String(Math.floor((shiftEndTimeInMinutes - shiftEndGraceMinutes) / 60)).padStart(2, '0')}:${String((shiftEndTimeInMinutes - shiftEndGraceMinutes) % 60).padStart(2, '0')}`,
           },
           { status: 400 }
         );
@@ -383,7 +412,7 @@ export async function POST(req: NextRequest) {
           lateMinutes = 0;
         } else {
           // Not within early window; check if this time falls inside the wrapped shift
-          const shiftEndTimeActual = (shiftStartTimeInMinutes + shiftDurationInMinutes) % (24 * 60);
+          const shiftEndTimeActual = (shiftStartTimeInMinutes + shiftDurationInMinutesWithGrace) % (24 * 60);
           if (currentTimeInMinutes < shiftEndTimeActual) {
             // Still within shift that started yesterday
             const minutesAfterStart = currentTimeInMinutes + (24 * 60) - shiftStartTimeInMinutes;
@@ -392,13 +421,25 @@ export async function POST(req: NextRequest) {
             lateHours = Math.floor(lateMinutes / 60);
             lateMinutes = lateMinutes % 60;
           } else {
-            // Past the shift - REJECT
+            // Past the shift - REJECT (wrap-around case) — add debug log to capture context
+            console.error('SHIFT_ENDED triggered (wrap-around):', {
+              clientLocalTimeISO,
+              clientTimezoneOffset,
+              timezoneSource,
+              checkInTimeISOString: checkInTime.toISOString(),
+              currentTimeInMinutes,
+              shiftStartTimeInMinutes,
+              shiftEndTimeActual,
+              shiftDurationInMinutes,
+              shiftEndGraceMinutes,
+              allowedEarlyMinutes,
+            });
             return NextResponse.json(
               {
                 error: 'الشفت خلص - لا يمكن تسجيل الحضور بعد انتهاء الشفت',
                 reason: 'SHIFT_ENDED',
                 shiftStartTime: `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`,
-                shiftEndTime: `${String(Math.floor(shiftEndTimeActual / 60)).padStart(2, '0')}:${String(shiftEndTimeActual % 60).padStart(2, '0')}`,
+                shiftEndTime: `${String(Math.floor((shiftEndTimeActual / 60))).padStart(2, '0')}:${String(shiftEndTimeActual % 60).padStart(2, '0')}`,
               },
               { status: 400 }
             );
