@@ -33,6 +33,11 @@ function parseTimeString(timeStr: any, defaultHours = 18, defaultMinutes = 0) {
   return { hours, minutes };
 }
 
+// Helper to format time with leading zeros
+function formatTimeString(hours: number, minutes: number): string {
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -256,11 +261,17 @@ export async function POST(req: NextRequest) {
     const clientLocalTimeISO = (body as any).clientLocalTimeISO;
     const clientTimezoneOffset = (body as any).timezoneOffsetMinutes;
     let timezoneSource = 'server';
+    
+    console.log('=== TIMEZONE SOURCE DEBUG ===');
+    console.log('clientLocalTimeISO received:', clientLocalTimeISO);
+    console.log('clientTimezoneOffset received:', clientTimezoneOffset);
+    
     if (clientLocalTimeISO) {
       const parsedClientTime = new Date(clientLocalTimeISO);
       if (!isNaN(parsedClientTime.getTime())) {
         checkInTime = parsedClientTime;
         timezoneSource = 'clientLocalTimeISO';
+        console.log('Using clientLocalTimeISO for check-in time');
       }
     } else if (typeof clientTimezoneOffset !== 'undefined' && clientTimezoneOffset !== null && clientTimezoneOffset !== '') {
       const offset = Number(clientTimezoneOffset);
@@ -269,13 +280,26 @@ export async function POST(req: NextRequest) {
         // To compute client local time from server UTC, subtract the offset (in minutes)
         checkInTime = new Date(Date.now() - offset * 60000);
         timezoneSource = `clientTimezoneOffset(${offset})`;
+        console.log('Using clientTimezoneOffset for check-in time, offset:', offset, 'minutes');
       }
+    } else {
+      console.warn('⚠️ WARNING: No timezone information provided by client! Using server time. This may cause lateness calculation errors for users in different timezones.');
+      console.log('Using server system time (UTC)');
     }
+    console.log('Final check-in time:', checkInTime.toISOString(), 'Local:', checkInTime.toLocaleString());
+    console.log('=== END TIMEZONE DEBUG ===');
+
 
     // Robustly parse the shift start time (supports "9", "9:00", "9 AM", "21:00", etc.)
     const parsedShift = parseTimeString((settings as any).attendanceTime, 18, 0);
     let shiftStartHours = parsedShift.hours;
     let shiftStartMinutes = parsedShift.minutes;
+
+    // DEBUG: Log the raw setting and parsed values
+    console.log('=== ATTENDANCE TIME PARSING DEBUG ===');
+    console.log('Raw attendanceTime setting:', (settings as any).attendanceTime);
+    console.log('Parsed shift start:', `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`);
+    console.log('===========================================');
 
     // Determine if check-in is within valid shift time or after shift ends
     let isLate = false;
@@ -377,8 +401,8 @@ export async function POST(req: NextRequest) {
 
     console.log('=== SHIFT CHECK-IN DEBUG ===');
     console.log('User:', user.name);
-    console.log('Check-in Time:', checkInTime.toISOString(), `Local: ${checkInTime.toLocaleString()}`, 'timezoneSource:', timezoneSource);
-    console.log('Shift Start Time:', `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`);
+    console.log('Employee Check-in Time:', checkInTime.toISOString(), `Local: ${checkInTime.toLocaleString()}`, 'timezoneSource:', timezoneSource);
+    console.log('Shift Start Time Setting:', `${String(shiftStartHours).padStart(2, '0')}:${String(shiftStartMinutes).padStart(2, '0')}`);
     console.log('Shift Duration:', `${shiftDuration} hours`);
     console.log('Current Time (minutes since midnight):', currentTimeInMinutes, `= ${Math.floor(currentTimeInMinutes / 60)}:${String(currentTimeInMinutes % 60).padStart(2, '0')}`);
     console.log('Shift Start (minutes since midnight):', shiftStartTimeInMinutes, `= ${Math.floor(shiftStartTimeInMinutes / 60)}:${String(shiftStartTimeInMinutes % 60).padStart(2, '0')}`);
@@ -387,7 +411,7 @@ export async function POST(req: NextRequest) {
       : (shiftStartTimeInMinutes + shiftDurationInMinutes) % (24 * 60);
     console.log('Shift End (minutes since midnight):', logShiftEndInMinutes, `= ${Math.floor(logShiftEndInMinutes / 60)}:${String(logShiftEndInMinutes % 60).padStart(2, '0')}`);
     console.log('Is Late:', isLate);
-    console.log('Late Hours:', lateHours, 'Minutes:', lateMinutes);
+    console.log('Late Hours:', lateHours, 'Minutes:', lateMinutes, 'Total Minutes:', (lateHours * 60 + lateMinutes));
     console.log('Allowed Early Minutes:', allowedEarlyMinutes);
     console.log('=== END DEBUG ===');
 

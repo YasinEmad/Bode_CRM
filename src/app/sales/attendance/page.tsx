@@ -397,6 +397,12 @@ export default function SalesAttendance() {
 
       // أرسل البيانات للخادم
       sendToastId = addToast('Sending to server...', 'loading');
+      
+      // Get client's local time and timezone offset
+      const now = new Date();
+      const clientLocalTimeISO = now.toISOString();
+      const timezoneOffsetMinutes = now.getTimezoneOffset();
+      
       const res = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
@@ -408,6 +414,8 @@ export default function SalesAttendance() {
           longitude: Number((result.longitude as number).toFixed(7)),
           accuracy: result.accuracy,
           deviceId: getDeviceId(),
+          clientLocalTimeISO: clientLocalTimeISO,
+          timezoneOffsetMinutes: timezoneOffsetMinutes,
         }),
       });
 
@@ -425,6 +433,8 @@ export default function SalesAttendance() {
       console.log('Full Response:', JSON.stringify(data, null, 2));
       console.log('isLate:', data.isLate, 'type:', typeof data.isLate);
       console.log('lateMinutes:', data.lateMinutes, 'type:', typeof data.lateMinutes);
+      console.log('Expected Shift Start Time:', data.shiftStartTime);
+      console.log('Shift Duration:', data.shiftDuration);
       console.log('Location Accuracy:', formatAccuracy(result.accuracy));
       console.log('===============================');
 
