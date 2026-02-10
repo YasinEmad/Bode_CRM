@@ -15,8 +15,12 @@
   --danger: #ef4444;
   --surface: #ffffff;
   --muted: #6b7280;
-  --border: #e6e6e0;
+  --border: #e5e7eb;
   --card: #ffffff;
+  --shadow-sm: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(16, 24, 40, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(16, 24, 40, 0.1);
 }
 @theme inline {
   --color-background: var(--background);
@@ -58,33 +62,37 @@ html.dark {
 
 /* Light mode override when the html element has the `light` class. */
 html.light {
-  --background: #ffffff; /* white background for light mode */
-  --foreground: #111827; /* dark text for readability */
-  --primary: #1e40af; /* deeper blue for accents */
-  --primary-rgb: 30,64,175;
-  --primary-variant: #2563eb;
-  --accent: #f59e0b;
-  --success: #16a34a;
-  --danger: #ef4444;
+  --background: #ffffff;
+  --foreground: #000000;
+  --primary: #000000;
+  --primary-rgb: 0,0,0;
+  --primary-variant: #333333;
+  --accent: #666666;
+  --success: #333333;
+  --danger: #333333;
   --surface: #ffffff;
-  --muted: #6b7280;
-  --border: #e6e6e0;
+  --muted: #666666;
+  --border: #cccccc;
   --card: #ffffff;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   /* Additional colors for light mode */
-  --info: #0ea5e9;
-  --info-light: #e0f2fe;
-  --warning: #f59e0b;
-  --warning-light: #fef3c7;
-  --secondary: #8b5cf6;
-  --secondary-light: #f3e8ff;
-  --teal: #14b8a6;
-  --teal-light: #ccfbf1;
-  --pink: #ec4899;
-  --pink-light: #fce7f3;
-  --indigo: #6366f1;
-  --indigo-light: #e0e7ff;
-  --cyan: #06b6d4;
-  --cyan-light: #cffafe;
+  --info: #000000;
+  --info-light: #f5f5f5;
+  --warning: #666666;
+  --warning-light: #f5f5f5;
+  --secondary: #333333;
+  --secondary-light: #f5f5f5;
+  --teal: #333333;
+  --teal-light: #f5f5f5;
+  --pink: #333333;
+  --pink-light: #f5f5f5;
+  --indigo: #333333;
+  --indigo-light: #f5f5f5;
+  --cyan: #333333;
+  --cyan-light: #f5f5f5;
 }
 
 /* Ensure Tailwind utility classes (e.g. bg-gray-50) don't override light mode when enabled. */
@@ -94,7 +102,6 @@ html.light body {
 }
 
 /* Strong overrides to ensure light mode is applied across Tailwind utilities and components. */
-/* This clears gradients/background-images and forces background, text and border colors when light mode is active. */
 html.light,
 html.light body,
 html.light #__next,
@@ -112,16 +119,14 @@ html.light article {
   -webkit-text-fill-color: var(--foreground) !important;
 }
 
-
-
 /* Override text utility classes */
 html.light [class*="text-"] {
   color: var(--foreground) !important;
 }
 
-/* Borders */
+/* Borders - lighter for better definition */
 html.light [class*="border-"] {
-  border-color: rgba(17,24,39,0.08) !important; /* subtle neutral border in light mode */
+  border-color: var(--border) !important;
 }
 
 /* Form elements and buttons */
@@ -130,9 +135,13 @@ html.light textarea,
 html.light select,
 html.light button {
   background-image: none !important;
-  background-color: var(--background) !important;
-  color: var(--foreground) !important;
-  border-color: rgba(17,24,39,0.08) !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
 }
 
 /* Light-mode enhanced styling for more color and visual interest */
@@ -141,27 +150,31 @@ html.light header {
   background-color: var(--surface) !important;
   color: var(--foreground) !important;
   border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 /* Navbar links: keep text but show primary on hover */
 html.light nav a {
   color: var(--foreground) !important;
+  transition: all 200ms ease !important;
 }
 html.light nav a:hover {
   color: var(--primary) !important;
-  background-color: var(--primary-light, rgba(var(--primary-rgb), 0.06)) !important;
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
 }
 
 /* Global links accent - colored on hover */
 html.light a {
   color: var(--primary) !important;
   transition: color 200ms ease !important;
+  font-weight: 500 !important;
 }
 html.light a:hover {
   color: var(--primary-variant) !important;
+  text-decoration: underline !important;
 }
 
-/* Cards and surfaces */
+/* Cards and surfaces with better shadows */
 .card,
 article,
 .panel,
@@ -169,103 +182,167 @@ article,
   background-color: var(--card) !important;
   border: 1px solid var(--border) !important;
   color: var(--foreground) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all 200ms ease !important;
 }
 
-/* Buttons: gentle primary styling */
+html.light .card:hover,
+html.light article:hover,
+html.light .panel:hover,
+html.light .card-root:hover {
+  box-shadow: var(--shadow-lg) !important;
+  transform: translateY(-2px) !important;
+  border-color: rgba(var(--primary-rgb), 0.2) !important;
+}
+
+/* Buttons: improved styling */
 html.light button,
 html.light .btn {
   background-image: none !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  transition: all 200ms ease !important;
+  cursor: pointer !important;
 }
+
 html.light .btn-primary,
-html.light button.primary {
-  background-color: var(--primary) !important;
-  color: white !important;
-  border-color: transparent !important;
+html.light button.primary,
+html.light button:not([class*="outline"]):not([class*="secondary"]):not([class*="danger"]):not([class*="warning"]):not([class*="info"]):not([class*="success"]) {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #cccccc !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .btn-primary:hover,
+html.light button.primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+  background: #f9f9f9 !important;
+}
+
+html.light .btn-primary:active,
+html.light button.primary:active {
+  transform: translateY(0px) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Button color variants - all use white */
+html.light .btn-secondary,
+html.light button.secondary,
+html.light .btn-success,
+html.light .btn-info,
+html.light .btn-warning,
+html.light .btn-danger {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #cccccc !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .btn-secondary:hover,
+html.light button.secondary:hover,
+html.light .btn-success:hover,
+html.light .btn-info:hover,
+html.light .btn-warning:hover,
+html.light .btn-danger:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+  background: #f9f9f9 !important;
+}
+
+/* Outline button variants */
+html.light .btn-outline-primary {
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+  background: transparent !important;
+}
+
+html.light .btn-outline-primary:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .btn-outline-secondary {
+  border: 2px solid #333333 !important;
+  color: #333333 !important;
+  background: transparent !important;
+}
+
+html.light .btn-outline-secondary:hover {
+  background: rgba(51, 51, 51, 0.05) !important;
+}
+
+html.light button:disabled,
+html.light button[disabled] {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
 }
 
 /* Accent badges with varied colors */
 .badge,
 .tag,
 .pill {
-  background-color: rgba(var(--primary-rgb),0.1);
+  background-color: rgba(var(--primary-rgb), 0.15);
   color: var(--primary);
-  border: 1px solid rgba(var(--primary-rgb),0.12);
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-block;
 }
 
-/* Color variants for badges */
+/* Color variants for badges - all use black/white */
 html.light .badge-success,
-html.light .badge-info {
-  background-color: var(--info-light) !important;
-  color: var(--info) !important;
-  border-color: rgba(14, 165, 233, 0.2) !important;
-}
-
-html.light .badge-warning {
-  background-color: var(--warning-light) !important;
-  color: var(--warning) !important;
-  border-color: rgba(245, 158, 11, 0.2) !important;
-}
-
+html.light .badge-info,
+html.light .badge-warning,
 html.light .badge-danger,
-html.light .badge-error {
-  background-color: rgba(239, 68, 68, 0.1) !important;
-  color: var(--danger) !important;
-  border-color: rgba(239, 68, 68, 0.2) !important;
-}
-
-html.light .badge-secondary {
-  background-color: var(--secondary-light) !important;
-  color: var(--secondary) !important;
-  border-color: rgba(139, 92, 246, 0.2) !important;
-}
-
-html.light .badge-teal {
-  background-color: var(--teal-light) !important;
-  color: var(--teal) !important;
-  border-color: rgba(20, 184, 166, 0.2) !important;
-}
-
+html.light .badge-error,
+html.light .badge-secondary,
+html.light .badge-teal,
 html.light .badge-pink {
-  background-color: var(--pink-light) !important;
-  color: var(--pink) !important;
-  border-color: rgba(236, 72, 153, 0.2) !important;
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+  border-color: #cccccc !important;
 }
 
-/* Subtle shadows on surfaces */
-html.light .shadow-xl,
-html.light .card {
-  box-shadow: 0 6px 20px rgba(16,24,40,0.04) !important;
-}
-
-/* Make rounded containers (most cards) more lively in light mode.
-   Targets elements that use Tailwind's rounded classes so we don't need
-   to change component markup. Adds an accent stripe and hover lift. */
+/* Make rounded containers more lively */
 html.light [class*="rounded"] {
   background-color: var(--card) !important;
   border: 1px solid var(--border) !important;
   position: relative !important;
   overflow: visible !important;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease !important;
+  transition: all 200ms ease !important;
 }
-
 
 
 /* Make main headings pop with varied colors */
 html.light h1 {
   color: var(--primary) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
 }
 
 html.light h2 {
   color: var(--secondary) !important;
+  font-weight: 700 !important;
 }
 
 html.light h3 {
   color: var(--indigo) !important;
+  font-weight: 600 !important;
 }
 
 html.light h4,
 html.light h5 {
   color: var(--teal) !important;
+  font-weight: 600 !important;
+}
+
+html.light h6 {
+  color: var(--primary) !important;
+  font-weight: 600 !important;
 }
 
 /* Subheadings and descriptions */
@@ -273,6 +350,7 @@ html.light p,
 html.light .muted,
 html.light .lead {
   color: var(--muted) !important;
+  line-height: 1.6 !important;
 }
 
 /* Stat numbers and emphasis */
@@ -283,168 +361,96 @@ html.light .big-number {
   font-weight: 700 !important;
 }
 
-/* Give the navbar a subtle horizontal gradient to add warmth */
-html.light nav {
-  background: linear-gradient(90deg, var(--surface), rgba(var(--primary-rgb),0.03)) !important;
-  box-shadow: 0 2px 8px rgba(16,24,40,0.03) !important;
-}
-
-/* Accent icons and interactive bits - varied colors */
+/* Accent icons and interactive bits */
 html.light svg {
   color: var(--primary-variant) !important;
   transition: color 200ms ease !important;
 }
 
-/* Colored icons by type */
-html.light .icon-success svg {
-  color: var(--success) !important;
-}
-
-html.light .icon-info svg {
-  color: var(--info) !important;
-}
-
-html.light .icon-warning svg {
-  color: var(--warning) !important;
-}
-
-html.light .icon-danger svg {
-  color: var(--danger) !important;
-}
-
-html.light .icon-secondary svg {
-  color: var(--secondary) !important;
-}
-
+/* Colored icons by type - all use black */
+html.light .icon-success svg,
+html.light .icon-info svg,
+html.light .icon-warning svg,
+html.light .icon-danger svg,
+html.light .icon-secondary svg,
 html.light .icon-teal svg {
-  color: var(--teal) !important;
-}
-
-/* Make interactive buttons and primary actions more visible */
-html.light .btn-primary,
-html.light button.primary,
-html.light .primary-action {
-  background: linear-gradient(180deg, var(--primary), var(--primary-variant)) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(var(--primary-rgb),0.12) !important;
-}
-
-/* Button color variants */
-html.light .btn-secondary,
-html.light button.secondary {
-  background: linear-gradient(180deg, var(--secondary), #7c3aed) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.12) !important;
-}
-
-html.light .btn-success {
-  background: linear-gradient(180deg, var(--success), #15803d) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.12) !important;
-}
-
-html.light .btn-info {
-  background: linear-gradient(180deg, var(--info), #0284c7) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.12) !important;
-}
-
-html.light .btn-warning {
-  background: linear-gradient(180deg, var(--warning), #d97706) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.12) !important;
-}
-
-html.light .btn-danger {
-  background: linear-gradient(180deg, var(--danger), #dc2626) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.12) !important;
-}
-
-/* Outline button variants */
-html.light .btn-outline-primary {
-  border: 2px solid var(--primary) !important;
-  color: var(--primary) !important;
-  background: transparent !important;
-}
-
-html.light .btn-outline-secondary {
-  border: 2px solid var(--secondary) !important;
-  color: var(--secondary) !important;
-  background: transparent !important;
-}
-
-html.light button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08) !important;
-  transition: all 200ms ease !important;
+  color: #000000 !important;
 }
 
 /* Add small decorative separators for large sections */
 html.light .section-separator {
   height: 1px;
-  background: linear-gradient(90deg, rgba(0,0,0,0), var(--border), rgba(0,0,0,0)) !important;
+  background: linear-gradient(90deg, transparent, var(--border), transparent) !important;
   margin: 28px 0;
 }
 
 /* Colored section separators */
 html.light .section-separator-primary {
   background: linear-gradient(90deg, transparent, var(--primary), transparent) !important;
+  margin: 32px 0;
 }
 
 html.light .section-separator-secondary {
   background: linear-gradient(90deg, transparent, var(--secondary), transparent) !important;
+  margin: 32px 0;
 }
 
 html.light .section-separator-success {
   background: linear-gradient(90deg, transparent, var(--success), transparent) !important;
+  margin: 32px 0;
 }
 
-/* Subtle background bands for page sections to create depth */
+/* Subtle background bands for page sections */
 html.light main > section:nth-child(odd) {
-  background-color: rgba(17,24,39,0.01) !important;
+  background-color: #ffffff !important;
 }
 
 html.light main > section:nth-child(3n) {
-  background: linear-gradient(180deg, var(--secondary-light), transparent) !important;
-  background-color: rgba(243, 232, 255, 0.4) !important;
+  background-color: #ffffff !important;
 }
 
 html.light main > section:nth-child(3n+1) {
-  background: linear-gradient(180deg, var(--info-light), transparent) !important;
-  background-color: rgba(224, 242, 254, 0.2) !important;
+  background-color: #ffffff !important;
 }
 
-/* Colored info/alert boxes */
+/* Colored info/alert boxes - all use gray */
 html.light .alert-info,
-html.light [class*="alert-info"] {
-  background-color: var(--info-light) !important;
-  color: #0369a1 !important;
-  border-left: 4px solid var(--info) !important;
-}
-
-html.light .alert-success {
-  background-color: rgba(22, 163, 74, 0.08) !important;
-  color: #165e26 !important;
-  border-left: 4px solid var(--success) !important;
-}
-
-html.light .alert-warning {
-  background-color: var(--warning-light) !important;
-  color: #92400e !important;
-  border-left: 4px solid var(--warning) !important;
-}
-
+html.light [class*="alert-info"],
+html.light .alert-success,
+html.light .alert-warning,
 html.light .alert-danger,
 html.light .alert-error {
-  background-color: rgba(239, 68, 68, 0.08) !important;
-  color: #7f1d1d !important;
-  border-left: 4px solid var(--danger) !important;
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+  border-left: 4px solid #cccccc !important;
+  border-radius: 0.375rem !important;
+  padding: 1rem !important;
 }
 
-/* Table styling with color accents */
+/* Table styling with color accents and improved readability */
 html.light table {
   border-collapse: collapse !important;
+  width: 100% !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+}
+
+html.light table thead {
+  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.08), rgba(var(--primary-rgb), 0.04)) !important;
+  border-bottom: 2px solid var(--border) !important;
+}
+
+html.light th {
+  color: var(--primary-variant) !important;
+  font-weight: 700 !important;
+  padding: 0.875rem 1rem !important;
+  text-align: left !important;
+  border-bottom: 2px solid var(--border) !important;
+}
+
+html.light tbody tr {
+  border-bottom: 1px solid var(--border) !important;
+  transition: background-color 150ms ease !important;
 }
 
 html.light tbody tr:nth-child(odd) {
@@ -452,23 +458,50 @@ html.light tbody tr:nth-child(odd) {
 }
 
 html.light tbody tr:hover {
-  background-color: rgba(var(--primary-rgb), 0.04) !important;
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
 }
 
-html.light th {
-  background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.1), rgba(var(--primary-rgb), 0.05)) !important;
-  color: var(--primary) !important;
-  font-weight: 600 !important;
-  border-bottom: 2px solid var(--primary) !important;
+html.light td {
+  padding: 0.875rem 1rem !important;
+  color: var(--foreground) !important;
 }
 
-/* Input fields with color accent on focus */
+/* Input fields with improved focus states */
+html.light input,
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: all 200ms ease !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 1 !important;
+}
+
 html.light input:focus,
 html.light textarea:focus,
 html.light select:focus {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1), inset 0 0 0 1px rgba(var(--primary-rgb), 0.05) !important;
   outline: none !important;
+  background-color: #ffffff !important;
+}
+
+/* Error state for inputs */
+html.light input:invalid:not(:placeholder-shown),
+html.light textarea:invalid:not(:placeholder-shown) {
+  border-color: var(--danger) !important;
+}
+
+html.light input:invalid:focus,
+html.light textarea:invalid:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 
 
@@ -511,4 +544,34 @@ html.dark [class*="via-"],
 html.dark [class*="text-"],
 html.dark [class*="border-"] {
   /* Let Tailwind dark mode utilities work */
+}
+/* ========================================
+   LIGHT MODE DASHBOARD OVERRIDES
+   ======================================== */
+/* Dashboard card backgrounds - change from dark gradients to white in light mode */
+html.light [class*="from-slate-800"],
+html.light [class*="to-slate-700"],
+html.light [class*="from-slate-900"],
+html.light [class*="bg-slate-800"],
+html.light [class*="bg-slate-700"],
+html.light [class*="bg-slate-900"],
+html.light [class*="bg-gradient-to"] {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+/* Dashboard text colors - change from white to black in light mode */
+html.light [class*="text-white"]:not(button):not(.btn) {
+  color: #000000 !important;
+}
+
+html.light [class*="text-slate-400"],
+html.light [class*="text-slate-500"] {
+  color: #666666 !important;
+}
+
+/* Dashboard page background */
+html.light .min-h-screen {
+  background: #ffffff !important;
+  background-image: none !important;
 }
