@@ -16,7 +16,7 @@ interface CloseDealModalProps {
 }
 
 export interface DealClosingFormData {
-  tcrType: 'Reservation' | 'Contract' | 'EOI';
+  tcrType: string;
   clientName: string;
   clientNumber: string;
   developer: string;
@@ -53,6 +53,7 @@ export default function CloseDealModal({
 }: CloseDealModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [customTcrType, setCustomTcrType] = useState('');
   const [formData, setFormData] = useState<DealClosingFormData>({
     tcrType: 'Contract',
     clientName: '',
@@ -222,7 +223,13 @@ export default function CloseDealModal({
       return;
     }
 
-    // For EOI, these fields are not required
+    // Check that TCR Type is not empty
+    if (!formData.tcrType || formData.tcrType.trim() === '') {
+      alert('Please select or enter a TCR Type');
+      return;
+    }
+
+    // For non-EOI types, these fields are required
     if (formData.tcrType !== 'EOI') {
       if (!formData.unitCode || !formData.unitArea || !formData.contractPrice) {
         alert('Please fill in all required fields');
@@ -231,7 +238,12 @@ export default function CloseDealModal({
     }
 
     try {
-      await onSubmit(formData);
+      // Trim the tcrType value before submission
+      const trimmedFormData = {
+        ...formData,
+        tcrType: formData.tcrType.trim(),
+      };
+      await onSubmit(trimmedFormData);
       setFormData({
         tcrType: 'Contract',
         clientName: '',
@@ -251,6 +263,7 @@ export default function CloseDealModal({
         attachments: [],
         info: '',
       });
+      setCustomTcrType('');
     } catch (error) {
       console.error('Error submitting deal:', error);
     }
@@ -280,16 +293,44 @@ export default function CloseDealModal({
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
                 TCR Type *
               </label>
-              <select
-                name="tcrType"
-                value={formData.tcrType}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 transition-colors"
-              >
-                <option value="Reservation">Reservation</option>
-                <option value="Contract">Contract</option>
-                <option value="EOI">EOI</option>
-              </select>
+              {customTcrType === '__custom__' ? (
+                <input
+                  type="text"
+                  value={formData.tcrType}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, tcrType: value });
+                  }}
+                  onBlur={() => {
+                    if (!formData.tcrType.trim()) {
+                      setCustomTcrType('');
+                    }
+                  }}
+                  placeholder="Enter custom TCR Type"
+                  className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 placeholder-slate-400 dark:placeholder-slate-400 transition-colors"
+                  autoFocus
+                />
+              ) : (
+                <select
+                  value={formData.tcrType}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === 'other') {
+                      setCustomTcrType('__custom__');
+                      setFormData({ ...formData, tcrType: '' });
+                    } else {
+                      setFormData({ ...formData, tcrType: value });
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 transition-colors"
+                >
+                  <option value="">-- Select TCR Type --</option>
+                  <option value="Reservation">Reservation</option>
+                  <option value="Contract">Contract</option>
+                  <option value="EOI">EOI</option>
+                  <option value="other">Other (Custom)</option>
+                </select>
+              )}
             </div>
 
             <div>

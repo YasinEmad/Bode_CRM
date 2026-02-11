@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IDealClosing extends Document {
   leadId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId; // Sales representative who closed the deal
-  tcrType: 'Reservation' | 'Contract' | 'EOI';
+  tcrType: string;
   clientName: string;
   clientNumber: string;
   developer: string;
@@ -39,7 +39,6 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     tcrType: {
       type: String,
-      enum: ['Reservation', 'Contract', 'EOI'],
       required: true,
     },
     clientName: {
