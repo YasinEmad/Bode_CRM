@@ -63,36 +63,21 @@ html.dark {
 /* Light mode override when the html element has the `light` class. */
 html.light {
   --background: #ffffff;
-  --foreground: #000000;
-  --primary: #000000;
-  --primary-rgb: 0,0,0;
-  --primary-variant: #333333;
-  --accent: #666666;
-  --success: #333333;
-  --danger: #333333;
+  --foreground: #171717;
+  --primary: #2563eb;
+  --primary-rgb: 37,99,235;
+  --primary-variant: #1e40af;
+  --accent: #f59e0b;
+  --success: #16a34a;
+  --danger: #ef4444;
   --surface: #ffffff;
-  --muted: #666666;
-  --border: #cccccc;
+  --muted: #6b7280;
+  --border: #e5e7eb;
   --card: #ffffff;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  /* Additional colors for light mode */
-  --info: #000000;
-  --info-light: #f5f5f5;
-  --warning: #666666;
-  --warning-light: #f5f5f5;
-  --secondary: #333333;
-  --secondary-light: #f5f5f5;
-  --teal: #333333;
-  --teal-light: #f5f5f5;
-  --pink: #333333;
-  --pink-light: #f5f5f5;
-  --indigo: #333333;
-  --indigo-light: #f5f5f5;
-  --cyan: #333333;
-  --cyan-light: #f5f5f5;
+  --shadow-sm: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(16, 24, 40, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(16, 24, 40, 0.1);
 }
 
 /* Ensure Tailwind utility classes (e.g. bg-gray-50) don't override light mode when enabled. */
@@ -109,7 +94,6 @@ html.light main,
 html.light header,
 html.light nav,
 html.light section,
-html.light div,
 html.light aside,
 html.light footer,
 html.light article {
@@ -119,14 +103,22 @@ html.light article {
   -webkit-text-fill-color: var(--foreground) !important;
 }
 
-/* Override text utility classes */
-html.light [class*="text-"] {
-  color: var(--foreground) !important;
+/* Exclude z-50 and high z-index elements from global overrides */
+html.light div:not([class*="z-"]):not([class*="z-50"]):not([class*="z-[90"]):not([class*="z-[99"]) {
+  background-image: none !important;
+  background-color: var(--background) !important;
 }
 
-/* Borders - lighter for better definition */
-html.light [class*="border-"] {
-  border-color: var(--border) !important;
+/* EXCEPTION: Allow modal/dropdown elements to use their own colors and styles */
+html.light [class*="z-50"],
+html.light [class*="z-50"] *,
+html.light [class*="z-[9"],
+html.light [class*="z-[9"] * {
+  color: unset !important;
+  border-color: unset !important;
+  background-color: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-image: unset !important;
 }
 
 /* Form elements and buttons */
@@ -307,8 +299,8 @@ html.light .badge-pink {
   border-color: #cccccc !important;
 }
 
-/* Make rounded containers more lively */
-html.light [class*="rounded"] {
+/* Make rounded containers more lively - EXCEPT for z-index elements */
+html.light [class*="rounded"]:not([class*="z-50"]):not([class*="z-[9"]) {
   background-color: var(--card) !important;
   border: 1px solid var(--border) !important;
   position: relative !important;
@@ -575,3 +567,5 @@ html.light .min-h-screen {
   background: #ffffff !important;
   background-image: none !important;
 }
+
+/* Notifications dropdown exceptions */
