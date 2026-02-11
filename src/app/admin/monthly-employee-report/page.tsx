@@ -235,6 +235,13 @@ export default function MonthlyEmployeeReport() {
 
       const employeesData = await employeesResponse.json();
 
+      // Ensure team leaders who may not be in the regular employees list appear
+      // in the monthly report when they have performance entries (e.g., team leaders)
+      const employeesList: any[] = Array.isArray(employeesData.employees)
+        ? [...employeesData.employees]
+        : [];
+
+
       // Fetch all leads for the month
       const leadsResponse = await fetch('/api/leads', {
         headers: {
@@ -302,21 +309,23 @@ export default function MonthlyEmployeeReport() {
       selectedMonthEnd.setHours(23, 59, 59, 999);
 
       const leadsByEmployee = new Map<string, { leadsCount: number; dealsCount: number }>();
-      
+
       leadsData.leads?.forEach((lead: any) => {
         const leadDate = new Date(lead.createdAt);
-        
+
         // Check if lead was created in the selected month
         if (leadDate >= selectedMonthStart && leadDate <= selectedMonthEnd) {
-          const employeeId = lead.assignedTo?._id || lead.assignedTo;
-          
+          const rawEmployeeId = lead.assignedTo?._id || lead.assignedTo;
+          const employeeId = rawEmployeeId ? String(rawEmployeeId) : null;
+          if (!employeeId) return;
+
           if (!leadsByEmployee.has(employeeId)) {
             leadsByEmployee.set(employeeId, { leadsCount: 0, dealsCount: 0 });
           }
-          
+
           const stats = leadsByEmployee.get(employeeId)!;
           stats.leadsCount += 1;
-          
+
           // Count as deal only if status is 'closed'
           if (lead.status === 'closed') {
             stats.dealsCount += 1;
@@ -327,27 +336,52 @@ export default function MonthlyEmployeeReport() {
       // Create map of team performance data by userId (guard when userId is missing)
       const performanceByEmployee = new Map<string, any>();
       performanceData.performances?.forEach((perf: any) => {
-        const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
-        if (employeeId) {
-          performanceByEmployee.set(employeeId, perf);
-        }
+        const rawId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
+        if (!rawId) return;
+        const employeeId = String(rawId);
+        performanceByEmployee.set(employeeId, perf);
       });
 
       // Create map of team leader performance data by userId (guard when userId is missing)
       // Store both explicit (admin-edited) and aggregated data so UI can choose appropriately.
       const leaderPerformanceByEmployee = new Map<string, { explicit?: any; aggregated?: any }>();
       leaderPerformanceData.performances?.forEach((perf: any) => {
-        const employeeId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
-        if (!employeeId) return;
+        const rawId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
+        if (!rawId) return;
+        const employeeId = String(rawId);
 
-        const explicit = (
-          (perf.sheets && Object.keys(perf.sheets).length > 0) ||
-          (perf.meetings && Object.keys(perf.meetings).length > 0) ||
-          (perf.assessments && Object.keys(perf.assessments).length > 0) ||
-          (perf.requests && Object.keys(perf.requests).length > 0)
-        )
-          ? perf
-          : undefined;
+        const days = perf.daysInMonth || 30;
+        const emptyDays: Record<string, number> = {};
+        for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
+
+        // admin-provided leaderPersonal (from TeamLeaderPerformance) if present
+        const adminLeaderPersonal = perf.leaderPersonal
+          ? {
+              sheets: { ...emptyDays, ...(perf.leaderPersonal.sheets || {}) },
+              assessments: { ...emptyDays, ...(perf.leaderPersonal.assessments || {}) },
+              meetings: { ...emptyDays, ...(perf.leaderPersonal.meetings || {}) },
+              requests: { ...emptyDays, ...(perf.leaderPersonal.requests || {}) },
+            }
+          : null;
+
+        // team leader's own TeamPerformance (if present) should override admin values per-day
+        const teamPerf = performanceByEmployee.get(employeeId);
+        const teamLeaderPersonal = teamPerf
+          ? {
+              sheets: { ...emptyDays, ...(teamPerf.sheets || {}) },
+              assessments: { ...emptyDays, ...(teamPerf.assessments || {}) },
+              meetings: { ...emptyDays, ...(teamPerf.meetings || {}) },
+              requests: { ...emptyDays, ...(teamPerf.requests || {}) },
+            }
+          : null;
+
+        // Merge: empty -> team leader -> admin (admin overrides team leader)
+        const explicit = {
+          sheets: { ...emptyDays, ...(teamLeaderPersonal?.sheets || {}), ...(adminLeaderPersonal?.sheets || {}) },
+          assessments: { ...emptyDays, ...(teamLeaderPersonal?.assessments || {}), ...(adminLeaderPersonal?.assessments || {}) },
+          meetings: { ...emptyDays, ...(teamLeaderPersonal?.meetings || {}), ...(adminLeaderPersonal?.meetings || {}) },
+          requests: { ...emptyDays, ...(teamLeaderPersonal?.requests || {}), ...(adminLeaderPersonal?.requests || {}) },
+        };
 
         const aggregated = perf.aggregated ? perf.aggregated : undefined;
 
@@ -378,15 +412,74 @@ export default function MonthlyEmployeeReport() {
         return Object.values(data).reduce((sum, val) => sum + (Number(val) || 0), 0);
       };
 
+      // Ensure employeesList includes any users present in performance results (e.g., team leaders)
+      const existingIds = new Set(employeesList.map((e) => String(e._id)));
+      const performanceSources = [
+        ...(performanceData.performances || []),
+        ...(leaderPerformanceData.performances || []),
+      ];
+      for (const perf of performanceSources) {
+        const rawId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
+        if (!rawId) continue;
+        const idStr = String(rawId);
+        if (!existingIds.has(idStr)) {
+          existingIds.add(idStr);
+          employeesList.push({ _id: idStr, name: perf.name || perf.leaderName || 'Leader', position: 'Team Leader', salary: 0 });
+        }
+      }
+
       // Build report data
-      const report: EmployeeReportData[] = employeesData.employees.map((emp: any) => {
-        const leadsStats = leadsByEmployee.get(emp._id) || { leadsCount: 0, dealsCount: 0 };
-        const attendanceStats = attendanceByEmployee.get(emp._id) || { presentDays: 0, lateMinutes: 0 };
-        const performanceStats = performanceByEmployee.get(emp._id);
-        const leaderStats = leaderPerformanceByEmployee.get(emp._id);
+      const report: EmployeeReportData[] = employeesList.map((emp: any) => {
+        const empIdStr = String(emp._id);
+        const leadsStats = leadsByEmployee.get(empIdStr) || { leadsCount: 0, dealsCount: 0 };
+        const attendanceStats = attendanceByEmployee.get(empIdStr) || { presentDays: 0, lateMinutes: 0 };
+        const performanceStats = performanceByEmployee.get(empIdStr);
+        let leaderStats = leaderPerformanceByEmployee.get(empIdStr);
 
         // For leader rows: prefer explicit admin-edited values for daily metrics; fall back to personal/team performance.
-        const explicitLeader = leaderStats && (leaderStats as any).explicit ? (leaderStats as any).explicit : null;
+        // If the map lookup missed, try to build an explicit object from raw responses as a fallback
+        let explicitLeader = leaderStats && (leaderStats as any).explicit ? (leaderStats as any).explicit : null;
+        if (!explicitLeader) {
+          // look for a perf in leaderPerformanceData
+          const rawPerf = (leaderPerformanceData.performances || []).find((p: any) => {
+            const rawId = p.userId && typeof p.userId === 'object' ? p.userId._id : p.userId || null;
+            return rawId && String(rawId) === empIdStr;
+          });
+          if (rawPerf) {
+            const days = rawPerf.daysInMonth || 30;
+            const emptyDays: Record<string, number> = {};
+            for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
+
+            const adminLP = rawPerf.leaderPersonal
+              ? {
+                  sheets: { ...emptyDays, ...(rawPerf.leaderPersonal.sheets || {}) },
+                  assessments: { ...emptyDays, ...(rawPerf.leaderPersonal.assessments || {}) },
+                  meetings: { ...emptyDays, ...(rawPerf.leaderPersonal.meetings || {}) },
+                  requests: { ...emptyDays, ...(rawPerf.leaderPersonal.requests || {}) },
+                }
+              : null;
+
+            const teamPerf = performanceByEmployee.get(empIdStr);
+            const teamLP = teamPerf
+              ? {
+                  sheets: { ...emptyDays, ...(teamPerf.sheets || {}) },
+                  assessments: { ...emptyDays, ...(teamPerf.assessments || {}) },
+                  meetings: { ...emptyDays, ...(teamPerf.meetings || {}) },
+                  requests: { ...emptyDays, ...(teamPerf.requests || {}) },
+                }
+              : null;
+
+            explicitLeader = {
+              sheets: { ...emptyDays, ...(teamLP?.sheets || {}), ...(adminLP?.sheets || {}) },
+              assessments: { ...emptyDays, ...(teamLP?.assessments || {}), ...(adminLP?.assessments || {}) },
+              meetings: { ...emptyDays, ...(teamLP?.meetings || {}), ...(adminLP?.meetings || {}) },
+              requests: { ...emptyDays, ...(teamLP?.requests || {}), ...(adminLP?.requests || {}) },
+            };
+
+            // also set leaderStats so later code can read aggregated if needed
+            leaderStats = leaderStats || { explicit: explicitLeader, aggregated: rawPerf.aggregated };
+          }
+        }
         const aggregatedLeader = leaderStats && (leaderStats as any).aggregated ? (leaderStats as any).aggregated : null;
 
         const isLeaderAggregatedLeads = aggregatedLeader && typeof aggregatedLeader.aggregatedLeads === 'number';

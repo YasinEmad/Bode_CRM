@@ -146,53 +146,83 @@ export async function GET(req: NextRequest) {
     for (let i = 1; i <= daysInMonth; i++) emptyLeaderDays[`day${i}`] = 0;
     
     let leaderPersonal: any = null;
-    if (adminLeaderPerf) {
-      leaderPersonal = {
-        _id: adminLeaderPerf._id,
-        userId: adminLeaderPerf.userId,
-        name: leaderUser?.name || 'Leader',
-        teamId: undefined,
-        month: adminLeaderPerf.month,
-        daysInMonth,
-        sheets: Object.fromEntries(adminLeaderPerf.sheets || new Map()),
-        assessments: Object.fromEntries(adminLeaderPerf.assessments || new Map()),
-        meetings: Object.fromEntries(adminLeaderPerf.meetings || new Map()),
-        requests: Object.fromEntries(adminLeaderPerf.requests || new Map()),
-      };
-    } else if (leaderPerf) {
-      leaderPersonal = {
-        _id: leaderPerf._id,
-        userId: leaderPerf.userId,
-        name: leaderUser?.name || 'Leader',
-        teamId: leaderPerf.teamId,
-        month: leaderPerf.month,
-        daysInMonth,
-        sheets: Object.fromEntries(leaderPerf.sheets || new Map()),
-        assessments: Object.fromEntries(leaderPerf.assessments || new Map()),
-        meetings: Object.fromEntries(leaderPerf.meetings || new Map()),
-        requests: Object.fromEntries(leaderPerf.requests || new Map()),
-      };
-    } else {
-      // Always create an empty leader personal record for UI display
-      leaderPersonal = {
-        _id: undefined,
-        userId: team.leader,
-        name: leaderUser?.name || 'Leader',
-        teamId: undefined,
-        month: month,
-        daysInMonth,
-        sheets: { ...emptyLeaderDays },
-        assessments: { ...emptyLeaderDays },
-        meetings: { ...emptyLeaderDays },
-        requests: { ...emptyLeaderDays },
-      };
+    // Build leaderPersonal by merging admin-edited TeamLeaderPerformance (if any)
+    // with the leader's own TeamPerformance entry (if any). Leader's own values
+    // should override admin values for the same day.
+    const adminDays = adminLeaderPerf
+      ? {
+          sheets: Object.fromEntries(adminLeaderPerf.sheets || new Map()),
+          assessments: Object.fromEntries(adminLeaderPerf.assessments || new Map()),
+          meetings: Object.fromEntries(adminLeaderPerf.meetings || new Map()),
+          requests: Object.fromEntries(adminLeaderPerf.requests || new Map()),
+        }
+      : null;
+
+    const leaderPerfDays = leaderPerf
+      ? {
+          sheets: Object.fromEntries(leaderPerf.sheets || new Map()),
+          assessments: Object.fromEntries(leaderPerf.assessments || new Map()),
+          meetings: Object.fromEntries(leaderPerf.meetings || new Map()),
+          requests: Object.fromEntries(leaderPerf.requests || new Map()),
+        }
+      : null;
+
+    // Merge with preference to adminDays over leaderPerfDays (admin overrides leader)
+    const merged = {
+      sheets: { ...emptyLeaderDays, ...(leaderPerfDays?.sheets || {}), ...(adminDays?.sheets || {}) },
+      assessments: { ...emptyLeaderDays, ...(leaderPerfDays?.assessments || {}), ...(adminDays?.assessments || {}) },
+      meetings: { ...emptyLeaderDays, ...(leaderPerfDays?.meetings || {}), ...(adminDays?.meetings || {}) },
+      requests: { ...emptyLeaderDays, ...(leaderPerfDays?.requests || {}), ...(adminDays?.requests || {}) },
+    };
+
+    // Build adminLocks per-category/day so frontend can disable leader edits where admin provided values
+    const adminLocks: any = {
+      sheets: {},
+      assessments: {},
+      meetings: {},
+      requests: {},
+    };
+    if (adminDays) {
+      for (let i = 1; i <= daysInMonth; i++) {
+        const key = `day${i}`;
+        adminLocks.sheets[key] = Object.prototype.hasOwnProperty.call(adminDays.sheets || {}, key);
+        adminLocks.assessments[key] = Object.prototype.hasOwnProperty.call(adminDays.assessments || {}, key);
+        adminLocks.meetings[key] = Object.prototype.hasOwnProperty.call(adminDays.meetings || {}, key);
+        adminLocks.requests[key] = Object.prototype.hasOwnProperty.call(adminDays.requests || {}, key);
+      }
     }
+
+    leaderPersonal = {
+      _id: adminLeaderPerf?._id || leaderPerf?._id || undefined,
+      userId: adminLeaderPerf?.userId || leaderPerf?.userId || team.leader,
+      name: leaderUser?.name || 'Leader',
+      teamId: leaderPerf?.teamId || undefined,
+      month: adminLeaderPerf?.month || leaderPerf?.month || month,
+      daysInMonth,
+      sheets: merged.sheets,
+      assessments: merged.assessments,
+      meetings: merged.meetings,
+      requests: merged.requests,
+      adminLocks,
+    };
 
     // Sum sheets/meetings/requests across all performances
     for (const p of performances) {
-      const sheets = Object.fromEntries(p.sheets || new Map());
-      const meetings = Object.fromEntries(p.meetings || new Map());
-      const requests = Object.fromEntries(p.requests || new Map());
+      // If admin edited leader performance, prefer admin values for the leader's own record
+      const isLeaderPerf = String(p.userId) === String(team.leader);
+
+      let sheets = Object.fromEntries(p.sheets || new Map());
+      let meetings = Object.fromEntries(p.meetings || new Map());
+      let requests = Object.fromEntries(p.requests || new Map());
+      let assessments = Object.fromEntries(p.assessments || new Map());
+
+      if (isLeaderPerf && adminLeaderPerf) {
+        // replace leader's daily buckets with admin values (admin overrides leader for aggregation)
+        sheets = Object.fromEntries(adminLeaderPerf.sheets || new Map());
+        meetings = Object.fromEntries(adminLeaderPerf.meetings || new Map());
+        requests = Object.fromEntries(adminLeaderPerf.requests || new Map());
+        assessments = Object.fromEntries(adminLeaderPerf.assessments || new Map());
+      }
 
       for (const [k, v] of Object.entries(sheets)) {
         aggregated.sheets[k] = (aggregated.sheets[k] || 0) + Number(v || 0);
@@ -207,14 +237,14 @@ export async function GET(req: NextRequest) {
       // For assessments: leader or admin may have written assessments on member records.
       // Sum all assessments across performances (only leader/admin can write them),
       // so aggregated includes any assessments present on member or leader records.
-      const assessments = Object.fromEntries(p.assessments || new Map());
       for (const [k, v] of Object.entries(assessments)) {
         aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
       }
     }
 
-    // Include admin-edited leader performance values in the aggregated totals as well
-    if (adminLeaderPerf) {
+    // If adminLeaderPerf exists but there was no leader TeamPerformance record included
+    // in `performances`, we still need to include admin values once into aggregated totals.
+    if (adminLeaderPerf && !leaderPerf) {
       try {
         const sheets = Object.fromEntries(adminLeaderPerf.sheets || new Map());
         const meetings = Object.fromEntries(adminLeaderPerf.meetings || new Map());

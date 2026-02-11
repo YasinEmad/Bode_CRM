@@ -15,6 +15,12 @@ interface PerformanceData {
   assessments: Record<string, number>;
   meetings: Record<string, number>;
   requests: Record<string, number>;
+  adminLocks?: {
+    sheets: Record<string, boolean>;
+    assessments: Record<string, boolean>;
+    meetings: Record<string, boolean>;
+    requests: Record<string, boolean>;
+  };
   aggregated?: boolean;
   leaderPersonal?: boolean;
   leadsCount?: number;
@@ -127,18 +133,25 @@ export default function TeamReport() {
 
       const data = await response.json();
 
-      const formattedData: PerformanceData[] = data.performances.map((perf: any) => ({
-        userId: perf.userId,
-        name: perf.name || 'Unknown',
-        month: perf.month,
-        daysInMonth: perf.daysInMonth,
-        sheets: perf.sheets,
-        assessments: perf.assessments,
-        meetings: perf.meetings,
-        requests: perf.requests,
-        leadsCount: perf.leadsCount || 0,
-        dealsCount: perf.dealsCount || 0,
-      }));
+      const formattedData: PerformanceData[] = data.performances.map((perf: any) => {
+        const days = perf.daysInMonth || 30;
+        const emptyDays: Record<string, number> = {};
+        for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
+
+        return {
+          userId: perf.userId,
+          name: perf.name || 'Unknown',
+          month: perf.month,
+          daysInMonth: perf.daysInMonth,
+          // Merge returned day buckets over zero-filled days so missing keys show 0
+          sheets: { ...emptyDays, ...(perf.sheets || {}) },
+          assessments: { ...emptyDays, ...(perf.assessments || {}) },
+          meetings: { ...emptyDays, ...(perf.meetings || {}) },
+          requests: { ...emptyDays, ...(perf.requests || {}) },
+          leadsCount: perf.leadsCount || 0,
+          dealsCount: perf.dealsCount || 0,
+        };
+      });
 
       // Add aggregated row if present
       if (data.aggregatedLeader) {
@@ -170,6 +183,8 @@ export default function TeamReport() {
           assessments: lp.assessments,
           meetings: lp.meetings,
           requests: lp.requests,
+          // adminLocks indicates which days/categories were set by admin and should be locked
+          adminLocks: lp.adminLocks || { sheets: {}, assessments: {}, meetings: {}, requests: {} },
           leaderPersonal: true,
           leadsCount: (lp as any).leaderOwnLeads ?? 0,
           dealsCount: (lp as any).leaderOwnDeals ?? 0,
@@ -446,9 +461,13 @@ export default function TeamReport() {
                                   type="number"
                                   min="0"
                                   value={value}
-                                  disabled={!!employee.aggregated || !isToday}
+                                  disabled={
+                                    !!employee.aggregated || !isToday ||
+                                    !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey])
+                                  }
                                   onChange={(e) => {
-                                    if (employee.aggregated || !isToday) return;
+                                    const adminLocked = !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey]);
+                                    if (employee.aggregated || !isToday || adminLocked) return;
                                     updateCellValue(
                                       employee,
                                       selectedCategory,
