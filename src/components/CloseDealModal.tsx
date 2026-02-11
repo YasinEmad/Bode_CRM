@@ -38,8 +38,6 @@ export interface DealClosingFormData {
 
 // Unit type & finishing type are free-text fields now (no predefined choices)
 
-const paymentPlans = ['0', '1 year', '2 years', '3 years', '4 years', '5 years', '6 years', '7 years', '8 years', '9 years', '10 years', '11 years', '12 years', '13 years', '14 years', '15 years'];
-
 export default function CloseDealModal({
   isOpen,
   leadId,
@@ -67,7 +65,7 @@ export default function CloseDealModal({
     contractDate: new Date().toISOString().split('T')[0],
     finishingType: '',
     deliveryDate: new Date().getFullYear(),
-    paymentPlan: '0',
+    paymentPlan: '',
     downPaymentPercentage: 0,
     downPaymentAmount: 0,
     paymentByMonth: 0,
@@ -256,7 +254,7 @@ export default function CloseDealModal({
         contractDate: new Date().toISOString().split('T')[0],
         finishingType: '',
         deliveryDate: new Date().getFullYear(),
-        paymentPlan: '0',
+        paymentPlan: '',
         downPaymentPercentage: 0,
         downPaymentAmount: 0,
         paymentByMonth: 0,
@@ -513,18 +511,14 @@ export default function CloseDealModal({
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
                 Payment Plan *
               </label>
-              <select
+              <input
+                type="text"
                 name="paymentPlan"
                 value={formData.paymentPlan}
                 onChange={handleInputChange}
+                placeholder="Payment Plan (e.g., 3 years, 24 months)"
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 transition-colors"
-              >
-                {paymentPlans.map((plan) => (
-                  <option key={plan} value={plan}>
-                    {plan}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>

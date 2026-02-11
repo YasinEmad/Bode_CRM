@@ -15,7 +15,7 @@ export interface IDealClosing extends Document {
   project?: string;
   finishingType: string;
   deliveryDate: number; // Year
-  paymentPlan: '0' | '1 year' | '2 years' | '3 years' | '4 years' | '5 years' | '6 years' | '7 years' | '8 years' | '9 years' | '10 years' | '11 years' | '12 years' | '13 years' | '14 years' | '15 years';
+  paymentPlan: string;
   downPaymentPercentage: number;
   downPaymentAmount: number;
   paymentByMonth: number; // Monthly installment amount
@@ -101,24 +101,6 @@ const DealClosingSchema = new Schema<IDealClosing>(
     },
     paymentPlan: {
       type: String,
-      enum: [
-        '0',
-        '1 year',
-        '2 years',
-        '3 years',
-        '4 years',
-        '5 years',
-        '6 years',
-        '7 years',
-        '8 years',
-        '9 years',
-        '10 years',
-        '11 years',
-        '12 years',
-        '13 years',
-        '14 years',
-        '15 years',
-      ],
       required: function(this: any): boolean {
         return this.tcrType !== 'EOI';
       },
