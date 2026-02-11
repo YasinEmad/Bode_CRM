@@ -16,6 +16,9 @@ export function generateDeviceId(): string {
 function createDeviceFingerprint(): string {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const hardwareCores = navigator.hardwareConcurrency || 'na';
+  const deviceMemory = (navigator as any).deviceMemory || 'na';
+  const maxTouchPoints = navigator.maxTouchPoints || 0;
+  const userAgent = navigator.userAgent;
 
   const fingerprint_data = [
     navigator.language,
@@ -24,6 +27,9 @@ function createDeviceFingerprint(): string {
     screen.colorDepth,
     timezone,
     hardwareCores,
+    deviceMemory,
+    maxTouchPoints,
+    userAgent,
   ].join('|');
 
   return btoa(fingerprint_data);
