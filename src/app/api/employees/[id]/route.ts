@@ -94,7 +94,7 @@ export async function GET(
     const { id } = await params;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const emp = await User.findById(id).select('_id username name email phone position salary createdAt deviceId deviceIds');
+    const emp = await User.findById(id).select('_id username name email phone position salary createdAt joinDate deviceId deviceIds');
     if (!emp) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
 
     const leadsCount = await Lead.countDocuments({ assignedTo: id });
@@ -148,7 +148,7 @@ export async function PUT(
       id,
       updateData,
       { new: true }
-    ).select('_id username name email phone position salary createdAt deviceId');
+    ).select('_id username name email phone position salary createdAt joinDate deviceId');
 
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });

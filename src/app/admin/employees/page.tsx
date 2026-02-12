@@ -16,6 +16,7 @@ interface Employee {
   position?: string;
   salary?: number;
   createdAt: string;
+  joinDate?: string;
   leadsCount?: number;
   closedDealsCount?: number;
 }
@@ -93,6 +94,10 @@ export default function AdminEmployees() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log('👥 Employees fetched:', data.employees?.map((e: any) => ({ 
+        name: e.name, 
+        joinDate: e.joinDate 
+      })));
       setEmployees(Array.isArray(data.employees) ? data.employees : []);
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -358,10 +363,12 @@ export default function AdminEmployees() {
       }
 
       const data = await res.json();
-      setEmployees([...(employees || []), data.employee]);
       updateToast(toastId, 'Employee created successfully!', 'success');
+      console.log('✅ New employee response:', data.employee);
       setShowAddModal(false);
       setAddFormData({ username: '', name: '', password: '', position: '', phone: '' });
+      // Refresh employees list to ensure all data is properly loaded
+      await fetchEmployees();
     } catch (error) {
       updateToast(toastId, error instanceof Error ? error.message : 'Failed to create employee', 'error');
     }
@@ -425,6 +432,7 @@ export default function AdminEmployees() {
         'Phone': emp.phone || 'N/A',
         'Position': emp.position ? emp.position.charAt(0).toUpperCase() + emp.position.slice(1) : 'N/A',
         'Salary': emp.salary || 0,
+        'Join Date': emp.joinDate ? new Date(emp.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A',
         'Total Leads': emp.leadsCount || 0,
         'Closed Deals': emp.closedDealsCount || 0,
         'Conversion Rate': `${conversionRate}%`,
@@ -581,6 +589,7 @@ export default function AdminEmployees() {
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Phone</th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Position</th>
                     <th className="px-6 py-4 text-left text-sm font-bold text-white">Salary</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-white">Join Date</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-white">Leads</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-white">Closed</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-white">Conv. Rate</th>
@@ -615,6 +624,11 @@ export default function AdminEmployees() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-white font-semibold">${(emp.salary || 0).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-slate-400">
+                          {emp.joinDate ? (
+                            new Date(emp.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                          ) : '—'}
+                        </td>
                         <td className="px-6 py-4 text-sm text-center">
                           <span className="inline-block bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg font-semibold">
                             {emp.leadsCount || 0}

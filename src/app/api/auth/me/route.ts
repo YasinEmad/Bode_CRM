@@ -26,13 +26,13 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const user = await User.findById(payload.userId).lean();
+    const user = await User.findById(payload.userId).select('_id username name role position salary joinDate teamId deviceId deviceIds createdAt').lean();
     if (!user) {
       console.log('[auth/me] User not found in DB, returning 404');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    console.log('[auth/me] Returning user:', { userId: user._id, username: user.username, role: user.role });
+    console.log('[auth/me] Returning user:', { userId: user._id, username: user.username, role: user.role, joinDate: user.joinDate });
     return NextResponse.json({
       user: {
         id: String(user._id),
@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         role: user.role,
         position: user.position || '',
         salary: typeof user.salary === 'number' ? user.salary : 0,
+        joinDate: user.joinDate || user.createdAt,
         teamId: user.teamId ? String(user.teamId) : null,
         deviceId: user.deviceId || null,
         deviceIds: Array.isArray(user.deviceIds) ? user.deviceIds : (user.deviceId ? [user.deviceId] : []),

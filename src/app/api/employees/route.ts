@@ -25,9 +25,13 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const employees = await User.find({ role: 'sales' }).select('_id username name email phone position salary createdAt deviceId deviceIds');
+    const employees = await User.find({ role: 'sales' }).select('_id username name email phone position salary createdAt joinDate deviceId deviceIds');
     
-    console.log('Employees from DB:', employees.map(e => ({ name: e.name, salary: e.salary })));
+    console.log('📋 Fetched employees:', employees.map(e => ({ 
+      name: e.name, 
+      joinDate: e.joinDate,
+      joinDateType: typeof e.joinDate
+    })));
     
     // Get leads and deals data for each employee
     const employeesWithStats = await Promise.all(
@@ -95,9 +99,17 @@ export async function POST(req: NextRequest) {
       role: 'sales',
       position: position || '',
       phone: phone || '',
+      joinDate: new Date(),
     });
 
-    return NextResponse.json({ success: true, employee: { id: user._id, username: user.username, name: user.name, role: user.role, position: user.position } }, { status: 201 });
+    console.log('✅ Employee created:', { 
+      id: user._id, 
+      username: user.username, 
+      joinDate: user.joinDate,
+      joinDateType: typeof user.joinDate
+    });
+
+    return NextResponse.json({ success: true, employee: { id: user._id, username: user.username, name: user.name, role: user.role, position: user.position, joinDate: user.joinDate, email: user.email, phone: user.phone, salary: user.salary, leadsCount: 0, closedDealsCount: 0 } }, { status: 201 });
   } catch (error) {
     console.error('Error creating employee:', error);
     return NextResponse.json({ error: 'Failed to create employee' }, { status: 500 });

@@ -13,6 +13,7 @@ interface MyKPIData {
   name: string;
   position: string;
   salary: number;
+  joinDate?: Date;
   leadsCount: number;
   closedDealsCount: number;
   attendancePercentage: number;
@@ -148,6 +149,12 @@ export default function MyMonthlyKPIs() {
       }
 
       const userData = await userResponse.json();
+
+      console.log('👤 User data received:', { 
+        name: userData.user.name, 
+        joinDate: userData.user.joinDate,
+        joinDateType: typeof userData.user.joinDate
+      });
 
       // Fetch leads for this employee for the selected month
       const leadsResponse = await fetch('/api/leads', {
@@ -327,6 +334,7 @@ export default function MyMonthlyKPIs() {
         name: userData.user.name,
         position: userData.user.position || 'N/A',
         salary: userData.user.salary || 0,
+        joinDate: userData.user.joinDate,
         leadsCount,
         closedDealsCount: dealsCount,
         attendancePercentage,
@@ -744,8 +752,22 @@ export default function MyMonthlyKPIs() {
 
                     {/* Period */}
                     <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50">
-                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Report Period</p>
-                      <p className="text-white font-bold text-lg">{selectedMonthName} {selectedYear}</p>
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Join Date</p>
+                      <p className="text-white font-bold text-lg">
+                        {kpiData.joinDate 
+                          ? (() => {
+                              try {
+                                const dateObj = typeof kpiData.joinDate === 'string' 
+                                  ? new Date(kpiData.joinDate) 
+                                  : kpiData.joinDate;
+                                return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                              } catch (e) {
+                                return 'N/A';
+                              }
+                            })()
+                          : 'N/A'
+                        }
+                      </p>
                     </div>
                   </div>
                 </div>

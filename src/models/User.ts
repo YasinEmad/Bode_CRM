@@ -13,6 +13,7 @@ export interface IUser extends Document {
   deviceId?: string; // Legacy single Device ID for check-in verification
   deviceIds?: string[]; // Allowed device IDs (multiple devices)
   teamId?: mongoose.Types.ObjectId | null; // Reference to team
+  joinDate?: Date; // Date when employee joined
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +72,10 @@ const UserSchema = new Schema<IUser>(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
+    },
+    joinDate: {
+      type: Date,
+      default: Date.now,
     },
   },
   {
