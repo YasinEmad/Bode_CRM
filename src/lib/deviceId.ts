@@ -79,6 +79,21 @@ export function resetDeviceId(): void {
 }
 
 /**
+ * حفظ معرف جهاز محدد في localStorage
+ * يُستخدم عند التحقق الناجح من Device ID المُسموح به من Backend
+ */
+export function setDeviceId(deviceId: string): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('bode_device_id', deviceId);
+      console.log('[setDeviceId] Saved device ID to localStorage:', deviceId.substring(0, 20) + '...');
+    } catch (error) {
+      console.error('[setDeviceId] Failed to save device ID:', error);
+    }
+  }
+}
+
+/**
  * مقارنة بسيطة: هل البصمات متطابقة
  */
 export function compareDeviceIds(savedDeviceId: string, currentDeviceId: string): boolean {

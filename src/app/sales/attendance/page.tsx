@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, MapPin, Check, Crosshair, AlertCircle, Copy, X } from 'lucide-react';
-import { getDeviceId, generateDeviceId } from '@/lib/deviceId';
+import { getDeviceId, generateDeviceId, setDeviceId } from '@/lib/deviceId';
 import { formatAccuracy, ACCURACY_THRESHOLDS, calculateDistance } from '@/lib/geolocation';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
@@ -113,8 +113,9 @@ export default function SalesAttendance() {
       }
 
       if (isAllowed) {
-        // Update localStorage with current device ID for future reference
-        getDeviceId(); // This will cache the current device ID
+        // Save the verified device ID to localStorage for future use
+        console.log('💾 Saving verified Device ID to localStorage...');
+        setDeviceId(currentDeviceId);
         console.log('✅ Device ID is registered - proceeding with attendance');
         return true;
       }
@@ -332,8 +333,8 @@ export default function SalesAttendance() {
       return;
     }
 
-    // First, check and validate device ID
-    const deviceIdValid = await checkAndValidateDeviceId();
+    // First, check and validate device ID (with small delay to ensure DB is ready)
+    const deviceIdValid = await checkAndValidateDeviceId(true);
     if (!deviceIdValid) {
       // Dialog will be shown automatically via setDeviceIdMismatch
       return;
