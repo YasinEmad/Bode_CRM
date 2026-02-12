@@ -49,6 +49,7 @@ export default function SalesAttendance() {
   const [officeSettings, setOfficeSettings] = useState<SystemSettings | null>(null);
   const [testedLocation, setTestedLocation] = useState<{ latitude: number; longitude: number; accuracy: number } | null>(null);
   const [deviceIdMismatch, setDeviceIdMismatch] = useState<{ lastDeviceId: string; newDeviceId: string } | null>(null);
+  const [checkingDeviceAgain, setCheckingDeviceAgain] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'sales')) {
@@ -66,37 +67,75 @@ export default function SalesAttendance() {
   // Check device ID and show dialog if mismatch (called during Mark Attendance)
   const checkAndValidateDeviceId = async (): Promise<boolean> => {
     try {
-      const cachedDeviceId = getDeviceId();
-      const newDeviceId = generateDeviceId();
-
+      const currentDeviceId = generateDeviceId();
+      
       console.log('\n========== DEVICE VALIDATION ==========');
-      console.log('📱 Cached Device ID:', cachedDeviceId.substring(0, 30) + '...');
-      console.log('📱 Generated Device ID:', newDeviceId.substring(0, 30) + '...');
+      console.log('📱 Current Device ID:', currentDeviceId.substring(0, 30) + '...');
 
-      // إذا كانت متطابقة ولا مشكلة
-      if (cachedDeviceId === newDeviceId) {
-        console.log('✅ Device IDs match - proceeding with attendance');
+      // Fetch user data from backend to check allowed device IDs
+      const meResponse = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!meResponse.ok) {
+        console.error('❌ Failed to fetch user data');
+        addToast('Failed to verify device. Please try again.', 'error');
+        return false;
+      }
+
+      const userData = await meResponse.json();
+      const allowedDeviceIds = (userData.user?.deviceIds as string[]) || [];
+      
+      console.log('📋 Allowed Device IDs from backend:', allowedDeviceIds.length, 'devices');
+      console.log('   Full list:', allowedDeviceIds);
+
+      // Check if current device is allowed
+      const isAllowed = allowedDeviceIds.includes(currentDeviceId);
+      
+      console.log('✅ Device Check Result:', isAllowed ? 'ALLOWED' : 'NOT ALLOWED');
+
+      if (isAllowed) {
+        // Update localStorage with current device ID for future reference
+        getDeviceId(); // This will cache the current device ID
+        console.log('✅ Device ID is registered - proceeding with attendance');
         return true;
       }
 
-      // Media mismatch - show dialog and ask user to send new ID to admin
-      console.warn('⚠️ Device ID MISMATCH - showing user dialog');
+      // Device not allowed - show dialog with option to retry
+      console.warn('⚠️ Device NOT in allowed list - showing user dialog');
       setDeviceIdMismatch({
-        lastDeviceId: cachedDeviceId,
-        newDeviceId: newDeviceId,
+        lastDeviceId: getDeviceId(),
+        newDeviceId: currentDeviceId,
       });
       return false;
     } catch (error) {
       console.error('❌ Error validating device ID:', error);
+      addToast('Error validating device. Please try again.', 'error');
       return false;
     }
   };
 
   const handleDeviceMismatchConfirm = async () => {
-    // User confirmed they'll send the new device ID to admin
-    // Clear the dialog and allow them to try again
-    setDeviceIdMismatch(null);
-    addToast('✅ Please send the Device ID to your administrator. Once they register it, you can mark attendance.', 'success');
+    setCheckingDeviceAgain(true);
+    
+    try {
+      // Try to validate again in case admin just registered the device
+      const isValid = await checkAndValidateDeviceId();
+      
+      if (isValid) {
+        setDeviceIdMismatch(null);
+        setCheckingDeviceAgain(false);
+        addToast('✅ Device has been registered! You can now mark attendance.', 'success');
+        return;
+      }
+
+      // Still not registered - keep dialog open
+      setCheckingDeviceAgain(false);
+      addToast('Device ID not yet registered by admin. Please try again after admin registers it.', 'warning');
+    } catch (error) {
+      setCheckingDeviceAgain(false);
+      addToast('Error checking device registration.', 'error');
+    }
   };
 
   const handleCopyNewDeviceId = async () => {
@@ -593,12 +632,12 @@ export default function SalesAttendance() {
             {/* Content */}
             <div className="p-6 space-y-5">
               <p className="text-slate-300">
-                We detected a different device. For security, please send the new Device ID below to your administrator to register it.
+                We detected a different device than your last registration. Your administrator may have already registered this device ID. Click "Check Again" to verify, or send the Device ID below to your administrator if needed.
               </p>
 
               {/* New Device ID Card */}
               <div className="bg-slate-700/50 rounded-lg p-4 border border-cyan-600">
-                <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">📱 New Device ID</p>
+                <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">📱 Current Device ID</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs font-mono text-cyan-300 break-all bg-slate-800 p-3 rounded">
                     {deviceIdMismatch.newDeviceId}
@@ -613,17 +652,15 @@ export default function SalesAttendance() {
                 </div>
               </div>
 
-              {/* Last Device ID Card */}
-              <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600">
-                <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">📱 Last Registered Device ID</p>
-                <code className="text-xs font-mono text-slate-400 break-all bg-slate-800 p-3 rounded block">
-                  {deviceIdMismatch.lastDeviceId}
-                </code>
+              <div className="bg-green-900/30 rounded-lg p-3 border border-green-700">
+                <p className="text-green-300 text-sm">
+                  ✓ <strong>Click "Check Again"</strong> - Your admin may have just registered this device!
+                </p>
               </div>
 
               <div className="bg-blue-900/30 rounded-lg p-3 border border-blue-700">
                 <p className="text-blue-300 text-sm">
-                  ℹ️ <strong>Steps:</strong> Copy the new Device ID and send it to your administrator. Once they register it, you can mark attendance normally.
+                  ℹ️ If not registered yet, copy the Device ID and send it to your administrator.
                 </p>
               </div>
             </div>
@@ -632,15 +669,24 @@ export default function SalesAttendance() {
             <div className="border-t border-slate-700 px-6 py-4 flex gap-3">
               <button
                 onClick={() => setDeviceIdMismatch(null)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all"
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
+                disabled={checkingDeviceAgain}
               >
-                Cancel
+                Close
               </button>
               <button
                 onClick={handleDeviceMismatchConfirm}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition-all"
+                disabled={checkingDeviceAgain}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                I'll Update It
+                {checkingDeviceAgain ? (
+                  <>
+                    <Loader size={18} className="animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  'Check Again'
+                )}
               </button>
             </div>
           </div>
