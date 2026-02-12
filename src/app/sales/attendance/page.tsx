@@ -48,7 +48,7 @@ export default function SalesAttendance() {
   const [locationDebug, setLocationDebug] = useState<LocationDebug | null>(null);
   const [officeSettings, setOfficeSettings] = useState<SystemSettings | null>(null);
   const [testedLocation, setTestedLocation] = useState<{ latitude: number; longitude: number; accuracy: number } | null>(null);
-  const [deviceIdMismatch, setDeviceIdMismatch] = useState<{ lastDeviceId: string; newDeviceId: string } | null>(null);
+  const [deviceIdMismatch, setDeviceIdMismatch] = useState<{ lastDeviceId: string; newDeviceId: string; isFirstTime?: boolean } | null>(null);
   const [checkingDeviceAgain, setCheckingDeviceAgain] = useState(false);
 
   useEffect(() => {
@@ -120,11 +120,22 @@ export default function SalesAttendance() {
         return true;
       }
 
+      // Check if this is a first-time user (no devices registered yet)
+      const isFirstTime = allowedDeviceIds.length === 0;
+      if (isFirstTime) {
+        console.log('👤 First-time user - no devices registered yet');
+        console.log('💾 Auto-registering first device...');
+        // Auto-register first device for new users
+        setDeviceId(currentDeviceId);
+        return true;
+      }
+
       // Device not allowed - show dialog with option to retry
       console.warn('⚠️ Device NOT in allowed list - showing user dialog');
       setDeviceIdMismatch({
         lastDeviceId: getDeviceId(),
         newDeviceId: currentDeviceId,
+        isFirstTime: false,
       });
       return false;
     } catch (error) {
