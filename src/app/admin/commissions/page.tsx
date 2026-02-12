@@ -315,7 +315,7 @@ export default function AdminCommissions() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2">Commission Management</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">Commission Management</h1>
           <p className="text-slate-400">Review and approve employee commissions</p>
           
           {/* Controls: status chips, search and view toggle */}
@@ -337,7 +337,7 @@ export default function AdminCommissions() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none">
+              <div className="relative flex-1 w-full sm:flex-none">
                 <input
                   placeholder="Search client, employee or phone..."
                   value={searchQuery}
@@ -452,8 +452,8 @@ export default function AdminCommissions() {
                       {/* Header: Client & Project & Status */}
                       <div className="flex items-start justify-between p-5 border-b border-slate-600 bg-slate-900/50">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-bold text-white">{(commission.dealId as any)?.clientName || 'Unknown Client'}</h3>
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <h3 className="text-lg font-bold text-white">{(commission.dealId as any)?.clientName || 'Unknown Client'}</h3>
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${statusBadge(commission.status)}`}>
                               {commission.status === 'pending' && <Clock size={14} />}
                               {commission.status === 'approved' && <CheckCircle size={14} />}
@@ -469,14 +469,14 @@ export default function AdminCommissions() {
                             </div>
                           )}
                         </div>
-                        <div className="text-right ml-4">
+                        <div className="text-right mt-3 sm:mt-0 ml-0 sm:ml-4">
                           <p className="text-xs text-slate-400 uppercase font-medium mb-1">Commission</p>
                           <p className="text-2xl font-bold text-emerald-400">${commission.amount.toLocaleString()}</p>
                         </div>
                       </div>
 
                       {/* Deal Details */}
-                      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-slate-600">
+                      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 border-b border-slate-600">
                         <div>
                           <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Developer</p>
                           <p className="text-sm font-semibold text-slate-100">{(commission.dealId as any)?.developer || '—'}</p>
@@ -496,7 +496,7 @@ export default function AdminCommissions() {
                       </div>
 
                     {/* Action Buttons */}
-                    <div className="p-4 flex gap-2 flex-wrap">
+                    <div className="p-4 flex gap-2 flex-wrap items-center">
                       {commission.status === 'pending' ? (
                         <>
                           <button
@@ -546,7 +546,7 @@ export default function AdminCommissions() {
                       {(commission.status === 'rejected' || commission.status === 'paid') && (
                         <button 
                           onClick={() => setDeleteTargetId(commission._id)} 
-                          className="flex items-center gap-2 ml-auto px-4 py-2 bg-red-600/70 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-all"
+                          className="flex items-center gap-2 sm:ml-auto px-4 py-2 bg-red-600/70 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-all"
                         >
                           Delete
                         </button>
