@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, Calendar, Users } from 'lucide-react';
+import { Loader, Calendar, Users, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TeamLeaderPerformance {
   userId: string;
@@ -66,6 +66,7 @@ export default function TeamLeadersMonthlyReport() {
   const [leaderData, setLeaderData] = useState<TeamLeaderPerformance[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
+  const [expandedLeaders, setExpandedLeaders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const now = new Date();
@@ -198,6 +199,15 @@ export default function TeamLeadersMonthlyReport() {
     } finally {
       setSavingData(false);
     }
+  };
+
+  const toggleLeader = (leaderId: string) => {
+    setExpandedLeaders((prev) => {
+      const next = new Set(prev);
+      if (next.has(leaderId)) next.delete(leaderId);
+      else next.add(leaderId);
+      return next;
+    });
   };
 
   const handleLocalChange = (userId: string, category: 'sheets' | 'assessments' | 'meetings' | 'requests', day: string, value: number) => {
@@ -341,26 +351,63 @@ export default function TeamLeadersMonthlyReport() {
           </div>
         ) : (
           <div className="space-y-6">
-            {leaderData.map((leader) => (
+            {leaderData.map((leader) => {
+              const isExpanded = expandedLeaders.has(leader.userId);
+              return (
               <div
                 key={leader.userId}
                 className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700"
               >
                 {/* Leader Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-4 border-b border-slate-600 gap-3 sm:gap-0">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <h3 className="text-xl sm:text-2xl font-bold text-white line-clamp-1">{leader.leaderName}</h3>
-                    {(() => {
-                      const adminTotal =
-                        calculateTotal(leader.leaderPersonal?.sheets) +
-                        calculateTotal(leader.leaderPersonal?.assessments) +
-                        calculateTotal(leader.leaderPersonal?.meetings) +
-                        calculateTotal(leader.leaderPersonal?.requests);
-                      return adminTotal > 0 ? (
-                        <span className="text-xs bg-indigo-600 text-white px-2 py-1 rounded-lg font-semibold">Admin Entries</span>
-                      ) : null;
-                    })()}
+                <div
+                  onClick={() => toggleLeader(leader.userId)}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-4 border-b border-slate-600 gap-3 sm:gap-0 cursor-pointer select-none ${isExpanded ? 'bg-slate-700/40' : ''}`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                        {isExpanded ? (
+                          <ChevronUp size={18} className="text-slate-300" />
+                        ) : (
+                          <ChevronDown size={18} className="text-slate-300" />
+                        )}
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-bold text-white line-clamp-1">{leader.leaderName}</h3>
+                      {(() => {
+                        const adminTotal =
+                          calculateTotal(leader.leaderPersonal?.sheets) +
+                          calculateTotal(leader.leaderPersonal?.assessments) +
+                          calculateTotal(leader.leaderPersonal?.meetings) +
+                          calculateTotal(leader.leaderPersonal?.requests);
+                        return adminTotal > 0 ? (
+                          <span className="text-xs bg-indigo-600 text-white px-2 py-1 rounded-lg font-semibold">Admin Entries</span>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
+                        <span className="font-semibold">Team Leads:</span>{' '}
+                        <span className="text-white">{leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? 0}</span>
+                      </div>
+
+                      <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
+                        <span className="font-semibold">Team Deals:</span>{' '}
+                        <span className="text-white">{leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? 0}</span>
+                      </div>
+
+                      <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
+                        <span className="font-semibold">Leader Leads:</span>{' '}
+                        <span className="text-white">{leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? 0}</span>
+                      </div>
+
+                      <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
+                        <span className="font-semibold">Leader Deals:</span>{' '}
+                        <span className="text-white">{leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? 0}</span>
+                      </div>
+                    </div>
                   </div>
+
                   <div className="text-left sm:text-right">
                     <p className="text-slate-400 text-xs sm:text-sm mb-1">Personal Total</p>
                     <p className={`text-2xl sm:text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
@@ -368,7 +415,8 @@ export default function TeamLeadersMonthlyReport() {
                     </p>
                   </div>
                 </div>
-                  {/* Daily editable calendar-style grid (admin can edit any day) */}
+                {/* Daily editable calendar-style grid (admin can edit any day) */}
+                {isExpanded && (
                   <div className="mb-4 overflow-x-auto">
                     {!leader.leaderPersonal && (
                       <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600 rounded text-yellow-200 text-xs sm:text-sm">
@@ -443,11 +491,13 @@ export default function TeamLeadersMonthlyReport() {
                       </div>
                     </div>
                   </div>
+                )}
 
                 {/* Weekly summaries removed - showing only leader personal daily table */}
-            
+
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
