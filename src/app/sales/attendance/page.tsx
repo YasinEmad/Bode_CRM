@@ -4,8 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Loader, MapPin, Check, Crosshair, AlertCircle } from 'lucide-react';
-import { getDeviceId } from '@/lib/deviceId';
+import { Loader, MapPin, Check, Crosshair, AlertCircle, Copy, X } from 'lucide-react';
+import { getDeviceId, generateDeviceId } from '@/lib/deviceId';
 import { formatAccuracy, ACCURACY_THRESHOLDS, calculateDistance } from '@/lib/geolocation';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
@@ -48,8 +48,7 @@ export default function SalesAttendance() {
   const [locationDebug, setLocationDebug] = useState<LocationDebug | null>(null);
   const [officeSettings, setOfficeSettings] = useState<SystemSettings | null>(null);
   const [testedLocation, setTestedLocation] = useState<{ latitude: number; longitude: number; accuracy: number } | null>(null);
-  const [isDeviceRegistered, setIsDeviceRegistered] = useState(true);
-  const [blockedDeviceId, setBlockedDeviceId] = useState<string | null>(null);
+  const [deviceIdMismatch, setDeviceIdMismatch] = useState<{ lastDeviceId: string; newDeviceId: string } | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'sales')) {
@@ -59,107 +58,55 @@ export default function SalesAttendance() {
 
   useEffect(() => {
     if (token && user) {
-      checkDeviceIdRegistration();
       fetchAttendance();
       fetchOfficeSettings();
     }
   }, [token, user]);
 
-  const checkDeviceIdRegistration = async () => {
+  // Check device ID and show dialog if mismatch (called during Mark Attendance)
+  const checkAndValidateDeviceId = async (): Promise<boolean> => {
     try {
-      const currentDeviceId = getDeviceId();
-      console.log('\n========== DEVICE ID CHECK START ==========');
-      console.log('📱 [1] Current Device ID from localStorage:', currentDeviceId.substring(0, 30) + '...');
-      console.log('📱 [1] Full ID:', currentDeviceId);
-      
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const cachedDeviceId = getDeviceId();
+      const newDeviceId = generateDeviceId();
 
-      if (!response.ok) {
-        console.error('❌ Failed to fetch user data, status:', response.status);
-        return;
+      console.log('\n========== DEVICE VALIDATION ==========');
+      console.log('📱 Cached Device ID:', cachedDeviceId.substring(0, 30) + '...');
+      console.log('📱 Generated Device ID:', newDeviceId.substring(0, 30) + '...');
+
+      // إذا كانت متطابقة ولا مشكلة
+      if (cachedDeviceId === newDeviceId) {
+        console.log('✅ Device IDs match - proceeding with attendance');
+        return true;
       }
 
-      const data = await response.json();
-      console.log('\n📋 [2] Backend User Data:', {
-        userId: data.user?._id,
-        name: data.user?.name,
-        hasDeviceId: !!data.user?.deviceId,
-        deviceId: data.user?.deviceId?.substring(0, 30) + '...',
-        fullDeviceId: data.user?.deviceId,
-        hasDeviceIds: !!data.user?.deviceIds,
-        deviceIds: data.user?.deviceIds,
+      // Media mismatch - show dialog and ask user to send new ID to admin
+      console.warn('⚠️ Device ID MISMATCH - showing user dialog');
+      setDeviceIdMismatch({
+        lastDeviceId: cachedDeviceId,
+        newDeviceId: newDeviceId,
       });
-      
-      // المحاولة 1: إذا كان البيانات في deviceIds (قائمة)
-      let registeredIds: string[] = (data.user?.deviceIds as string[]) || [];
-      // If legacy single deviceId exists, include it
-      if (registeredIds.length === 0 && data.user?.deviceId) {
-        registeredIds = [data.user.deviceId];
-        console.log('[3] ✅ Found single deviceId, converted to array');
-      }
-
-      console.log('\n🔍 [4] Comparison:');
-      console.log('   Current ID:', currentDeviceId);
-      console.log('   Registered IDs:', registeredIds);
-      
-      const isMatch = registeredIds.some(id => {
-        const match = id === currentDeviceId;
-        console.log(`   Comparing "${id.substring(0, 20)}..." === "${currentDeviceId.substring(0, 20)}...": ${match}`);
-        return match;
-      });
-
-      console.log('\n✅ [5] Result:');
-      console.log('   Match found:', isMatch);
-
-      if (!isMatch) {
-        console.warn('❌ Device ID MISMATCH!');
-
-        if (registeredIds.length === 0) {
-          // Auto-register current device for this user (first visit)
-          try {
-            const regRes = await fetch('/api/auth/register-device', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ deviceId: currentDeviceId }),
-            });
-
-            if (regRes.ok) {
-              addToast('✅ Device automatically registered for attendance.', 'success');
-              setIsDeviceRegistered(true);
-              console.log('[auto-register] success');
-            } else {
-              const err = await regRes.json();
-              console.error('[auto-register] failed', err);
-              addToast('⚠️ Failed to auto-register device. Contact admin.', 'warning');
-              setIsDeviceRegistered(false);
-            }
-          } catch (err) {
-            console.error('[auto-register] error', err);
-            addToast('⚠️ Failed to auto-register device. Contact admin.', 'warning');
-            setIsDeviceRegistered(false);
-          }
-        } else {
-          // Device mismatch: block and show minimal page with Device ID only
-          console.error(`   Current: ${currentDeviceId}`);
-          console.error(`   Backend: ${registeredIds[0]}`);
-          setBlockedDeviceId(currentDeviceId);
-          setIsDeviceRegistered(false);
-        }
-      } else {
-        console.log('✅ Device ID MATCHES - Attendance can proceed');
-        setIsDeviceRegistered(true);
-      }
-      
-      console.log('========== DEVICE ID CHECK END ==========\n');
+      return false;
     } catch (error) {
-      console.error('❌ Error checking device registration:', error);
+      console.error('❌ Error validating device ID:', error);
+      return false;
+    }
+  };
+
+  const handleDeviceMismatchConfirm = async () => {
+    // User confirmed they'll send the new device ID to admin
+    // Clear the dialog and allow them to try again
+    setDeviceIdMismatch(null);
+    addToast('✅ Please send the Device ID to your administrator. Once they register it, you can mark attendance.', 'success');
+  };
+
+  const handleCopyNewDeviceId = async () => {
+    if (deviceIdMismatch?.newDeviceId) {
+      try {
+        await navigator.clipboard.writeText(deviceIdMismatch.newDeviceId);
+        addToast('✅ New Device ID copied to clipboard!', 'success');
+      } catch (error) {
+        addToast('Failed to copy Device ID', 'error');
+      }
     }
   };
 
@@ -326,6 +273,13 @@ export default function SalesAttendance() {
       return;
     }
 
+    // First, check and validate device ID
+    const deviceIdValid = await checkAndValidateDeviceId();
+    if (!deviceIdValid) {
+      // Dialog will be shown automatically via setDeviceIdMismatch
+      return;
+    }
+
     setIsMarking(true);
     const toastId = addToast('Preparing to mark attendance...', 'loading');
     let sendToastId: string | null = null;
@@ -476,48 +430,6 @@ export default function SalesAttendance() {
     );
   }
 
-  // Device ID not registered - show warning
-  if (!isDeviceRegistered) {
-    // If blocked due to device mismatch, show minimal page with only the Device ID
-    if (blockedDeviceId) {
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="bg-slate-900/80 rounded-xl p-8 max-w-sm text-center border border-rose-600">
-            <h2 className="text-xl font-semibold text-white mb-4">Device Not Allowed</h2>
-            <p className="text-slate-300 mb-6">This device is not registered for your account. Send the Device ID below to your administrator to add it.</p>
-            <code className="block p-4 bg-slate-800 rounded-md text-cyan-300 font-mono break-all">{blockedDeviceId}</code>
-            <p className="text-slate-400 text-xs mt-4">Administrator only can add this device to your account.</p>
-          </div>
-        </div>
-      );
-    }
-
-    // Fallback: generic message directing to device page
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl p-8 max-w-md text-center border border-amber-700">
-          <div className="bg-amber-900/30 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="text-amber-400" size={36} />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-3">Register Your Device First</h2>
-          <p className="text-slate-300 mb-8 leading-relaxed">
-            You need to register your device ID before you can mark attendance. This ensures secure verification of your location during check-ins.
-          </p>
-          <button
-            onClick={() => router.push('/sales/device-id')}
-            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            <MapPin size={20} />
-            Register Device ID
-          </button>
-          <p className="text-slate-400 text-xs mt-6">
-            You'll be redirected to the Device ID registration page where you can easily register your device.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
@@ -659,6 +571,81 @@ export default function SalesAttendance() {
           </div>
         )}
       </div>
+
+      {/* Device ID Mismatch Dialog */}
+      {deviceIdMismatch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full border border-amber-600">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="text-white" size={28} />
+                <h2 className="text-xl font-bold text-white">New Device Detected</h2>
+              </div>
+              <button
+                onClick={() => setDeviceIdMismatch(null)}
+                className="text-white hover:bg-amber-700 p-1 rounded transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-5">
+              <p className="text-slate-300">
+                We detected a different device. For security, please send the new Device ID below to your administrator to register it.
+              </p>
+
+              {/* New Device ID Card */}
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-cyan-600">
+                <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">📱 New Device ID</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs font-mono text-cyan-300 break-all bg-slate-800 p-3 rounded">
+                    {deviceIdMismatch.newDeviceId}
+                  </code>
+                  <button
+                    onClick={handleCopyNewDeviceId}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white p-2 rounded transition-all flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <Copy size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Last Device ID Card */}
+              <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600">
+                <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">📱 Last Registered Device ID</p>
+                <code className="text-xs font-mono text-slate-400 break-all bg-slate-800 p-3 rounded block">
+                  {deviceIdMismatch.lastDeviceId}
+                </code>
+              </div>
+
+              <div className="bg-blue-900/30 rounded-lg p-3 border border-blue-700">
+                <p className="text-blue-300 text-sm">
+                  ℹ️ <strong>Steps:</strong> Copy the new Device ID and send it to your administrator. Once they register it, you can mark attendance normally.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-700 px-6 py-4 flex gap-3">
+              <button
+                onClick={() => setDeviceIdMismatch(null)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeviceMismatchConfirm}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition-all"
+              >
+                I'll Update It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -115,7 +115,7 @@ export default function Navbar() {
         { href: '/sales/my-monthly-kpis', label: 'My KPIs' },
         // Hide Daily Report for team leaders
         ...(!isTeamLeader ? [{ href: '/sales/daily-report', label: 'Daily Report' }] : []),
-        { href: '/sales/device-id', label: 'Device ID' },
+
         ...(isTeamLeader ? [
           { href: '/sales/my-team', label: 'My Team' },
           { href: '/sales/team-report', label: 'Team Report' }
