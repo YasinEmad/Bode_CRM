@@ -284,20 +284,22 @@ export default function TeamReport() {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950"><Loader className="animate-spin text-white" /></div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 md:p-8 pb-24 text-white">
+    <div className="min-h-screen bg-slate-950 p-4 sm:p-6 md:p-8 pb-24 text-white">
       <div className="max-w-7xl mx-auto">
         
         {/* Header and Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-3">
-              <BarChart3 className="text-blue-400" />
-              Team Performance Report
-            </h1>
-            <p className="text-slate-400 mt-2">Manage and view your team's monthly metrics.</p>
+        <div className="flex flex-col gap-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-2 sm:gap-3">
+                <BarChart3 className="text-blue-400 flex-shrink-0" size={28} />
+                Team Performance Report
+              </h1>
+              <p className="text-slate-400 mt-2 text-sm sm:text-base">Manage and view your team's monthly metrics.</p>
+            </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative">
               <select
                 value={selectedMonth}
@@ -327,20 +329,20 @@ export default function TeamReport() {
         </div>
 
         {/* Category Tabs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-8">
           {categories.map((cat) => {
             const activeClass = 'bg-' + cat.color + '-500/10 border-' + cat.color + '-500 ring-1 ring-' + cat.color + '-500';
             return (
               <button
                 key={cat.key}
                 onClick={() => setSelectedCategory(cat.key as any)}
-                className={`p-4 rounded-xl border transition-all duration-200 ${
+                className={`p-2 sm:p-4 rounded-xl border transition-all duration-200 ${
                   selectedCategory === cat.key ? activeClass : 'bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-800'
                 }`}
               >
-                <div className="font-semibold text-lg">{cat.label}</div>
-                <div className={`text-sm ${selectedCategory === cat.key ? ('text-' + cat.color + '-400') : 'text-slate-500'}`}>
-                  {selectedCategory === cat.key ? 'Active View' : 'Switch View'}
+                <div className="font-semibold text-xs sm:text-lg">{cat.label}</div>
+                <div className={`text-xs sm:text-sm ${selectedCategory === cat.key ? ('text-' + cat.color + '-400') : 'text-slate-500'}`}>
+                  {selectedCategory === cat.key ? 'Active' : 'View'}
                 </div>
               </button>
             );
@@ -381,38 +383,38 @@ export default function TeamReport() {
                         : 'hover:bg-slate-700/50'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                        <div className={`transition-transform duration-300 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>
                           {isExpanded ? (
-                            <ChevronUp size={24} className={employee.aggregated ? 'text-yellow-400' : 'text-blue-400'} />
+                            <ChevronUp size={20} className={employee.aggregated ? 'text-yellow-400' : 'text-blue-400'} />
                           ) : (
-                            <ChevronDown size={24} className={employee.aggregated ? 'text-yellow-400' : 'text-blue-400'} />
+                            <ChevronDown size={20} className={employee.aggregated ? 'text-yellow-400' : 'text-blue-400'} />
                           )}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-2xl font-bold text-white">{employee.name}</h3>
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-wrap">
+                          <h3 className="text-lg sm:text-2xl font-bold text-white line-clamp-1">{employee.name}</h3>
                           {employee.aggregated && (
-                            <span className="text-xs bg-yellow-500 text-black px-2.5 py-1 rounded-lg font-semibold">
-                              Aggregated (Team + Admin + Leader)
+                            <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-semibold whitespace-nowrap">
+                              Aggregated
                             </span>
                           )}
                           {employee.leaderPersonal && (
-                            <span className="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg">Your Entries</span>
+                            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg whitespace-nowrap">Your Entries</span>
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-slate-400 text-sm mb-1">Total</p>
-                        <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
+                      <div className="text-left sm:text-right">
+                        <p className="text-slate-400 text-xs sm:text-sm mb-1">Total</p>
+                        <p className={`text-2xl sm:text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
                           {calculateTotal(employee[selectedCategory])}
                         </p>
-                        <div className="mt-2 text-sm text-slate-300">
-                          <div className="flex items-center justify-end gap-3">
+                        <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-slate-300">
+                          <div className="flex items-center justify-start sm:justify-end gap-2 sm:gap-3">
                             <span className="text-slate-400">Leads</span>
                             <span className="font-bold text-white">{employee.leadsCount ?? 0}</span>
                           </div>
-                          <div className="flex items-center justify-end gap-3 mt-1">
+                          <div className="flex items-center justify-start sm:justify-end gap-2 sm:gap-3 mt-0.5 sm:mt-1">
                             <span className="text-slate-400">Deals</span>
                             <span className="font-bold text-white">{employee.dealsCount ?? 0}</span>
                           </div>
@@ -426,9 +428,9 @@ export default function TeamReport() {
                     <div className={`border-t ${employee.aggregated ? 'border-yellow-700' : 'border-slate-600'} p-6 space-y-6 animate-in fade-in duration-200`}>
                       {/* Daily Grid - Calendar View */}
                       <div>
-                        <h4 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
+                        <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
                         <p className="text-xs text-amber-400 mb-3">📝 You can only edit today's data</p>
-                        <div className="grid grid-cols-7 gap-2">
+                        <div className="grid gap-1 sm:gap-2" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(45px, 1fr))'}}>
                           {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
                             const day = dayIndex + 1;
                             const dayKey = `day${day}`;
@@ -441,7 +443,7 @@ export default function TeamReport() {
                             return (
                               <div
                                 key={day}
-                                className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg ${
+                                className={`bg-slate-900/50 rounded-lg p-1 sm:p-2 border-2 transition hover:shadow-lg ${
                                   isToday
                                     ? value > 0
                                       ? selectedCategoryObj?.color === 'blue'
@@ -455,8 +457,8 @@ export default function TeamReport() {
                                     : 'border-slate-700 bg-slate-800/50 opacity-60'
                                 }`}
                               >
-                                <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
-                                <div className="text-xs text-slate-500 mb-2">{day}</div>
+                                <div className="text-xs text-slate-400 mb-0.5 sm:mb-1 font-semibold hidden sm:block">{dayOfWeek}</div>
+                                <div className="text-xs text-slate-500 mb-1 sm:mb-2 font-semibold">{day}</div>
                                 <input
                                   type="number"
                                   min="0"
@@ -475,13 +477,13 @@ export default function TeamReport() {
                                       Math.max(0, parseInt(e.target.value) || 0)
                                     );
                                   }}
-                                  className={`w-full px-1 py-2 ${
+                                  className={`w-full px-0.5 sm:px-1 py-1 sm:py-2 ${
                                     employee.aggregated 
                                       ? 'bg-yellow-800 border-yellow-600 text-yellow-100' 
                                       : !isToday
                                       ? 'bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'
-                                  } rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                  } rounded text-center text-xs sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
                                     selectedCategoryObj?.color === 'blue'
                                       ? 'focus:ring-blue-500'
                                       : selectedCategoryObj?.color === 'emerald'
@@ -499,9 +501,9 @@ export default function TeamReport() {
                       </div>
 
                       {/* Weekly Summary */}
-                      <div className={`rounded-lg p-4 border ${employee.aggregated ? 'bg-yellow-900/20 border-yellow-700' : 'bg-slate-900/30 border-slate-600'}`}>
-                        <h4 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Weekly Summary</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className={`rounded-lg p-3 sm:p-4 border ${employee.aggregated ? 'bg-yellow-900/20 border-yellow-700' : 'bg-slate-900/30 border-slate-600'}`}>
+                        <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Weekly Summary</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                           {[1, 2, 3, 4].map((week) => {
                             const startDay = 1 + (week - 1) * 7;
                             const endDay = Math.min(week * 7, employee.daysInMonth);
@@ -510,7 +512,7 @@ export default function TeamReport() {
                             return (
                               <div
                                 key={week}
-                                className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center ${
+                                className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-2 sm:p-3 border-2 text-center ${
                                   selectedCategoryObj?.color === 'blue'
                                     ? 'border-blue-500/50'
                                     : selectedCategoryObj?.color === 'emerald'
@@ -520,9 +522,9 @@ export default function TeamReport() {
                                     : 'border-orange-500/50'
                                 }`}
                               >
-                                <p className="text-xs text-slate-300 mb-2">Week {week}</p>
-                                <p className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
-                                <p className="text-xs text-slate-400 mt-1">Days {startDay}-{endDay}</p>
+                                <p className="text-xs text-slate-300 mb-1 sm:mb-2">Week {week}</p>
+                                <p className={`text-lg sm:text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</p>
+                                <p className="text-xs text-slate-400 mt-0.5 sm:mt-1">Days {startDay}-{endDay}</p>
                               </div>
                             );
                           })}

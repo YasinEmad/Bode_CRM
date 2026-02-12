@@ -265,22 +265,22 @@ export default function TeamLeadersMonthlyReport() {
       <div className="max-w-full mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-gradient-to-br from-indigo-600 to-indigo-500 rounded-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+            <div className="p-3 bg-gradient-to-br from-indigo-600 to-indigo-500 rounded-xl w-fit">
               <Users className="text-white" size={32} />
             </div>
             <div>
-              <h1 className="text-5xl font-bold text-white mb-1">Team Leaders Daily Report</h1>
-              <p className="text-slate-400">Track team leaders performance by day</p>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-1">Team Leaders Daily Report</h1>
+              <p className="text-slate-400 text-sm sm:text-base">Track team leaders performance by day</p>
             </div>
           </div>
         </div>
 
         {/* Month/Year Selection */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 mb-8 border border-slate-700">
-          <div className="flex flex-col md:flex-row gap-6 items-center md:items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Month</label>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-4 sm:p-6 mb-8 border border-slate-700">
+          <div className="flex flex-col gap-4 sm:gap-6 sm:flex-row sm:items-end">
+            <div className="w-full sm:flex-1">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-300 mb-2">Month</label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
@@ -294,8 +294,8 @@ export default function TeamLeadersMonthlyReport() {
               </select>
             </div>
 
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Year</label>
+            <div className="w-full sm:flex-1">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-300 mb-2">Year</label>
               <input
                 type="number"
                 value={selectedYear}
@@ -304,9 +304,9 @@ export default function TeamLeadersMonthlyReport() {
               />
             </div>
 
-            <div className="flex items-center gap-2 bg-gradient-to-br from-indigo-600 to-indigo-500 px-4 py-3 rounded-lg border border-indigo-400">
+            <div className="w-full sm:w-auto flex items-center gap-2 bg-gradient-to-br from-indigo-600 to-indigo-500 px-4 py-3 rounded-lg border border-indigo-400 justify-center sm:justify-start">
               <Calendar size={20} className="text-white" />
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-white text-sm sm:text-base">
                 {selectedMonthName} {selectedYear}
               </span>
             </div>
@@ -314,12 +314,12 @@ export default function TeamLeadersMonthlyReport() {
         </div>
 
         {/* Category Selection */}
-        <div className="mb-8 flex flex-wrap gap-3">
+        <div className="mb-8 flex flex-wrap gap-2 sm:gap-3">
           {categories.map((cat) => (
             <button
               key={cat.key}
               onClick={() => setSelectedCategory(cat.key as any)}
-              className={`px-6 py-3 rounded-lg font-semibold transition ${
+              className={`px-3 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition ${
                 selectedCategory === cat.key
                   ? `bg-${cat.color}-600 text-white shadow-lg`
                   : `bg-slate-800 text-slate-300 hover:bg-slate-700`
@@ -347,9 +347,9 @@ export default function TeamLeadersMonthlyReport() {
                 className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700"
               >
                 {/* Leader Header */}
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-600">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-bold text-white">{leader.leaderName}</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-4 border-b border-slate-600 gap-3 sm:gap-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <h3 className="text-xl sm:text-2xl font-bold text-white line-clamp-1">{leader.leaderName}</h3>
                     {(() => {
                       const adminTotal =
                         calculateTotal(leader.leaderPersonal?.sheets) +
@@ -361,24 +361,24 @@ export default function TeamLeadersMonthlyReport() {
                       ) : null;
                     })()}
                   </div>
-                  <div className="text-right">
-                    <p className="text-slate-400 text-sm mb-2">Personal Total</p>
-                    <p className={`text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
+                  <div className="text-left sm:text-right">
+                    <p className="text-slate-400 text-xs sm:text-sm mb-1">Personal Total</p>
+                    <p className={`text-2xl sm:text-3xl font-bold text-${selectedCategoryObj?.color}-400`}>
                       {calculateTotal(leader.leaderPersonal?.[selectedCategory])}
                     </p>
                   </div>
                 </div>
                   {/* Daily editable calendar-style grid (admin can edit any day) */}
-                  <div className="mb-4">
+                  <div className="mb-4 overflow-x-auto">
                     {!leader.leaderPersonal && (
-                      <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600 rounded text-yellow-200 text-sm">
+                      <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600 rounded text-yellow-200 text-xs sm:text-sm">
                         Warning: leaderPersonal data not available
                       </div>
                     )}
 
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
-                      <div className="grid grid-cols-7 gap-2">
+                      <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
+                      <div className="grid gap-1 sm:gap-2" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))'}}>
                         {Array.from({ length: leader.daysInMonth }).map((_, dayIndex) => {
                           const day = dayIndex + 1;
                           const dayKey = `day${day}`;
@@ -388,9 +388,9 @@ export default function TeamLeadersMonthlyReport() {
                           });
 
                           return (
-                            <div key={day} className={`bg-slate-900/50 rounded-lg p-2 border-2 transition hover:shadow-lg` }>
-                              <div className="text-xs text-slate-400 mb-1 font-semibold">{dayOfWeek}</div>
-                              <div className="text-xs text-slate-500 mb-2">{day}</div>
+                            <div key={day} className={`bg-slate-900/50 rounded-lg p-1 sm:p-2 border-2 transition hover:shadow-lg` }>
+                              <div className="text-xs text-slate-400 mb-1 font-semibold hidden sm:block">{dayOfWeek}</div>
+                              <div className="text-xs text-slate-500 mb-1 sm:mb-2 font-semibold">{day}</div>
                               <input
                                 type="number"
                                 min={0}
@@ -407,7 +407,7 @@ export default function TeamLeadersMonthlyReport() {
                                   const toSave = Math.max(0, parseInt((e.currentTarget as HTMLInputElement).value) || 0);
                                   updateCellValue(leader, selectedCategory, dayKey, toSave);
                                 }}
-                                className={`w-full px-1 py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                className={`w-full px-1 py-1 sm:py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-sm sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
                                   selectedCategoryObj?.color === 'blue'
                                     ? 'focus:ring-blue-500'
                                     : selectedCategoryObj?.color === 'emerald'
@@ -426,17 +426,17 @@ export default function TeamLeadersMonthlyReport() {
 
                     {/* Weekly Summary */}
                     <div className="mt-4">
-                      <h4 className="text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wide">Weekly Summary</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wide">Weekly Summary</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                         {[1, 2, 3, 4].map((week) => {
                           const startDay = 1 + (week - 1) * 7;
                           const endDay = Math.min(week * 7, leader.daysInMonth);
                           const weekTotal = calculateWeekTotal(leader.leaderPersonal?.[selectedCategory] || {}, startDay, endDay);
 
                           return (
-                            <div key={week} className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-3 border-2 text-center`}>
-                              <div className="text-sm text-slate-300">Week {week}</div>
-                              <div className={`text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</div>
+                            <div key={week} className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-2 sm:p-3 border-2 text-center`}>
+                              <div className="text-xs sm:text-sm text-slate-300">Week {week}</div>
+                              <div className={`text-xl sm:text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</div>
                             </div>
                           );
                         })}
