@@ -65,20 +65,32 @@ export default function SalesAttendance() {
   }, [token, user]);
 
   // Check device ID and show dialog if mismatch (called during Mark Attendance)
-  const checkAndValidateDeviceId = async (): Promise<boolean> => {
+  const checkAndValidateDeviceId = async (isRetry: boolean = false): Promise<boolean> => {
     try {
       const currentDeviceId = generateDeviceId();
       
       console.log('\n========== DEVICE VALIDATION ==========');
       console.log('📱 Current Device ID:', currentDeviceId.substring(0, 30) + '...');
+      console.log('🔄 Retry:', isRetry);
 
-      // Fetch user data from backend to check allowed device IDs
-      const meResponse = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
+      // If this is a retry, wait a moment for DB to propagate
+      if (isRetry) {
+        console.log('⏳ Waiting for database update...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Fetch user data from backend (with cache busting)
+      const meResponse = await fetch(`/api/auth/me?bust=${Date.now()}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
       });
 
       if (!meResponse.ok) {
-        console.error('❌ Failed to fetch user data');
+        console.error('❌ Failed to fetch user data, status:', meResponse.status);
         addToast('Failed to verify device. Please try again.', 'error');
         return false;
       }
@@ -87,12 +99,18 @@ export default function SalesAttendance() {
       const allowedDeviceIds = (userData.user?.deviceIds as string[]) || [];
       
       console.log('📋 Allowed Device IDs from backend:', allowedDeviceIds.length, 'devices');
-      console.log('   Full list:', allowedDeviceIds);
+      console.log('   Full list:', allowedDeviceIds.map((id: string) => id.substring(0, 20) + '...'));
 
       // Check if current device is allowed
       const isAllowed = allowedDeviceIds.includes(currentDeviceId);
       
-      console.log('✅ Device Check Result:', isAllowed ? 'ALLOWED' : 'NOT ALLOWED');
+      console.log('✅ Device Check Result:', isAllowed ? 'ALLOWED ✓' : 'NOT ALLOWED ✗');
+      if (isAllowed) {
+        console.log('   Current Device ID matches one of the allowed IDs');
+      } else {
+        console.log('   Current Device ID:', currentDeviceId.substring(0, 30) + '...');
+        console.log('   Does not match any allowed ID in:', allowedDeviceIds.map((id: string) => id.substring(0, 30) + '...'));
+      }
 
       if (isAllowed) {
         // Update localStorage with current device ID for future reference
@@ -120,7 +138,8 @@ export default function SalesAttendance() {
     
     try {
       // Try to validate again in case admin just registered the device
-      const isValid = await checkAndValidateDeviceId();
+      // Pass isRetry=true to add a small delay for DB propagation
+      const isValid = await checkAndValidateDeviceId(true);
       
       if (isValid) {
         setDeviceIdMismatch(null);
@@ -134,6 +153,7 @@ export default function SalesAttendance() {
       addToast('Device ID not yet registered by admin. Please try again after admin registers it.', 'warning');
     } catch (error) {
       setCheckingDeviceAgain(false);
+      console.error('Error in device mismatch confirm:', error);
       addToast('Error checking device registration.', 'error');
     }
   };
