@@ -84,7 +84,7 @@ export default function LoginPage() {
 
       <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center relative z-10">
         {/* Left Side - Static Logo with slide-in animation */}
-        <div className="flex items-center justify-center p-4">
+        <div className="flex items-center justify-center md:items-start md:justify-start p-4 md:-ml-16 md:-mt-20 md:ml-1">
           <div className="w-48 h-48 md:w-80 md:h-80 flex items-center">
             <img
               src="/Off White.png"
