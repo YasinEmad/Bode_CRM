@@ -645,8 +645,8 @@ export default function SalesAttendance() {
 
       {/* Device ID Mismatch Dialog */}
       {deviceIdMismatch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full border border-amber-600">
+        <div className="fixed inset-0 bg-slate-800/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl md:max-w-lg sm:max-w-xl border border-amber-600 max-h-[calc(100vh-6rem)] overflow-auto ring-1 ring-slate-700">
             {/* Header */}
             <div className="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -662,24 +662,24 @@ export default function SalesAttendance() {
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-4">
               <p className="text-slate-300">
                 We detected a different device than your last registration. Your administrator may have already registered this device ID. Click "Check Again" to verify, or send the Device ID below to your administrator if needed.
               </p>
 
               {/* New Device ID Card */}
-              <div className="bg-slate-700/50 rounded-lg p-4 border border-cyan-600">
+              <div className="bg-slate-700/40 rounded-lg p-3 sm:p-4 border border-cyan-600">
                 <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">📱 Current Device ID</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs font-mono text-cyan-300 break-all bg-slate-800 p-3 rounded">
+                <div className="relative">
+                  <pre className="whitespace-pre-wrap break-words text-xs sm:text-sm font-mono text-cyan-300 bg-slate-800 p-3 rounded max-h-36 sm:max-h-44 overflow-auto pr-10">
                     {deviceIdMismatch.newDeviceId}
-                  </code>
+                  </pre>
                   <button
                     onClick={handleCopyNewDeviceId}
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white p-2 rounded transition-all flex-shrink-0"
+                    className="absolute top-2 right-2 bg-cyan-600 hover:bg-cyan-700 text-white p-2 rounded transition-all"
                     title="Copy to clipboard"
                   >
-                    <Copy size={18} />
+                    <Copy size={16} />
                   </button>
                 </div>
               </div>
@@ -698,10 +698,10 @@ export default function SalesAttendance() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-slate-700 px-6 py-4 flex gap-3">
+            <div className="border-t border-slate-700 px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setDeviceIdMismatch(null)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
+                className="w-full sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
                 disabled={checkingDeviceAgain}
               >
                 Close
@@ -709,12 +709,12 @@ export default function SalesAttendance() {
               <button
                 onClick={handleDeviceMismatchConfirm}
                 disabled={checkingDeviceAgain}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {checkingDeviceAgain ? (
                   <>
                     <Loader size={18} className="animate-spin" />
-                    Checking...
+                    <span className="sr-only">Checking</span>
                   </>
                 ) : (
                   'Check Again'
