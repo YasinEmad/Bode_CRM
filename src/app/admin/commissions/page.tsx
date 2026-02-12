@@ -352,14 +352,14 @@ export default function AdminCommissions() {
               <button
                 onClick={() => setCompactView((v) => !v)}
                 title="Toggle compact view"
-                className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 w-full sm:w-auto"
               >
                 {compactView ? <Grid size={16} /> : <List size={16} />}
               </button>
 
               <button
                 onClick={handleExport}
-                className="px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600"
+                className="px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600 w-full sm:w-auto"
               >
                 Export Excel
               </button>
@@ -384,9 +384,9 @@ export default function AdminCommissions() {
                   <thead className="bg-slate-900/60">
                     <tr>
                       <th className="px-4 py-3 text-slate-300">Client</th>
-                      <th className="px-4 py-3 text-slate-300">Project</th>
-                      <th className="px-4 py-3 text-slate-300">Employee</th>
-                      <th className="px-4 py-3 text-slate-300">Phone</th>
+                      <th className="px-4 py-3 text-slate-300 hidden sm:table-cell">Project</th>
+                      <th className="px-4 py-3 text-slate-300 hidden sm:table-cell">Employee</th>
+                      <th className="px-4 py-3 text-slate-300 hidden sm:table-cell">Phone</th>
                       <th className="px-4 py-3 text-slate-300">Amount</th>
                       <th className="px-4 py-3 text-slate-300">Status</th>
                       <th className="px-4 py-3 text-slate-300">Actions</th>
@@ -396,9 +396,9 @@ export default function AdminCommissions() {
                     {filteredCommissions.map((commission) => (
                       <tr key={commission._id} className="hover:bg-slate-700/40">
                         <td className="px-4 py-3 text-white font-semibold">{(commission.dealId as any)?.clientName || 'Unknown'}</td>
-                        <td className="px-4 py-3 text-slate-300">{(commission as any).project || (commission.dealId as any)?.project || '—'}</td>
-                        <td className="px-4 py-3 text-slate-300">{commission.employeeId?.name || '—'}</td>
-                        <td className="px-4 py-3 text-emerald-400">{(commission.dealId as any)?.clientNumber || '—'}</td>
+                        <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{(commission as any).project || (commission.dealId as any)?.project || '—'}</td>
+                        <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{commission.employeeId?.name || '—'}</td>
+                        <td className="px-4 py-3 text-emerald-400 hidden sm:table-cell">{(commission.dealId as any)?.clientNumber || '—'}</td>
                         <td className="px-4 py-3 text-emerald-400">${commission.amount.toLocaleString()}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-sm ${statusBadge(commission.status)}`}>{commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}</span></td>
                         <td className="px-4 py-3">
@@ -417,7 +417,7 @@ export default function AdminCommissions() {
                                   addToast?.('Failed to load deal details', 'error');
                                 }
                               }}
-                              className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-sm"
+                              className="w-full sm:w-auto px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-sm"
                             >
                               Details
                             </button>
@@ -450,10 +450,10 @@ export default function AdminCommissions() {
                       } border border-slate-700`}
                     >
                       {/* Header: Client & Project & Status */}
-                      <div className="flex items-start justify-between p-5 border-b border-slate-600 bg-slate-900/50">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between p-4 sm:p-5 border-b border-slate-600 bg-slate-900/50">
                         <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                      <h3 className="text-lg font-bold text-white">{(commission.dealId as any)?.clientName || 'Unknown Client'}</h3>
+                                      <h3 className="text-lg sm:text-xl font-bold text-white line-clamp-1">{(commission.dealId as any)?.clientName || 'Unknown Client'}</h3>
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${statusBadge(commission.status)}`}>
                               {commission.status === 'pending' && <Clock size={14} />}
                               {commission.status === 'approved' && <CheckCircle size={14} />}
@@ -643,7 +643,7 @@ export default function AdminCommissions() {
                     download={`proof_${proofCommission._id}.png`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold flex items-center justify-center"
+                    className="w-full sm:w-auto px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold flex items-center justify-center"
                   >
                     Download
                   </a>
@@ -651,7 +651,7 @@ export default function AdminCommissions() {
                   <button disabled className="px-4 py-3 bg-slate-700/50 text-slate-400 rounded-lg font-semibold">No image</button>
                 )}
 
-                <button onClick={() => setProofCommission(null)} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold">Close</button>
+                <button onClick={() => setProofCommission(null)} className="w-full sm:w-auto px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold">Close</button>
 
                 {proofCommission.status === 'pending' && (
                   <>
@@ -660,7 +660,7 @@ export default function AdminCommissions() {
                         setApprovingId(proofCommission._id);
                         setProofCommission(null);
                       }}
-                      className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
+                      className="w-full sm:w-auto px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
                     >
                       Approve
                     </button>
@@ -670,7 +670,7 @@ export default function AdminCommissions() {
                         setRejectingId(proofCommission._id);
                         setProofCommission(null);
                       }}
-                      className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+                      className="w-full sm:w-auto px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
                     >
                       Reject
                     </button>
@@ -683,7 +683,7 @@ export default function AdminCommissions() {
                       setProofCommission(null);
                       setDeleteTargetId(proofCommission._id);
                     }}
-                    className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+                    className="w-full sm:w-auto px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
                   >
                     Delete
                   </button>
@@ -826,8 +826,8 @@ export default function AdminCommissions() {
                 </div>
               </div>
 
-              <div className="p-6 border-t border-slate-700 bg-slate-800 flex gap-3 justify-end">
-                <button onClick={() => setSelectedDealClosing(null)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Close</button>
+              <div className="p-6 border-t border-slate-700 bg-slate-800 flex flex-col sm:flex-row gap-3 justify-end">
+                <button onClick={() => setSelectedDealClosing(null)} className="w-full sm:w-auto px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Close</button>
               </div>
             </div>
           </div>
@@ -855,7 +855,7 @@ export default function AdminCommissions() {
                   />
                 </div>
 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <button
                     onClick={() => handleApprove(approvingId)}
                     disabled={!approvalAmount || isNaN(Number(approvalAmount)) || processingIds.has(approvingId)}
@@ -890,7 +890,7 @@ export default function AdminCommissions() {
               <div className="p-6 space-y-4">
                 <div className="text-sm text-slate-300">Are you sure you want to delete this commission?</div>
 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <button
                     onClick={() => handleDelete(deleteTargetId)}
                     className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white py-2 rounded-lg font-semibold transition-all"
