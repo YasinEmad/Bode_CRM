@@ -336,7 +336,7 @@ export default function AdminCommissions() {
               ))}
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
               <div className="relative flex-1 w-full sm:flex-none">
                 <input
                   placeholder="Search client, employee or phone..."
@@ -359,7 +359,7 @@ export default function AdminCommissions() {
 
               <button
                 onClick={handleExport}
-                className="px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600 w-full sm:w-auto"
+                className="px-4 py-2 rounded-lg font-medium transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-emerald-500 hover:from-emerald-600 hover:to-green-600 flex-shrink-0"
               >
                 Export Excel
               </button>
@@ -399,7 +399,7 @@ export default function AdminCommissions() {
                         <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{(commission as any).project || (commission.dealId as any)?.project || '—'}</td>
                         <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{commission.employeeId?.name || '—'}</td>
                         <td className="px-4 py-3 text-emerald-400 hidden sm:table-cell">{(commission.dealId as any)?.clientNumber || '—'}</td>
-                        <td className="px-4 py-3 text-emerald-400">${commission.amount.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-emerald-400">EGP {commission.amount.toLocaleString()}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-sm ${statusBadge(commission.status)}`}>{commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}</span></td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -471,7 +471,7 @@ export default function AdminCommissions() {
                         </div>
                         <div className="text-right mt-3 sm:mt-0 ml-0 sm:ml-4">
                           <p className="text-xs text-slate-400 uppercase font-medium mb-1">Commission</p>
-                          <p className="text-2xl font-bold text-emerald-400">${commission.amount.toLocaleString()}</p>
+                          <p className="text-2xl font-bold text-emerald-400">EGP {commission.amount.toLocaleString()}</p>
                         </div>
                       </div>
 
@@ -760,7 +760,7 @@ export default function AdminCommissions() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-slate-800/70 rounded-lg p-3">
                       <p className="text-xs text-slate-400 uppercase font-bold mb-1">Contract Price</p>
-                      <p className="text-2xl font-bold text-amber-300">${selectedDealClosing.contractPrice?.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-amber-300">EGP {selectedDealClosing.contractPrice?.toLocaleString()}</p>
                     </div>
                     <div className="bg-slate-800/70 rounded-lg p-3">
                       <p className="text-xs text-slate-400 uppercase font-bold mb-1">Contract Date</p>
@@ -787,11 +787,11 @@ export default function AdminCommissions() {
                     </div>
                     <div className="bg-slate-800/70 rounded-lg p-3">
                       <p className="text-xs text-slate-400 uppercase font-bold mb-1">Down Payment Amount</p>
-                      <p className="text-2xl font-bold text-green-300">${selectedDealClosing.downPaymentAmount?.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-green-300">EGP {selectedDealClosing.downPaymentAmount?.toLocaleString()}</p>
                     </div>
                     <div className="bg-slate-800/70 rounded-lg p-3">
                       <p className="text-xs text-slate-400 uppercase font-bold mb-1">Monthly Installment</p>
-                      <p className="text-2xl font-bold text-green-300">${selectedDealClosing.paymentByMonth?.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-green-300">EGP {selectedDealClosing.paymentByMonth?.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>

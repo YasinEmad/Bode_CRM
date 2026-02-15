@@ -806,7 +806,7 @@ export default function MonthlyEmployeeReport() {
 
                       {/* Salary */}
                       <td className="px-6 py-4 text-center text-sm font-semibold text-slate-200 border-l border-slate-700 bg-inherit">
-                        ${employee.salary.toLocaleString()}
+                        EGP {employee.salary.toLocaleString()}
                       </td>
 
                       {/* Leads Count */}

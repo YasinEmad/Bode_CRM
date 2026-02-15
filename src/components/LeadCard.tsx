@@ -159,7 +159,7 @@ export default function LeadCard({
             <span className="text-slate-500 flex-shrink-0">💰</span>
             <div>
               <p className="text-xs text-slate-400">Value</p>
-              <p className="text-emerald-400 font-semibold text-xs sm:text-sm">${value.toLocaleString()}</p>
+              <p className="text-emerald-400 font-semibold text-xs sm:text-sm">EGP {value.toLocaleString()}</p>
             </div>
           </div>
         )}

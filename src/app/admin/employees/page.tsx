@@ -545,7 +545,7 @@ export default function AdminEmployees() {
                         <div className="text-slate-400 text-sm">{(emp as any).username || (emp as any).email || '—'}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-white font-semibold">${(emp.salary || 0).toLocaleString()}</div>
+                        <div className="text-white font-semibold">EGP {(emp.salary || 0).toLocaleString()}</div>
                         <div className="text-slate-400 text-sm">{emp.position || '—'}{commissionRate > 0 ? ` • ${commissionRate}%` : ''}</div>
                       </div>
                     </div>
@@ -623,7 +623,7 @@ export default function AdminEmployees() {
                             )}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-white font-semibold">${(emp.salary || 0).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-white font-semibold">EGP {(emp.salary || 0).toLocaleString()}</td>
                         <td className="px-6 py-4 text-sm text-slate-400">
                           {emp.joinDate ? (
                             new Date(emp.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })

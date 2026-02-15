@@ -365,7 +365,7 @@ export default function MyMonthlyKPIs() {
     const rows = [
       ['Employee Name', kpiData.name],
       ['Position', kpiData.position],
-      ['Salary', `$${kpiData.salary.toLocaleString()}`],
+      ['Salary', `EGP {kpiData.salary.toLocaleString()}`],
       ['Leads', kpiData.leadsCount],
       ['Closed Deals', kpiData.closedDealsCount],
       ['Attendance %', `${kpiData.attendancePercentage}%`],
@@ -747,7 +747,7 @@ export default function MyMonthlyKPIs() {
                     {/* Salary */}
                     <div className="bg-slate-700/40 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50">
                       <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Monthly Salary</p>
-                      <p className="text-emerald-400 font-bold text-lg">${kpiData.salary.toLocaleString()}</p>
+                      <p className="text-emerald-400 font-bold text-lg">EGP {kpiData.salary.toLocaleString()}</p>
                     </div>
 
                     {/* Period */}

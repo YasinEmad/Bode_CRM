@@ -120,7 +120,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-slate-400 text-sm font-medium">Total Commission</p>
-                <p className="text-4xl font-bold text-white mt-2">${(stats.totalCommissions / 1000).toFixed(1)}K</p>
+                <p className="text-4xl font-bold text-white mt-2">EGP {(stats.totalCommissions / 1000).toFixed(1)}K</p>
                 <p className="text-xs text-slate-500 mt-2">Cumulative earnings</p>
               </div>
               <div className="bg-gradient-to-br from-purple-600 to-purple-500 rounded-xl p-3 group-hover:scale-110 transition-transform">

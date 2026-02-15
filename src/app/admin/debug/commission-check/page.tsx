@@ -252,7 +252,7 @@ export default function CommissionDebug() {
                           <p className="text-sm text-slate-400 mt-1">{item.count} commissions</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-emerald-400">${item.totalAmount.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-emerald-400">EGP {item.totalAmount.toLocaleString()}</p>
                           <p className="text-xs text-slate-400">Total Amount</p>
                         </div>
                       </div>
