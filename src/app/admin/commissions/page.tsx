@@ -894,8 +894,8 @@ export default function AdminCommissions() {
 
         {/* Approve Commission Modal - Multi Recipient */}
         {approvingId && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700 max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-slate-600">
                 <h2 className="text-2xl font-bold text-white">Approve Commission — Distribute Recipients</h2>
                 <p className="text-slate-400 text-sm mt-1">Assign commission amounts to one or more Sales / Team Leaders</p>
@@ -903,9 +903,9 @@ export default function AdminCommissions() {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-3">
-                  {recipientRows.map((row, idx) => (
+                    {recipientRows.map((row, idx) => (
                     <div key={idx} className="grid grid-cols-12 gap-3 items-center">
-                      <div className="col-span-6">
+                      <div className="col-span-12 sm:col-span-6">
                         <label className="text-xs text-slate-300">User</label>
                         <select
                           value={row.userId}
@@ -919,7 +919,7 @@ export default function AdminCommissions() {
                         </select>
                       </div>
 
-                      <div className="col-span-4">
+                      <div className="col-span-12 sm:col-span-4">
                         <label className="text-xs text-slate-300">Amount</label>
                         <input
                           type="number"
@@ -929,7 +929,7 @@ export default function AdminCommissions() {
                         />
                       </div>
 
-                      <div className="col-span-2 flex items-end gap-2">
+                      <div className="col-span-12 sm:col-span-2 flex items-end sm:items-end gap-2">
                         <button
                           onClick={() => setRecipientRows((prev) => prev.filter((_, i) => i !== idx))}
                           className="mb-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
