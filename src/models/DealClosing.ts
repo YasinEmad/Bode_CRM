@@ -21,6 +21,7 @@ export interface IDealClosing extends Document {
   paymentByMonth: number; // Monthly installment amount
   attachments: string[]; // URLs of uploaded images
   info: string;
+  shared?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,6 +129,10 @@ const DealClosingSchema = new Schema<IDealClosing>(
         type: String,
       },
     ],
+    shared: {
+      type: Boolean,
+      default: false,
+    },
     info: {
       type: String,
       required: true,

@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       paymentByMonth,
       attachments,
       info,
+      shared,
     } = body;
 
     // Validate required fields
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
       paymentByMonth,
       attachments: attachments || [],
       project: body.project || undefined,
+      shared: !!shared,
       info,
     });
 

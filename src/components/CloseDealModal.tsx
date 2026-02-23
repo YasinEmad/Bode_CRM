@@ -34,6 +34,7 @@ export interface DealClosingFormData {
   paymentByMonth: number; // Monthly installment amount
   attachments: string[];
   info: string;
+  shared?: boolean;
 }
 
 // Unit type & finishing type are free-text fields now (no predefined choices)
@@ -71,16 +72,27 @@ export default function CloseDealModal({
     paymentByMonth: 0,
     attachments: [],
     info: '',
+    shared: false,
   });
 
   if (!isOpen) return null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'number' ? (value === '' ? 0 : Number(value)) : value,
-    });
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const name = (target as any).name as string;
+
+    // checkbox handled via instanceof check to satisfy TS
+    if (typeof window !== 'undefined' && target instanceof HTMLInputElement && target.type === 'checkbox') {
+      setFormData((prev) => ({ ...prev, [name]: target.checked }));
+      return;
+    }
+
+    const value = (target as HTMLInputElement).value;
+    const inputType = (target as HTMLInputElement).type;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: inputType === 'number' ? (value === '' ? 0 : Number(value)) : value,
+    } as any));
   };
 
   const handleImageUpload = async (files: FileList | null) => {
@@ -260,6 +272,7 @@ export default function CloseDealModal({
         paymentByMonth: 0,
         attachments: [],
         info: '',
+        shared: false,
       });
       setCustomTcrType('');
     } catch (error) {
@@ -617,6 +630,21 @@ export default function CloseDealModal({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Shared */}
+          <div className="flex items-center gap-3">
+            <input
+              id="shared"
+              name="shared"
+              type="checkbox"
+              checked={!!formData.shared}
+              onChange={handleInputChange}
+              className="w-4 h-4 text-blue-600 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <label htmlFor="shared" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Shared
+            </label>
           </div>
 
           {/* Info */}

@@ -69,8 +69,6 @@ export default function AdminCommissions() {
         setRecipientRows((commission).recipients.map((r: any) => ({ userId: r.userId?._id || String(r.userId), amount: String(r.amount || ''), role: r.role || 'sales' })));
       } else if (commission.employeeId) {
         setRecipientRows([{ userId: commission.employeeId._id || commission.employeeId, amount: String(commission.amount || ''), role: 'sales' }]);
-      } else {
-        setRecipientRows([{ userId: '', amount: '', role: 'sales' }]);
       }
     }
 
@@ -234,6 +232,7 @@ export default function AdminCommissions() {
           recipientsPayload.push({ userId: r.userId, role: r.role || 'sales', amount: Number(r.amount) });
         }
         body.recipients = recipientsPayload;
+        body.amount = recipientsPayload.reduce((s, r) => s + (Number(r.amount) || 0), 0);
       } else {
         if (!approvalAmount || isNaN(Number(approvalAmount))) {
           throw new Error('Please enter a valid commission amount');
@@ -495,6 +494,8 @@ export default function AdminCommissions() {
               <div className="grid gap-6">
                 {filteredCommissions.map((commission) => {
                   const projectName = (commission as any).project || (commission.dealId as any)?.project || '';
+                  const dealObj = commission.dealId && typeof commission.dealId === 'object' ? (commission.dealId as any) : null;
+                  const isShared = !!(dealObj && dealObj.shared === true);
                   return (
                     <div
                       key={commission._id}
@@ -506,13 +507,16 @@ export default function AdminCommissions() {
                           : commission.status === 'rejected'
                           ? 'bg-gradient-to-br from-slate-800 to-slate-700 border-red-500'
                           : 'bg-gradient-to-br from-slate-800 to-slate-700 border-blue-500'
-                      } border border-slate-700`}
+                      } border border-slate-700 ${isShared ? 'border-l-yellow-400' : ''}`}
                     >
                       {/* Header: Client & Project & Status */}
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between p-4 sm:p-5 border-b border-slate-600 bg-slate-900/50">
                         <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
                                       <h3 className="text-lg sm:text-xl font-bold text-white line-clamp-1">{(commission.dealId as any)?.clientName || 'Unknown Client'}</h3>
+                                      {isShared && (
+                                        <span className="px-2 py-1 rounded-md text-xs font-semibold bg-yellow-500 text-white">Shared</span>
+                                      )}
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${statusBadge(commission.status)}`}>
                               {commission.status === 'pending' && <Clock size={14} />}
                               {commission.status === 'approved' && <CheckCircle size={14} />}
