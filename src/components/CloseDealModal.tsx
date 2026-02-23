@@ -301,9 +301,25 @@ export default function CloseDealModal({
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
-                TCR Type *
-              </label>
+              <div className="flex items-start justify-between mb-2">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  TCR Type *
+                </label>
+
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      id="shared"
+                      name="shared"
+                      type="checkbox"
+                      checked={!!formData.shared}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-amber-500 border-slate-300 rounded focus:ring-2 focus:ring-amber-300"
+                    />
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Shared</span>
+                  </label>
+                </div>
+              </div>
               {customTcrType === '__custom__' ? (
                 <input
                   type="text"
@@ -630,21 +646,6 @@ export default function CloseDealModal({
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Shared */}
-          <div className="flex items-center gap-3">
-            <input
-              id="shared"
-              name="shared"
-              type="checkbox"
-              checked={!!formData.shared}
-              onChange={handleInputChange}
-              className="w-4 h-4 text-blue-600 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-            />
-            <label htmlFor="shared" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Shared
-            </label>
           </div>
 
           {/* Info */}
