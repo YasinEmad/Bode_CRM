@@ -72,3 +72,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create admin' }, { status: 500 });
   }
 }
+
+export async function GET(req: NextRequest) {
+  try {
+    const token = extractToken(req);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    await connectDB();
+
+    const search = req.nextUrl.searchParams.get('q');
+    const role = req.nextUrl.searchParams.get('role');
+    const position = req.nextUrl.searchParams.get('position');
+
+    const query: any = {};
+    if (role) query.role = role;
+    if (position) query.position = { $regex: position, $options: 'i' };
+    if (search) query.name = { $regex: search, $options: 'i' };
+
+    const users = await User.find(query).select('name position role').sort({ name: 1 }).limit(500);
+    return NextResponse.json({ users });
+  } catch (err) {
+    console.error('Error listing users for admin:', err);
+    return NextResponse.json({ error: 'Failed to list users' }, { status: 500 });
+  }
+}

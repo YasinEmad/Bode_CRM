@@ -43,6 +43,8 @@ export default function AdminCommissions() {
   const [selectedDealClosing, setSelectedDealClosing] = useState<any | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalAmount, setApprovalAmount] = useState('');
+  const [userOptions, setUserOptions] = useState<Array<{ _id: string; name: string; position?: string }>>([]);
+  const [recipientRows, setRecipientRows] = useState<Array<{ userId: string; amount: string; role?: string }>>([]);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
@@ -58,12 +60,51 @@ export default function AdminCommissions() {
     }
   }, [token, filterStatus]);
 
+  useEffect(() => {
+    if (!approvingId) return;
+    // initialize recipients for modal and fetch user list
+    const commission = commissions.find((c) => c._id === approvingId) as any;
+    if (commission) {
+      if (Array.isArray((commission).recipients) && (commission).recipients.length > 0) {
+        setRecipientRows((commission).recipients.map((r: any) => ({ userId: r.userId?._id || String(r.userId), amount: String(r.amount || ''), role: r.role || 'sales' })));
+      } else if (commission.employeeId) {
+        setRecipientRows([{ userId: commission.employeeId._id || commission.employeeId, amount: String(commission.amount || ''), role: 'sales' }]);
+      } else {
+        setRecipientRows([{ userId: '', amount: '', role: 'sales' }]);
+      }
+    }
+
+    const fetchUsers = async () => {
+      try {
+        const resSales = await fetch('/api/admin/users?role=sales', { headers: { Authorization: `Bearer ${token}` } });
+        const salesData = await resSales.json().catch(() => ({}));
+        const sales = Array.isArray(salesData.users) ? salesData.users : [];
+
+        const resLeaders = await fetch('/api/admin/users?position=Leader', { headers: { Authorization: `Bearer ${token}` } });
+        const leadersData = await resLeaders.json().catch(() => ({}));
+        const leaders = Array.isArray(leadersData.users) ? leadersData.users : [];
+
+        const combined = [...sales, ...leaders];
+        // unique by _id
+        const map = new Map();
+        combined.forEach((u: any) => map.set(String(u._id), u));
+        setUserOptions(Array.from(map.values()).map((u: any) => ({ _id: String(u._id), name: u.name, position: u.position })));
+      } catch (err) {
+        console.error('Failed to fetch users for recipients:', err);
+      }
+    };
+
+    fetchUsers();
+  }, [approvingId]);
+
   const filteredCommissions = commissions.filter((c) => {
     if (filterStatus && c.status !== filterStatus) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     const clientName = ((c.dealId as any)?.clientName || '').toString().toLowerCase();
-    const employee = (c.employeeId?.name || '').toString().toLowerCase();
+    const employee = (Array.isArray((c as any).recipients) && (c as any).recipients.length > 0)
+      ? (c as any).recipients.map((r: any) => r.userId?.name || '').join(' ').toString().toLowerCase()
+      : (c.employeeId?.name || '').toString().toLowerCase();
     const phone = ((c.dealId as any)?.clientNumber || '').toString().toLowerCase();
     return clientName.includes(q) || employee.includes(q) || phone.includes(q) || c._id.includes(q);
   });
@@ -178,8 +219,26 @@ export default function AdminCommissions() {
     const toastId = addToast('Approving commission...', 'loading');
 
     try {
-      if (!approvalAmount || isNaN(Number(approvalAmount))) {
-        throw new Error('Please enter a valid commission amount');
+      // If recipientRows defined use them, otherwise fallback to approvalAmount
+      let body: any = { status: 'approved' };
+
+      if (Array.isArray(recipientRows) && recipientRows.length > 0) {
+        // validate rows
+        const seen = new Set<string>();
+        const recipientsPayload = [] as any[];
+        for (const r of recipientRows) {
+          if (!r.userId) throw new Error('Please select a user for each recipient');
+          if (!r.amount || isNaN(Number(r.amount))) throw new Error('Each recipient must have a valid amount');
+          if (seen.has(r.userId)) throw new Error('Duplicate recipient selected');
+          seen.add(r.userId);
+          recipientsPayload.push({ userId: r.userId, role: r.role || 'sales', amount: Number(r.amount) });
+        }
+        body.recipients = recipientsPayload;
+      } else {
+        if (!approvalAmount || isNaN(Number(approvalAmount))) {
+          throw new Error('Please enter a valid commission amount');
+        }
+        body.amount = Number(approvalAmount);
       }
 
       const res = await fetch(`/api/commissions/${commissionId}`, {
@@ -188,7 +247,7 @@ export default function AdminCommissions() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: 'approved', amount: Number(approvalAmount) }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) throw new Error('Failed to approve commission');
@@ -397,7 +456,7 @@ export default function AdminCommissions() {
                       <tr key={commission._id} className="hover:bg-slate-700/40">
                         <td className="px-4 py-3 text-white font-semibold">{(commission.dealId as any)?.clientName || 'Unknown'}</td>
                         <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{(commission as any).project || (commission.dealId as any)?.project || '—'}</td>
-                        <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{commission.employeeId?.name || '—'}</td>
+                        <td className="px-4 py-3 text-slate-300 hidden sm:table-cell">{(commission as any).recipients && (commission as any).recipients.length > 0 ? (commission as any).recipients.map((r: any) => r.userId?.name || '—').join(', ') : (commission.employeeId?.name || '—')}</td>
                         <td className="px-4 py-3 text-emerald-400 hidden sm:table-cell">{(commission.dealId as any)?.clientNumber || '—'}</td>
                         <td className="px-4 py-3 text-emerald-400">EGP {commission.amount.toLocaleString()}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-sm ${statusBadge(commission.status)}`}>{commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}</span></td>
@@ -487,7 +546,7 @@ export default function AdminCommissions() {
                         </div>
                         <div>
                           <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Sales Rep</p>
-                          <p className="text-sm font-semibold text-slate-100">{commission.employeeId?.name || 'Unknown'}</p>
+                          <p className="text-sm font-semibold text-slate-100">{(commission as any).recipients && (commission as any).recipients.length > 0 ? (commission as any).recipients.map((r: any) => r.userId?.name || 'Unknown').join(', ') : (commission.employeeId?.name || 'Unknown')}</p>
                         </div>
                         <div>
                           <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Submitted</p>
@@ -833,40 +892,78 @@ export default function AdminCommissions() {
           </div>
         )}
 
-        {/* Approve Commission Modal - Set Amount */}
+        {/* Approve Commission Modal - Multi Recipient */}
         {approvingId && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700">
               <div className="p-6 border-b border-slate-600">
-                <h2 className="text-2xl font-bold text-white">Approve Commission</h2>
-                <p className="text-slate-400 text-sm mt-1">Enter the commission amount to approve</p>
+                <h2 className="text-2xl font-bold text-white">Approve Commission — Distribute Recipients</h2>
+                <p className="text-slate-400 text-sm mt-1">Assign commission amounts to one or more Sales / Team Leaders</p>
               </div>
 
               <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Commission Amount ($)</label>
-                  <input
-                    type="number"
-                    value={approvalAmount}
-                    onChange={(e) => setApprovalAmount(e.target.value)}
-                    placeholder="Enter amount..."
-                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white bg-slate-900 placeholder-slate-500"
-                    autoFocus
-                  />
+                <div className="space-y-3">
+                  {recipientRows.map((row, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-3 items-center">
+                      <div className="col-span-6">
+                        <label className="text-xs text-slate-300">User</label>
+                        <select
+                          value={row.userId}
+                          onChange={(e) => setRecipientRows((prev) => prev.map((r, i) => (i === idx ? { ...r, userId: e.target.value } : r)))}
+                          className="w-full mt-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded text-white"
+                        >
+                          <option value="">Select user...</option>
+                          {userOptions.map((u) => (
+                            <option key={u._id} value={u._id}>{u.name} {u.position ? `— ${u.position}` : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="col-span-4">
+                        <label className="text-xs text-slate-300">Amount</label>
+                        <input
+                          type="number"
+                          value={row.amount}
+                          onChange={(e) => setRecipientRows((prev) => prev.map((r, i) => (i === idx ? { ...r, amount: e.target.value } : r)))}
+                          className="w-full mt-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded text-white"
+                        />
+                      </div>
+
+                      <div className="col-span-2 flex items-end gap-2">
+                        <button
+                          onClick={() => setRecipientRows((prev) => prev.filter((_, i) => i !== idx))}
+                          className="mb-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+                        >Remove</button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div>
+                    <button
+                      onClick={() => setRecipientRows((prev) => [...prev, { userId: '', amount: '', role: 'sales' }])}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                    >Add recipient</button>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-700">
+                  <p className="text-slate-300 font-medium">Totals</p>
+                  <p className="text-2xl text-emerald-400 font-bold">EGP {recipientRows.reduce((s, r) => s + (isNaN(Number(r.amount)) ? 0 : Number(r.amount)), 0).toLocaleString()}</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <button
                     onClick={() => handleApprove(approvingId)}
-                    disabled={!approvalAmount || isNaN(Number(approvalAmount)) || processingIds.has(approvingId)}
+                    disabled={processingIds.has(approvingId)}
                     className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {processingIds.has(approvingId) ? 'Approving...' : 'Approve'}
+                    {processingIds.has(approvingId) ? 'Approving...' : 'Approve & Distribute'}
                   </button>
                   <button
                     onClick={() => {
                       setApprovingId(null);
                       setApprovalAmount('');
+                      setRecipientRows([]);
                     }}
                     disabled={processingIds.has(approvingId)}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-semibold transition-all border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"

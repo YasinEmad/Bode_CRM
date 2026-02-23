@@ -30,7 +30,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { status, rejectionReason, rejectionNote, amount } = await req.json();
+    const { status, rejectionReason, rejectionNote, amount, recipients } = await req.json();
 
     const updateFields: any = {
       status,
@@ -40,13 +40,26 @@ export async function PUT(
       rejectionNote: status === 'rejected' ? rejectionNote : undefined,
     };
 
-    // Allow admin to set amount when approving or updating
-    if (amount !== undefined && amount !== null && !isNaN(Number(amount))) {
+    // If recipients provided, validate and update them and compute total amount
+    if (Array.isArray(recipients) && recipients.length > 0) {
+      const seen = new Set();
+      const recipientsToSave: any[] = [];
+      for (const r of recipients) {
+        if (!r.userId) return NextResponse.json({ error: 'Each recipient must include userId' }, { status: 400 });
+        if (seen.has(String(r.userId))) return NextResponse.json({ error: 'Duplicate recipient userId' }, { status: 400 });
+        seen.add(String(r.userId));
+        recipientsToSave.push({ userId: r.userId, role: r.role || 'sales', amount: Number(r.amount || 0), percentage: r.percentage });
+      }
+      updateFields.recipients = recipientsToSave;
+      updateFields.employeeId = recipientsToSave.length > 0 ? recipientsToSave[0].userId : null;
+      updateFields.amount = recipientsToSave.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    } else if (amount !== undefined && amount !== null && !isNaN(Number(amount))) {
       updateFields.amount = Number(amount);
     }
 
     const commission = await Commission.findByIdAndUpdate(id, updateFields, { new: true })
       .populate('dealId', 'name project proofImage notes')
+      .populate('recipients.userId', 'name position')
       .populate('employeeId', 'name');
 
     if (!commission) {
@@ -54,8 +67,8 @@ export async function PUT(
     }
 
     // Log the admin action
-    const employee = (commission as any).employeeId;
-    const employeeName = employee?.name || 'Unknown Employee';
+    const recipientsLogged = (commission as any).recipients || [];
+    const employeeName = recipientsLogged.map((r: any) => r.userId?.name || 'Unknown').join(', ');
     await logAdminAction({
       adminId: payload.userId,
       action: status === 'approved' ? 'approve' : 'reject',
@@ -65,7 +78,7 @@ export async function PUT(
       description: `${status === 'approved' ? 'Approved' : 'Rejected'} commission for ${employeeName}. Amount: ${commission.amount}. ${status === 'rejected' ? `Reason: ${rejectionReason}` : ''}`,
       details: {
         commissionId: commission._id,
-        employeeId: commission.employeeId,
+        recipients: recipientsLogged.map((r: any) => ({ userId: r.userId, amount: r.amount })),
         amount: commission.amount,
         status,
         rejectionReason: status === 'rejected' ? rejectionReason : undefined,

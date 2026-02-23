@@ -14,6 +14,7 @@ interface Commission {
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   dealId?: { _id?: string; clientName?: string; clientNumber?: string; developer?: string } | null;
   rejectionNote?: string;
+  recipients?: Array<{ userId?: { _id?: string }; amount?: number }> | any;
   createdAt?: string;
   approvalDate?: string;
 }
@@ -102,6 +103,14 @@ export default function SalesCommissions() {
   };
 
   const calculateTotals = () => {
+    const getUserAmount = (c: any) => {
+      if (Array.isArray(c.recipients) && c.recipients.length > 0 && user) {
+        const r = c.recipients.find((rc: any) => String(rc.userId?._id || rc.userId) === String(user.id));
+        if (r) return Number(r.amount || 0);
+      }
+      return Number(c.amount || 0);
+    };
+
     return {
       pendingCount: commissions.filter((c) => c.status === 'pending').length,
       approvedCount: commissions.filter((c) => c.status === 'approved').length,
@@ -109,11 +118,19 @@ export default function SalesCommissions() {
       paidCount: commissions.filter((c) => c.status === 'paid').length,
       paidAmount: commissions
         .filter((c) => c.status === 'paid')
-        .reduce((sum, c) => sum + c.amount, 0),
+        .reduce((sum, c) => sum + getUserAmount(c), 0),
     };
   };
 
   const totals = calculateTotals();
+
+  const getUserAmount = (c: any) => {
+    if (Array.isArray(c.recipients) && c.recipients.length > 0 && user) {
+      const r = c.recipients.find((rc: any) => String(rc.userId?._id || rc.userId) === String(user.id));
+      if (r) return Number(r.amount || 0);
+    }
+    return Number(c.amount || 0);
+  };
 
   if (loading) {
     return (
@@ -248,7 +265,7 @@ export default function SalesCommissions() {
                   <div>
                     <p className="text-sm text-slate-400 font-medium"> Commission Amount</p>
                     <p className="text-lg font-semibold text-emerald-400 mt-1">
-                      EGP {commission.amount.toLocaleString()}
+                      EGP {getUserAmount(commission).toLocaleString()}
                     </p>
                   </div>
                 </div>

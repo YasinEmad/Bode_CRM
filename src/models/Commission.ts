@@ -2,11 +2,21 @@ import mongoose, { Document, Schema } from 'mongoose';
 import './User';
 import './Lead';
 
+export interface ICommissionRecipient {
+  userId: mongoose.Types.ObjectId;
+  role?: string; // 'sales' | 'team_leader' | freeform
+  amount: number;
+  percentage?: number;
+}
+
 export interface ICommission extends Document {
   dealId: mongoose.Types.ObjectId;
-  employeeId: mongoose.Types.ObjectId;
-  amount: number;
-  percentage: number;
+  // legacy field kept for compatibility (first/main recipient)
+  employeeId?: mongoose.Types.ObjectId | null;
+  // multiple recipients support
+  recipients: ICommissionRecipient[];
+  amount: number; // total amount (sum of recipients.amount)
+  percentage?: number;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   approvedBy?: mongoose.Types.ObjectId;
   approvalDate?: Date;
@@ -20,6 +30,16 @@ export interface ICommission extends Document {
   updatedAt: Date;
 }
 
+const RecipientSchema = new Schema<ICommissionRecipient>(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    role: { type: String },
+    amount: { type: Number, required: true },
+    percentage: { type: Number },
+  },
+  { _id: false }
+);
+
 const CommissionSchema = new Schema<ICommission>(
   {
     dealId: {
@@ -30,11 +50,17 @@ const CommissionSchema = new Schema<ICommission>(
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
+      default: null,
+    },
+    recipients: {
+      type: [RecipientSchema],
+      default: [],
     },
     amount: {
       type: Number,
       required: true,
+      default: 0,
     },
     clientName: String,
     clientNumber: String,

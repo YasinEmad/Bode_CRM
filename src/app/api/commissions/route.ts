@@ -29,8 +29,9 @@ export async function GET(req: NextRequest) {
 
     let query: any = {};
 
+    // For sales users, return any commission document where they are listed as a recipient
     if (payload.role === 'sales') {
-      query.employeeId = payload.userId;
+      query = { $or: [{ 'recipients.userId': payload.userId }, { employeeId: payload.userId }] };
     }
 
     const status = req.nextUrl.searchParams.get('status');
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
     const commissions = await Commission.find(query)
       // dealId refers to DealClosing and we want key client fields (include project)
       .populate('dealId', 'clientName clientNumber developer project attachments info userId')
+      .populate('recipients.userId', 'name position')
       .populate('employeeId', 'name')
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const { dealId, employeeId, amount, percentage: percentageFromBody } = await req.json();
+    const { dealId, employeeId, amount, recipients, percentage: percentageFromBody } = await req.json();
 
     // Verify the deal exists (dealId references DealClosing)
     const deal = await DealClosing.findById(dealId);
@@ -84,10 +86,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Amount is required and must be numeric' }, { status: 400 });
     }
 
+    // Support creating with multiple recipients. If `recipients` provided use it, otherwise fall back to `employeeId`.
+    let recipientsToSave: any[] = [];
+    if (Array.isArray(recipients) && recipients.length > 0) {
+      // validate recipients
+      const seen = new Set();
+      for (const r of recipients) {
+        if (!r.userId) return NextResponse.json({ error: 'Each recipient must include userId' }, { status: 400 });
+        if (seen.has(String(r.userId))) return NextResponse.json({ error: 'Duplicate recipient userId' }, { status: 400 });
+        seen.add(String(r.userId));
+        recipientsToSave.push({ userId: r.userId, role: r.role || 'sales', amount: Number(r.amount || 0), percentage: r.percentage });
+      }
+    } else if (employeeId) {
+      recipientsToSave = [{ userId: employeeId, role: 'sales', amount: Number(amount || 0), percentage: percentageFromBody }];
+    } else {
+      return NextResponse.json({ error: 'Either recipients or employeeId must be provided' }, { status: 400 });
+    }
+
+    const totalAmount = recipientsToSave.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
     const commission = await Commission.create({
       dealId,
-      employeeId,
-      amount: Number(amount),
+      employeeId: recipientsToSave.length > 0 ? recipientsToSave[0].userId : null,
+      recipients: recipientsToSave,
+      amount: totalAmount,
       percentage: percentageFromBody !== undefined ? Number(percentageFromBody) : undefined,
       status: 'pending',
       clientName: deal.clientName || '',
