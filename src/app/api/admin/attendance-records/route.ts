@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/mongodb';
 import Attendance from '@/models/Attendance';
 import User from '@/models/User';
@@ -51,5 +52,112 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching attendance records:', error);
     return NextResponse.json({ error: 'Failed to fetch attendance records' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const token = extractToken(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    // Verify user is admin
+    const user = await User.findById(payload.userId);
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { action, userId, date, recordId } = body as {
+      action?: string;
+      userId?: string;
+      date?: string; // expected YYYY-MM-DD
+      recordId?: string;
+    };
+
+    if (!action) {
+      return NextResponse.json({ error: 'Action required' }, { status: 400 });
+    }
+
+    if (action === 'mark_present') {
+      if (!userId || !date) {
+        return NextResponse.json({ error: 'userId and date required' }, { status: 400 });
+      }
+
+      // create or update attendance for that day: set isLate=false
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const checkIn = new Date(date);
+      checkIn.setHours(9, 0, 0, 0); // default on-time check-in at 09:00
+
+      const uid = new mongoose.Types.ObjectId(userId);
+
+      const updated = await Attendance.findOneAndUpdate(
+        { userId: uid, date: { $gte: dayStart, $lte: dayEnd } },
+        {
+          $set: {
+            checkInTime: checkIn,
+            isLate: false,
+            lateMinutes: 0,
+            deviceId: 'admin-manual',
+            latitude: 0,
+            longitude: 0,
+            withinRadius: true,
+          },
+          $setOnInsert: {
+            date: dayStart,
+            userId: uid,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      return NextResponse.json({ success: true, record: updated });
+    }
+
+    if (action === 'mark_on_time') {
+      // convert an existing late record to on-time
+      if (recordId) {
+        const rec = await Attendance.findById(recordId);
+        if (!rec) return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+        rec.isLate = false;
+        rec.lateMinutes = 0;
+        await rec.save();
+        return NextResponse.json({ success: true, record: rec });
+      }
+
+      if (!userId || !date) {
+        return NextResponse.json({ error: 'userId and date required' }, { status: 400 });
+      }
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const uid = new mongoose.Types.ObjectId(userId);
+      const rec = await Attendance.findOne({ userId: uid, date: { $gte: dayStart, $lte: dayEnd } });
+      if (!rec) return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+      rec.isLate = false;
+      rec.lateMinutes = 0;
+      await rec.save();
+      return NextResponse.json({ success: true, record: rec });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (error) {
+    console.error('Error updating attendance record:', error);
+    return NextResponse.json({ error: 'Failed to update attendance record' }, { status: 500 });
   }
 }
