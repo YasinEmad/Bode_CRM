@@ -13,8 +13,6 @@ let cached: { conn: mongoose.Mongoose | null; promise: Promise<mongoose.Mongoose
   promise: null,
 };
 
-let adminEnsured = false;
-
 export async function connectDB() {
   if (cached.conn) {
     return cached.conn;
@@ -32,37 +30,6 @@ export async function connectDB() {
 
   try {
     cached.conn = await cached.promise;
-    // Ensure default admin exists once after DB connect
-    if (!adminEnsured) {
-      adminEnsured = true;
-      (async () => {
-        try {
-          const DEFAULT_ADMIN_USERNAME = 'Bode xRS';
-          const DEFAULT_ADMIN_PASSWORD = '636ghjh&76$566';
-
-          const existing = await User.findOne({ username: DEFAULT_ADMIN_USERNAME });
-          if (!existing) {
-            const hashed = await hashPassword(DEFAULT_ADMIN_PASSWORD);
-            await User.create({
-              username: DEFAULT_ADMIN_USERNAME,
-              password: hashed,
-              name: DEFAULT_ADMIN_USERNAME,
-              role: 'admin',
-            });
-            console.log('Default admin created:', DEFAULT_ADMIN_USERNAME);
-          } else {
-            // ensure role is admin
-            if (existing.role !== 'admin') {
-              existing.role = 'admin';
-              await existing.save();
-              console.log('Updated existing user to admin:', DEFAULT_ADMIN_USERNAME);
-            }
-          }
-        } catch (e) {
-          console.error('Error ensuring default admin:', e);
-        }
-      })();
-    }
   } catch (e) {
     cached.promise = null;
     throw e;
