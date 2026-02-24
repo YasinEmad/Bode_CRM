@@ -201,6 +201,38 @@ export default function TeamLeadersMonthlyReport() {
     }
   };
 
+  const saveLeaderChanges = async (leader: TeamLeaderPerformance) => {
+    try {
+      setSavingData(true);
+
+      const payload: any = {
+        userId: leader.userId,
+        month: leader.month,
+      };
+
+      payload[selectedCategory] = leader.leaderPersonal?.[selectedCategory] || {};
+
+      const response = await fetch('/api/admin/team-leaders-performance', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Failed to save data');
+
+      await fetchLeaderData();
+      addToast('✅ Data saved successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving data:', error);
+      addToast('Error saving data', 'error');
+    } finally {
+      setSavingData(false);
+    }
+  };
+
   const toggleLeader = (leaderId: string) => {
     setExpandedLeaders((prev) => {
       const next = new Set(prev);
@@ -451,10 +483,7 @@ export default function TeamLeadersMonthlyReport() {
                                     Math.max(0, parseInt(e.target.value) || 0)
                                   )
                                 }
-                                onBlur={(e) => {
-                                  const toSave = Math.max(0, parseInt((e.currentTarget as HTMLInputElement).value) || 0);
-                                  updateCellValue(leader, selectedCategory, dayKey, toSave);
-                                }}
+                                // previously auto-saved on blur; now only update local state
                                 className={`w-full px-1 py-1 sm:py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-sm sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
                                   selectedCategoryObj?.color === 'blue'
                                     ? 'focus:ring-blue-500'
@@ -470,6 +499,16 @@ export default function TeamLeadersMonthlyReport() {
                           );
                         })}
                       </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => saveLeaderChanges(leader)}
+                        disabled={savingData}
+                        className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${savingData ? 'opacity-60 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
+                      >
+                        {savingData ? 'Saving...' : 'Save'}
+                      </button>
                     </div>
 
                     {/* Weekly Summary */}
