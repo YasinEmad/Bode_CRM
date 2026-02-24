@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
-    const { username, password, name, position, phone } = body;
+    const { username, password, name, position, phone, salary, joinDate } = body;
 
     if (!username || !password || !name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -99,7 +99,8 @@ export async function POST(req: NextRequest) {
       role: 'sales',
       position: position || '',
       phone: phone || '',
-      joinDate: new Date(),
+      salary: Number(salary) || 0,
+      joinDate: joinDate ? new Date(joinDate) : new Date(),
     });
 
     console.log('✅ Employee created:', { 

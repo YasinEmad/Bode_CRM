@@ -43,7 +43,7 @@ export default function AdminEmployees() {
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addFormData, setAddFormData] = useState({ username: '', name: '', password: '', position: '', phone: '' });
+  const [addFormData, setAddFormData] = useState({ username: '', name: '', password: '', position: '', phone: '', salary: 0, joinDate: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [commissionRules, setCommissionRules] = useState<Array<{ position: string; percentage: number }>>([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -54,6 +54,7 @@ export default function AdminEmployees() {
     phone: '',
     position: '',
     salary: 0,
+    joinDate: '',
   });
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [resetPasswordData, setResetPasswordData] = useState<{ id: string; name: string } | null>(null);
@@ -144,6 +145,7 @@ export default function AdminEmployees() {
       phone: emp.phone || '',
       position: emp.position || '',
       salary: emp.salary || 0,
+      joinDate: emp.joinDate || '',
     });
   };
 
@@ -308,6 +310,7 @@ export default function AdminEmployees() {
         phone: editFormData.phone,
         position: normalizePosition(editFormData.position),
         salary: Number(editFormData.salary) || 0,
+        joinDate: editFormData.joinDate || undefined,
       };
 
       const res = await fetch(`/api/employees/${empId}`, {
@@ -354,6 +357,8 @@ export default function AdminEmployees() {
         body: JSON.stringify({
           ...addFormData,
           position: normalizePosition(addFormData.position),
+          salary: Number(addFormData.salary) || 0,
+          joinDate: addFormData.joinDate || undefined,
         }),
       });
 
@@ -366,7 +371,7 @@ export default function AdminEmployees() {
       updateToast(toastId, 'Employee created successfully!', 'success');
       console.log('✅ New employee response:', data.employee);
       setShowAddModal(false);
-      setAddFormData({ username: '', name: '', password: '', position: '', phone: '' });
+      setAddFormData({ username: '', name: '', password: '', position: '', phone: '', salary: 0, joinDate: '' });
       // Refresh employees list to ensure all data is properly loaded
       await fetchEmployees();
     } catch (error) {
@@ -829,6 +834,26 @@ export default function AdminEmployees() {
                       className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Monthly Salary ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={editFormData.salary || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, salary: e.target.value ? parseFloat(e.target.value) : 0 })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Join Date</label>
+                    <input
+                      type="date"
+                      value={editFormData.joinDate || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, joinDate: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -956,6 +981,26 @@ export default function AdminEmployees() {
                       type="tel"
                       value={addFormData.phone}
                       onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Monthly Salary ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={addFormData.salary || ''}
+                      onChange={(e) => setAddFormData({ ...addFormData, salary: e.target.value ? parseFloat(e.target.value) : 0 })}
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Join Date</label>
+                    <input
+                      type="date"
+                      value={addFormData.joinDate || ''}
+                      onChange={(e) => setAddFormData({ ...addFormData, joinDate: e.target.value })}
                       className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
                     />
                   </div>

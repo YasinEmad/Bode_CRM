@@ -131,7 +131,7 @@ export async function PUT(
     await connectDB();
 
     const body = await req.json();
-    const { position, name, email, phone, salary, deviceId } = body;
+    const { position, name, email, phone, salary, deviceId, joinDate } = body;
     const { id } = await params;
 
     const updateData: any = {};
@@ -140,6 +140,7 @@ export async function PUT(
     if (email !== undefined) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone;
     if (salary !== undefined) updateData.salary = Number(salary);
+    if (joinDate !== undefined) updateData.joinDate = joinDate ? new Date(joinDate) : null;
     if (deviceId !== undefined) updateData.deviceId = deviceId;
 
     console.log('Update data:', updateData);
