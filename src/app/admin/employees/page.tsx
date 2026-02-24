@@ -297,8 +297,8 @@ export default function AdminEmployees() {
   };
 
   const handleSaveEmployee = async (empId: string) => {
-    if (!editFormData.name || !editFormData.email) {
-      addToast('Name and email are required', 'error');
+    if (!editFormData.name) {
+      addToast('Name is required', 'error');
       return;
     }
 
@@ -763,7 +763,7 @@ export default function AdminEmployees() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-300 mb-2">Email *</label>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Email</label>
                     <input
                       type="email"
                       value={editFormData.email}
