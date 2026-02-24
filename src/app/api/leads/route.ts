@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Lead from '@/models/Lead';
+import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import { logAdminAction } from '@/lib/adminLogger';
 import { verifyToken } from '@/lib/auth';
 
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
 
     const userId = req.nextUrl.searchParams.get('userId');
     const status = req.nextUrl.searchParams.get('status');
+    const includeSnapshots = req.nextUrl.searchParams.get('includeSnapshots');
 
     let query: any = {};
     
@@ -56,7 +58,46 @@ export async function GET(req: NextRequest) {
       .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 });
 
-    return NextResponse.json({ leads });
+    let combinedLeads: any[] = Array.isArray(leads) ? leads.map((l: any) => l) : [];
+
+    // Optionally include closed-deal snapshots when requesting closed leads
+    if (status === 'closed' && includeSnapshots === 'true') {
+      try {
+        const month = req.nextUrl.searchParams.get('month');
+        const snapQuery: any = {};
+        if (userId) snapQuery.userId = userId;
+        if (req.nextUrl.searchParams.get('employeeId')) snapQuery.assignedTo = req.nextUrl.searchParams.get('employeeId');
+        if (month) {
+          const parts = month.split('-');
+          if (parts.length === 2) {
+            const year = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const start = new Date(year, m, 1);
+            const end = new Date(year, m + 1, 0, 23, 59, 59, 999);
+            snapQuery.createdAt = { $gte: start, $lte: end };
+          }
+        }
+        const snaps = await ClosedDealSnapshot.find(snapQuery).sort({ createdAt: -1 }).lean();
+        const synthetic = snaps.map((s: any) => ({
+          _id: `snapshot_${s._id}`,
+          name: s.clientName || 'Closed Deal',
+          phone: s.clientNumber || '',
+          project: s.project || '',
+          status: 'closed',
+          source: 'snapshot',
+          assignedTo: s.assignedTo ? { _id: String(s.assignedTo), name: '' } : null,
+          proofImage: s.proofImage || '',
+          info: s.info || '',
+          createdAt: s.createdAt,
+        }));
+
+        combinedLeads = [...synthetic, ...combinedLeads];
+      } catch (e) {
+        console.error('Failed to include snapshots in leads response', e);
+      }
+    }
+
+    return NextResponse.json({ leads: combinedLeads });
   } catch (error) {
     console.error('Error fetching leads:', error);
     return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 });

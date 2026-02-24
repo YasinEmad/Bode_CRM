@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/mongodb';
 import DealClosing from '@/models/DealClosing';
+import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import Lead from '@/models/Lead';
 import Commission from '@/models/Commission';
 import { verify } from 'jsonwebtoken';
@@ -118,6 +119,47 @@ export async function POST(req: NextRequest) {
       shared: !!shared,
       info,
     });
+
+    // Create a denormalized snapshot to preserve closed-deal data independently
+    try {
+      const snapshotPayload: any = {
+        dealId: dealClosing._id,
+        leadId: leadId || null,
+        userId: decoded.userId,
+        tcrType,
+        clientName: dealClosing.clientName,
+        clientNumber: String(dealClosing.clientNumber || ''),
+        developer: dealClosing.developer,
+        project: dealClosing.project || (body.project || ''),
+        unitCode: dealClosing.unitCode || undefined,
+        unitArea: dealClosing.unitArea || undefined,
+        unitType: dealClosing.unitType || undefined,
+        contractPrice: dealClosing.contractPrice || undefined,
+        contractDate: dealClosing.contractDate || undefined,
+        finishingType: dealClosing.finishingType || undefined,
+        deliveryDate: dealClosing.deliveryDate || undefined,
+        paymentPlan: dealClosing.paymentPlan || undefined,
+        downPaymentPercentage: dealClosing.downPaymentPercentage || undefined,
+        downPaymentAmount: dealClosing.downPaymentAmount || undefined,
+        paymentByMonth: dealClosing.paymentByMonth || undefined,
+        attachments: dealClosing.attachments || [],
+        info: dealClosing.info || '',
+        shared: !!dealClosing.shared,
+      };
+
+      // If lead has assignedTo, denormalize assignedTo onto snapshot
+      try {
+        const leadDoc = leadId ? await Lead.findById(leadId).select('assignedTo proofImage') : null;
+        if (leadDoc && (leadDoc as any).assignedTo) snapshotPayload.assignedTo = (leadDoc as any).assignedTo;
+        if (leadDoc && (leadDoc as any).proofImage) snapshotPayload.proofImage = (leadDoc as any).proofImage;
+      } catch (e) {
+        // ignore failure to read lead
+      }
+
+      await ClosedDealSnapshot.create(snapshotPayload);
+    } catch (err) {
+      console.error('Failed to create ClosedDealSnapshot:', err);
+    }
 
     // Update lead status to closed
     const updatedLead = await Lead.findByIdAndUpdate(leadId, { status: 'closed_pending_approval' }, { new: true }).populate('assignedTo');

@@ -5,6 +5,7 @@ import Team from '@/models/Team';
 import User from '@/models/User';
 import TeamPerformance from '@/models/TeamPerformance';
 import Lead from '@/models/Lead';
+import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -129,19 +130,38 @@ export async function GET(req: NextRequest) {
           const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
           const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
 
+          // Count leads created by team members in the month (may miss deleted leads)
           const teamLeads = await Lead.find({
             assignedTo: { $in: memberIds },
             createdAt: { $gte: monthStart, $lte: monthEnd },
           });
-
           aggregated.aggregatedLeads = teamLeads.length;
-          aggregated.aggregatedDeals = teamLeads.filter((l: any) => l.status === 'closed').length;
-          // Compute leader's own leads/deals by filtering the already-fetched teamLeads
+
+          // Count closed deals using ClosedDealSnapshot to preserve history even if Leads are deleted.
           try {
+            const snapQuery: any = {
+              createdAt: { $gte: monthStart, $lte: monthEnd },
+              $or: [
+                { assignedTo: { $in: memberIds } },
+                { userId: { $in: memberIds } },
+              ],
+            };
+            const snapCount = await ClosedDealSnapshot.countDocuments(snapQuery);
+            aggregated.aggregatedDeals = snapCount;
+
+            // Leader-specific counts: leader's own leads and deals
             aggregated.leaderLeads = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr).length;
-            aggregated.leaderDeals = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr && l.status === 'closed').length;
+            const leaderSnapQuery: any = {
+              createdAt: { $gte: monthStart, $lte: monthEnd },
+              $or: [
+                { assignedTo: leaderIdStr },
+                { userId: leaderIdStr },
+              ],
+            };
+            aggregated.leaderDeals = await ClosedDealSnapshot.countDocuments(leaderSnapQuery);
           } catch (e) {
-            aggregated.leaderLeads = 0;
+            aggregated.aggregatedDeals = 0;
+            aggregated.leaderLeads = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr).length || 0;
             aggregated.leaderDeals = 0;
           }
         } catch (e) {

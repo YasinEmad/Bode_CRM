@@ -255,6 +255,12 @@ export default function MonthlyEmployeeReport() {
 
       const leadsData = await leadsResponse.json();
 
+      // Fetch closed-deals snapshots for the selected month
+      const closedDealsResponse = await fetch(`/api/closed-deals?month=${selectedYear}-${selectedMonth}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const closedDealsData = closedDealsResponse.ok ? await closedDealsResponse.json() : { snapshots: [] };
+
       // Fetch attendance records for the selected month
       const attendanceResponse = await fetch(
         `/api/admin/attendance-records?month=${selectedYear}-${selectedMonth}`,
@@ -325,12 +331,19 @@ export default function MonthlyEmployeeReport() {
 
           const stats = leadsByEmployee.get(employeeId)!;
           stats.leadsCount += 1;
-
-          // Count as deal only if status is 'closed'
-          if (lead.status === 'closed') {
-            stats.dealsCount += 1;
-          }
         }
+      });
+
+      // Use closed-deals snapshots to count deals (preserves history even if Lead deleted)
+      (closedDealsData.snapshots || []).forEach((snap: any) => {
+        const rawAssigned = snap.assignedTo || snap.userId || null;
+        const employeeId = rawAssigned ? String(rawAssigned) : null;
+        if (!employeeId) return;
+        if (!leadsByEmployee.has(employeeId)) {
+          leadsByEmployee.set(employeeId, { leadsCount: 0, dealsCount: 0 });
+        }
+        const stats = leadsByEmployee.get(employeeId)!;
+        stats.dealsCount += 1;
       });
 
       // Create map of team performance data by userId (guard when userId is missing)

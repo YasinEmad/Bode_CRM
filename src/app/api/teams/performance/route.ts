@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import TeamPerformance from '@/models/TeamPerformance';
 import TeamLeaderPerformance from '@/models/TeamLeaderPerformance';
 import Lead from '@/models/Lead';
+import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import User from '@/models/User';
 import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
@@ -268,58 +269,66 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // --- Compute leads/deals from Lead collection (read-only) ---
+    // --- Compute leads (from Lead) and deals (from ClosedDealSnapshot) ---
     try {
       const memberIdStrings = teamMembers.map((m) => String(m._id));
-      // include leader in the member list to capture leader-assigned leads too
       if (team.leader) memberIdStrings.push(String(team.leader));
 
       const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
       const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
 
+      // Leads: keep counting created leads from Lead collection (may miss deleted leads)
       const teamLeads = await Lead.find({
         assignedTo: { $in: memberIdStrings },
         createdAt: { $gte: monthStart, $lte: monthEnd },
       });
 
-      const leadsByUser = new Map<string, { leadsCount: number; dealsCount: number }>();
+      const leadsByUser = new Map<string, { leadsCount: number }>();
       for (const l of teamLeads) {
         const assignee = String((l as any).assignedTo || '');
         if (!assignee) continue;
-        const cur = leadsByUser.get(assignee) || { leadsCount: 0, dealsCount: 0 };
+        const cur = leadsByUser.get(assignee) || { leadsCount: 0 };
         cur.leadsCount += 1;
-        if ((l as any).status === 'closed') cur.dealsCount += 1;
         leadsByUser.set(assignee, cur);
+      }
+
+      // Deals: count closed deals from snapshots so deleted leads still count
+      const snapQuery: any = {
+        createdAt: { $gte: monthStart, $lte: monthEnd },
+        $or: [{ assignedTo: { $in: memberIdStrings } }, { userId: { $in: memberIdStrings } }],
+      };
+      const snaps = await ClosedDealSnapshot.find(snapQuery).lean();
+
+      const dealsByUser = new Map<string, number>();
+      for (const s of snaps) {
+        const assigned = s.assignedTo ? String(s.assignedTo) : null;
+        const userIdField = s.userId ? String(s.userId) : null;
+        const key = assigned || userIdField;
+        if (!key) continue;
+        dealsByUser.set(key, (dealsByUser.get(key) || 0) + 1);
       }
 
       // Attach to teamData rows
       for (const row of teamData) {
         const id = String(row.userId);
-        const stats = leadsByUser.get(id) || { leadsCount: 0, dealsCount: 0 };
-        row.leadsCount = stats.leadsCount;
-        row.dealsCount = stats.dealsCount;
-        aggregated.aggregatedLeads += stats.leadsCount;
-        aggregated.aggregatedDeals += stats.dealsCount;
+        const leadStats = leadsByUser.get(id) || { leadsCount: 0 };
+        const deals = dealsByUser.get(id) || 0;
+        row.leadsCount = leadStats.leadsCount;
+        row.dealsCount = deals;
+        aggregated.aggregatedLeads += leadStats.leadsCount;
+        aggregated.aggregatedDeals += deals;
       }
 
       // Attach leader personal counts if present
       if (leaderPersonal) {
         const leaderIdStr = String(team.leader);
-        const leaderStats = leadsByUser.get(leaderIdStr) || { leadsCount: 0, dealsCount: 0 };
-        (leaderPersonal as any).leaderOwnLeads = leaderStats.leadsCount;
-        (leaderPersonal as any).leaderOwnDeals = leaderStats.dealsCount;
-      }
-      // Ensure leader's own leads/deals are included in aggregated totals
-      try {
-        const leaderIdStr = String(team.leader);
-        const leaderStats = leadsByUser.get(leaderIdStr) || { leadsCount: 0, dealsCount: 0 };
-        aggregated.aggregatedLeads += leaderStats.leadsCount;
-        aggregated.aggregatedDeals += leaderStats.dealsCount;
-      } catch (e) {
-        // ignore
+        const leaderLeads = leadsByUser.get(leaderIdStr) || { leadsCount: 0 };
+        const leaderDeals = dealsByUser.get(leaderIdStr) || 0;
+        (leaderPersonal as any).leaderOwnLeads = leaderLeads.leadsCount;
+        (leaderPersonal as any).leaderOwnDeals = leaderDeals;
       }
     } catch (e) {
-      // ignore and keep zeros
+      console.error('Error computing team leads/deals with snapshots', e);
     }
 
     return NextResponse.json({ performances: teamData, teamMembers, aggregatedLeader: aggregated, leaderPersonal });

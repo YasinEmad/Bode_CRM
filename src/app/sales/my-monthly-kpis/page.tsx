@@ -222,17 +222,36 @@ export default function MyMonthlyKPIs() {
       let leadsCount = 0;
       let dealsCount = 0;
 
+      // Count leads created by user in the month (may exclude deleted leads)
       leadsData.leads?.forEach((lead: any) => {
         const leadDate = new Date(lead.createdAt);
         const employeeId = lead.assignedTo?._id || lead.assignedTo;
 
         if (employeeId === user.id && leadDate >= selectedMonthStart && leadDate <= selectedMonthEnd) {
           leadsCount++;
-          if (lead.status === 'closed' || lead.status === 'won') {
-            dealsCount++;
-          }
         }
       });
+
+      // Fetch closed-deal snapshots for the selected month and current user
+      try {
+        const snapsRes = await fetch(
+          `/api/closed-deals?month=${selectedYear}-${selectedMonth}&userId=${user.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (snapsRes.ok) {
+          const snapsData = await snapsRes.json();
+          // Count snapshots where either userId or assignedTo matches the user
+          dealsCount = (snapsData.snapshots || []).filter((s: any) => {
+            const assigned = s.assignedTo ? String(s.assignedTo) : null;
+            const userIdField = s.userId ? String(s.userId) : null;
+            return userIdField === user.id || assigned === user.id;
+          }).length;
+        } else {
+          console.warn('Failed to fetch closed-deals for KPI page', snapsRes.status);
+        }
+      } catch (e) {
+        console.error('Error fetching closed-deals snapshots for KPI page', e);
+      }
 
       // Get attendance percentage
       let attendancePercentage = 0;
