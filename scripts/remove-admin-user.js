@@ -19,8 +19,14 @@ async function removeAdmin() {
     });
     
     const db = conn.connection.db;
-    const username = 'Bode xRS';
+    const username = 'Bode 2';
     console.log(`Removing user: ${username}`);
+    
+    // Protect the main Bode admin account from being deleted
+    if (username === 'Bode') {
+      console.log(`✗ Cannot remove protected admin: ${username}`);
+      process.exit(1);
+    }
     
     const result = await db.collection('users').deleteOne({ username: username });
     

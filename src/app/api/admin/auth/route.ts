@@ -47,6 +47,12 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid username' }, { status: 400 });
     }
 
+    // Check if attempting to modify the protected Bode admin
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin && existingAdmin.username === 'Bode') {
+      return NextResponse.json({ error: 'Cannot modify protected admin account' }, { status: 403 });
+    }
+
     const update: any = { username: username.trim() };
 
     if (password) {

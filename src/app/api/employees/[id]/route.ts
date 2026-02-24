@@ -36,27 +36,34 @@ export async function DELETE(
     const employee = await User.findById(id);
     if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
 
+    // Protect the main Bode admin account from deletion
+    if (employee.username === 'Bode') {
+      return NextResponse.json({ error: 'Cannot delete protected admin account' }, { status: 403 });
+    }
+
     // Prevent deleting yourself
     const actor = await User.findById(payload.userId);
     if (!actor) return NextResponse.json({ error: 'Actor not found' }, { status: 401 });
 
+    if (String(actor._id) === String(employee._id)) {
+      return NextResponse.json({ error: 'Admin cannot delete themselves' }, { status: 403 });
+    }
+
     // Prevent a child admin from deleting their creator admin
-    // (but allow self-deletion)
     if (employee.role === 'admin' && actor.createdBy && String(actor.createdBy) === String(employee._id)) {
       return NextResponse.json({ error: 'Forbidden: cannot delete your creator admin' }, { status: 403 });
     }
 
-    // For admin deletion: only allow if actor (current admin) created the target admin OR if deleting self
-    // Exception: root admins (createdBy = null) cannot be deleted by other admins, but an admin
-    // should be allowed to delete their own account even if they're a root admin.
+    // For admin deletion: only allow if actor (current admin) created the target admin
+    // Exception: root admins (createdBy = null) cannot be deleted by other admins
     if (employee.role === 'admin') {
-      // Prevent deleting root admins (those with no creator) unless the actor is deleting themselves
-      if (!employee.createdBy && String(actor._id) !== String(employee._id)) {
+      // Prevent deleting root admins (those with no creator)
+      if (!employee.createdBy) {
         return NextResponse.json({ error: 'Cannot delete root admin' }, { status: 403 });
       }
-      // Allow deletion if actor created the target OR if actor is deleting themselves
-      if (String(actor._id) !== String(employee.createdBy) && String(actor._id) !== String(employee._id)) {
-        return NextResponse.json({ error: 'You can only delete admins you created or yourself' }, { status: 403 });
+      // Allow deletion only if actor created the target
+      if (String(actor._id) !== String(employee.createdBy)) {
+        return NextResponse.json({ error: 'You can only delete admins you created' }, { status: 403 });
       }
     }
 
@@ -133,6 +140,12 @@ export async function PUT(
     const body = await req.json();
     const { position, name, email, phone, salary, deviceId, joinDate } = body;
     const { id } = await params;
+
+    // Protect the main Bode admin account from modification
+    const targetEmployee = await User.findById(id);
+    if (targetEmployee && targetEmployee.username === 'Bode') {
+      return NextResponse.json({ error: 'Cannot modify protected admin account' }, { status: 403 });
+    }
 
     const updateData: any = {};
     if (position !== undefined) updateData.position = position;
