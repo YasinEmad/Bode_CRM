@@ -50,6 +50,8 @@ export default function AdminLeads() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -413,6 +415,30 @@ export default function AdminLeads() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    setIsDeletingAll(true);
+    const toastId = addToast('Deleting all leads...', 'loading');
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete leads');
+
+      setLeads([]);
+      setShowDeleteAllConfirm(false);
+      updateToast(toastId, `✅ Deleted ${data.deletedCount || 0} leads`, 'success');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to delete leads', 'error');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -468,6 +494,14 @@ export default function AdminLeads() {
               >
                 <Plus size={20} />
                 Add Lead
+              </button>
+              <button
+                onClick={() => setShowDeleteAllConfirm(true)}
+                disabled={leads.length === 0}
+                className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-red-500/50"
+              >
+                <Trash2 size={20} />
+                Delete All
               </button>
             </div>
           </div>
@@ -1127,6 +1161,40 @@ export default function AdminLeads() {
         )}
 
         {/* Delete Confirmation Dialog */}
+        {showDeleteAllConfirm && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl max-w-sm w-full border-l-4 border-red-600">
+              <div className="p-6 bg-red-500/10 border-b border-red-500/50">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                    <Trash2 size={24} className="text-red-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-red-300">Delete All Leads?</h2>
+                </div>
+                <p className="text-red-200 text-sm leading-relaxed">
+                  This will permanently remove all leads from the database. This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3 p-6 bg-slate-800">
+                <button
+                  onClick={() => setShowDeleteAllConfirm(false)}
+                  className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition duration-200"
+                >
+                  Keep Them
+                </button>
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={isDeletingAll}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition duration-200"
+                >
+                  <Trash2 size={18} />
+                  {isDeletingAll ? 'Deleting...' : 'Delete All'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {deletingLeadId && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
             <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl max-w-sm w-full border-l-4 border-red-600">

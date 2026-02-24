@@ -189,3 +189,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const token = extractToken(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Only admin may delete all leads
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    await connectDB();
+
+    // Delete all leads
+    const result = await Lead.deleteMany({});
+
+    try {
+      await logAdminAction({
+        adminId: payload.userId,
+        action: 'delete_all',
+        resourceType: 'lead',
+        resourceId: null,
+        resourceName: 'all_leads',
+        description: `Admin deleted all leads (${result.deletedCount} removed)` ,
+        details: { deletedCount: result.deletedCount },
+      });
+    } catch (e) {
+      console.error('Failed to log admin action for delete_all:', e);
+    }
+
+    return NextResponse.json({ deletedCount: result.deletedCount });
+  } catch (error) {
+    console.error('Error deleting all leads:', error);
+    return NextResponse.json({ error: 'Failed to delete leads' }, { status: 500 });
+  }
+}
