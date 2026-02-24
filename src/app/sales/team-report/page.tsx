@@ -281,6 +281,59 @@ export default function TeamReport() {
     }
   };
 
+  const handleLocalChange = (userId: string, category: 'sheets' | 'assessments' | 'meetings' | 'requests', day: string, value: number) => {
+    setTeamData((prev) =>
+      prev.map((emp) => {
+        if (emp.userId === userId) {
+          return {
+            ...emp,
+            [category]: {
+              ...(emp[category] || {}),
+              [day]: value,
+            },
+          };
+        }
+        return emp;
+      })
+    );
+  };
+
+  const saveEmployeeChanges = async (employee: PerformanceData) => {
+    try {
+      setSavingData(true);
+
+      const payload: any = {
+        userId: employee.userId,
+        month: employee.month,
+      };
+
+      payload[selectedCategory] = employee[selectedCategory] || {};
+
+      const response = await fetch('/api/teams/performance', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to save data`;
+        throw new Error(errorMessage);
+      }
+
+      await fetchTeamData();
+      addToast('✅ Data saved successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving data:', error);
+      addToast('Error saving data', 'error');
+    } finally {
+      setSavingData(false);
+    }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950"><Loader className="animate-spin text-white" /></div>;
 
   return (
@@ -470,8 +523,8 @@ export default function TeamReport() {
                                   onChange={(e) => {
                                     const adminLocked = !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey]);
                                     if (employee.aggregated || !isToday || adminLocked) return;
-                                    updateCellValue(
-                                      employee,
+                                    handleLocalChange(
+                                      employee.userId,
                                       selectedCategory,
                                       dayKey,
                                       Math.max(0, parseInt(e.target.value) || 0)
@@ -498,6 +551,16 @@ export default function TeamReport() {
                             );
                           })}
                         </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => saveEmployeeChanges(employee)}
+                          disabled={savingData}
+                          className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${savingData ? 'opacity-60 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
+                        >
+                          {savingData ? 'Saving...' : 'Save'}
+                        </button>
                       </div>
 
                       {/* Weekly Summary */}
