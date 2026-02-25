@@ -13,6 +13,12 @@ export interface ISystemSettings extends Document {
     position: string;
     percentage: number;
   }[];
+  labels?: {
+    sheets?: string;
+    meetings?: string;
+    assessments?: string;
+    requests?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +63,25 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
         percentage: Number,
       },
     ],
+    // Dynamic UI labels for KPI indicators (customizable by admin)
+    labels: {
+      sheets: {
+        type: String,
+        default: 'Sheets',
+      },
+      meetings: {
+        type: String,
+        default: 'Meetings',
+      },
+      assessments: {
+        type: String,
+        default: 'Assessments',
+      },
+      requests: {
+        type: String,
+        default: 'Requests',
+      },
+    },
   },
   {
     timestamps: true,

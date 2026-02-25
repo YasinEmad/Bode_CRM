@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import useLabels from '@/hooks/useLabels';
 
 interface PerformanceData {
   userId: string;
@@ -42,17 +43,19 @@ const months = [
   { name: 'December', value: '12' },
 ];
 
-const categories = [
-  { key: 'sheets', label: 'Sheets', color: 'blue' },
-  { key: 'assessments', label: 'Assessments', color: 'emerald' },
-  { key: 'meetings', label: 'Meetings', color: 'purple' },
-  { key: 'requests', label: 'Requests', color: 'orange' },
-] as const;
+// Categories will be generated dynamically in component with dynamic labels
+// const categories = [
+//   { key: 'sheets', label: 'Sheets', color: 'blue' },
+//   { key: 'assessments', label: 'Assessments', color: 'emerald' },
+//   { key: 'meetings', label: 'Meetings', color: 'purple' },
+//   { key: 'requests', label: 'Requests', color: 'orange' },
+// ] as const;
 
 export default function TeamReport() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { get: getLabel } = useLabels();
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
@@ -62,7 +65,13 @@ export default function TeamReport() {
   const [savingData, setSavingData] = useState(false);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
 
-  // Derived state for UI logic
+  // Derived state for UI logic - generate categories dynamically with labels from hook
+  const categories = [
+    { key: 'sheets', label: getLabel('sheets', 'Sheets'), color: 'blue' },
+    { key: 'assessments', label: getLabel('assessments', 'Assessments'), color: 'emerald' },
+    { key: 'meetings', label: getLabel('meetings', 'Meetings'), color: 'purple' },
+    { key: 'requests', label: getLabel('requests', 'Requests'), color: 'orange' },
+  ] as const;
   const selectedCategoryObj = categories.find((c) => c.key === selectedCategory);
 
   useEffect(() => {

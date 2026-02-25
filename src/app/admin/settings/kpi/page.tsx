@@ -2,9 +2,10 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Save, AlertCircle } from 'lucide-react';
+import useLabels from '@/hooks/useLabels';
 
 interface KPIIndicator {
   name: string;
@@ -18,49 +19,81 @@ interface KPISetting {
   totalWeight: number;
 }
 
-const indicatorLabels: Record<string, { ar: string; en: string; description: string }> = {
-  attendance: {
-    ar: 'نسبة الحضور',
-    en: 'Attendance',
-    description: 'Percentage of days attended',
-  },
-  deals: {
-    ar: 'عدد الصفقات',
-    en: 'Deals',
-    description: 'Number of closed deals',
-  },
-  sheets: {
-    ar: 'عدد الأوراق',
-    en: 'Sheets',
-    description: 'Number of sheets completed',
-  },
-  meetings: {
-    ar: 'عدد الاجتماعات',
-    en: 'Meetings',
-    description: 'Number of meetings',
-  },
-  assessments: {
-    ar: 'عدد التقييمات',
-    en: 'Assessments',
-    description: 'Number of assessments',
-  },
-  requests: {
-    ar: 'عدد الطلبات',
-    en: 'Requests',
-    description: 'Number of requests',
-  },
+// indicator labels are partially dynamic for admin-configurable items
+// useLabels provides overrides stored in SystemSettings
+const indicatorLabelsBase: Record<string, { en: string; description: string }> = {
+  attendance: { en: 'Attendance', description: 'Percentage of days attended' },
+  deals: { en: 'Deals', description: 'Number of closed deals' },
+  sheets: { en: 'Sheets', description: 'Number of sheets completed' },
+  meetings: { en: 'Meetings', description: 'Number of meetings' },
+  assessments: { en: 'Assessments', description: 'Number of assessments' },
+  requests: { en: 'Requests', description: 'Number of requests' },
 };
 
 export default function KPISettingsPage() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast, updateToast } = useToast();
-
   const [kpiSettings, setKpiSettings] = useState<KPISetting | null>(null);
   const [scope, setScope] = useState<'global' | 'team-leader'>('global');
   const [loadingData, setLoadingData] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const { labels, loading: loadingLabels, get: getLabel, refetchLabels } = useLabels();
+  const [labelInputs, setLabelInputs] = useState<{ sheets: string; meetings: string; assessments: string; requests: string }>({ sheets: 'Sheets', meetings: 'Meetings', assessments: 'Assessments', requests: 'Requests' });
+
+  useEffect(() => {
+    if (labels) {
+      console.log('🔄 useEffect triggered - labels changed:', labels);
+      setLabelInputs({
+        sheets: labels.sheets || 'Sheets',
+        meetings: labels.meetings || 'Meetings',
+        assessments: labels.assessments || 'Assessments',
+        requests: labels.requests || 'Requests',
+      });
+      console.log('✅ labelInputs updated');
+    }
+  }, [labels]);
+
+  const saveLabels = async () => {
+    if (!token) return;
+    try {
+      const toastId = addToast('Saving labels...', 'loading');
+      const res = await fetch('/api/system-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ labels: labelInputs }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to save labels');
+      }
+      console.log('✅ Labels saved to API');
+      
+      // Refetch labels to update the UI
+      console.log('🔄 Refetching labels...');
+      await refetchLabels();
+      console.log('✅ Labels refetched successfully');
+      
+      updateToast(toastId, '✅ Labels saved', 'success');
+    } catch (error) {
+      console.error('❌ Error saving labels:', error);
+      addToast(error instanceof Error ? error.message : 'Failed to save labels', 'error');
+    }
+  };
+
+  // Merge base labels with dynamic overrides from system settings
+  const indicatorLabels = useMemo(() => {
+    const merged = { ...indicatorLabelsBase };
+    if (labels) {
+      if (labels.sheets) merged.sheets = { ...merged.sheets, en: labels.sheets };
+      if (labels.meetings) merged.meetings = { ...merged.meetings, en: labels.meetings };
+      if (labels.assessments) merged.assessments = { ...merged.assessments, en: labels.assessments };
+      if (labels.requests) merged.requests = { ...merged.requests, en: labels.requests };
+    }
+    return merged;
+  }, [labels]);
+
 
   // Check authentication
   useEffect(() => {
@@ -266,6 +299,34 @@ export default function KPISettingsPage() {
             <option value="team-leader">Team Leader</option>
           </select>
           <p className="text-sm text-slate-400">Choose which role's KPI settings to edit</p>
+        </div>
+
+        {/* Label Customization Section */}
+        <div className="mb-8 bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl shadow-xl border border-slate-700 p-6">
+          <h3 className="text-lg font-bold text-white mb-4">Indicator Labels</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            {['sheets', 'meetings', 'assessments', 'requests'].map((key) => (
+              <div key={key}>
+                <label className="block text-sm font-semibold text-slate-300 mb-2 capitalize">
+                  {key} Label
+                </label>
+                <input
+                  type="text"
+                  value={labelInputs[key as keyof typeof labelInputs]}
+                  onChange={(e) => setLabelInputs({ ...labelInputs, [key]: e.target.value })}
+                  placeholder={indicatorLabelsBase[key]?.en || key}
+                  className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+                <p className="text-xs text-slate-400 mt-1">{indicatorLabelsBase[key]?.description}</p>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={saveLabels}
+            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-semibold rounded-lg transition-all"
+          >
+            Save Labels
+          </button>
         </div>
 
         {/* Error Messages */}

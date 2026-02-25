@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import { Loader } from 'lucide-react';
+import useLabels from '@/hooks/useLabels';
 
 export default function SalesDailyReport() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { get: getLabel } = useLabels();
 
   const [sheets, setSheets] = useState<number>(0);
   const [meetings, setMeetings] = useState<number>(0);
@@ -91,7 +93,7 @@ export default function SalesDailyReport() {
 
         <div className="space-y-4">
           <label className="block">
-            <span className="text-sm text-slate-300">Sheets</span>
+            <span className="text-sm text-slate-300">{getLabel('sheets', 'Sheets')}</span>
             <input
               type="number"
               min={0}
@@ -102,7 +104,7 @@ export default function SalesDailyReport() {
           </label>
 
           <label className="block">
-            <span className="text-sm text-slate-300">Meetings</span>
+            <span className="text-sm text-slate-300">{getLabel('meetings', 'Meetings')}</span>
             <input
               type="number"
               min={0}
@@ -113,7 +115,7 @@ export default function SalesDailyReport() {
           </label>
 
           <label className="block">
-            <span className="text-sm text-slate-300">Requests</span>
+            <span className="text-sm text-slate-300">{getLabel('requests', 'Requests')}</span>
             <input
               type="number"
               min={0}

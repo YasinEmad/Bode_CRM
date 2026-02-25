@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import useLabels from '@/hooks/useLabels';
 
 interface TeamLeaderPerformance {
   userId: string;
@@ -48,17 +49,19 @@ const months = [
   { name: 'December', value: '12' },
 ];
 
-const categories = [
-  { key: 'sheets', label: 'Sheets', color: 'blue' },
-  { key: 'assessments', label: 'Assessments', color: 'emerald' },
-  { key: 'meetings', label: 'Meetings', color: 'purple' },
-  { key: 'requests', label: 'Requests', color: 'orange' },
-];
+// Categories will be generated dynamically with labels
+// const categories = [
+//   { key: 'sheets', label: 'Sheets', color: 'blue' },
+//   { key: 'assessments', label: 'Assessments', color: 'emerald' },
+//   { key: 'meetings', label: 'Meetings', color: 'purple' },
+//   { key: 'requests', label: 'Requests', color: 'orange' },
+// ];
 
 export default function TeamLeadersMonthlyReport() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { get: getLabel } = useLabels();
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
@@ -67,6 +70,14 @@ export default function TeamLeadersMonthlyReport() {
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
   const [expandedLeaders, setExpandedLeaders] = useState<Set<string>>(new Set());
+
+  // Generate categories dynamically with labels from hook
+  const categories = [
+    { key: 'sheets', label: getLabel('sheets', 'Sheets'), color: 'blue' },
+    { key: 'assessments', label: getLabel('assessments', 'Assessments'), color: 'emerald' },
+    { key: 'meetings', label: getLabel('meetings', 'Meetings'), color: 'purple' },
+    { key: 'requests', label: getLabel('requests', 'Requests'), color: 'orange' },
+  ];
 
   useEffect(() => {
     const now = new Date();

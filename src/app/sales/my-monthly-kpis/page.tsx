@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import { Loader, Calendar, TrendingUp, AlertCircle, Download, Target } from 'lucide-react';
 import { calculateEmployeeKPI, EmployeeMetrics, KPIScores } from '@/lib/kpiCalculator';
 import { countWorkdaysInMonth } from '@/lib/workdays';
+import useLabels from '@/hooks/useLabels';
 
 interface MyKPIData {
   _id: string;
@@ -51,6 +52,7 @@ export default function MyMonthlyKPIs() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { get: getLabel } = useLabels();
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
@@ -584,7 +586,7 @@ export default function MyMonthlyKPIs() {
                         <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
                           <div className="flex items-center gap-3 flex-1">
                             <span className="text-yellow-400 text-lg">📄</span>
-                            <span className="text-slate-300 text-sm">Sheets</span>
+                            <span className="text-slate-300 text-sm">{getLabel('sheets', 'Sheets')}</span>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
@@ -598,7 +600,7 @@ export default function MyMonthlyKPIs() {
                         <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
                           <div className="flex items-center gap-3 flex-1">
                             <span className="text-pink-400 text-lg">📋</span>
-                            <span className="text-slate-300 text-sm">Meetings</span>
+                            <span className="text-slate-300 text-sm">{getLabel('meetings', 'Meetings')}</span>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
@@ -612,7 +614,7 @@ export default function MyMonthlyKPIs() {
                         <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
                           <div className="flex items-center gap-3 flex-1">
                             <span className="text-purple-400 text-lg">🎓</span>
-                            <span className="text-slate-300 text-sm">Assessments</span>
+                            <span className="text-slate-300 text-sm">{getLabel('assessments', 'Assessments')}</span>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
@@ -626,7 +628,7 @@ export default function MyMonthlyKPIs() {
                         <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg hover:bg-slate-700 transition">
                           <div className="flex items-center gap-3 flex-1">
                             <span className="text-orange-400 text-lg">📞</span>
-                            <span className="text-slate-300 text-sm">Requests Handled</span>
+                            <span className="text-slate-300 text-sm">{getLabel('requests', 'Requests Handled')}</span>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-24 bg-slate-600 rounded-full h-2">
@@ -700,7 +702,7 @@ export default function MyMonthlyKPIs() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">📄</span>
-                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Sheets</h3>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">{getLabel('sheets', 'Sheets')}</h3>
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-white mb-1">{kpiData.sheetsCount}</p>
@@ -712,7 +714,7 @@ export default function MyMonthlyKPIs() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">📋</span>
-                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Meetings</h3>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">{getLabel('meetings', 'Meetings')}</h3>
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-white mb-1">{kpiData.meetingsCount}</p>
@@ -724,7 +726,7 @@ export default function MyMonthlyKPIs() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">🎓</span>
-                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Assessments</h3>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">{getLabel('assessments', 'Assessments')}</h3>
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-white mb-1">{kpiData.assessmentsCount}</p>
@@ -736,7 +738,7 @@ export default function MyMonthlyKPIs() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">📞</span>
-                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">Requests</h3>
+                        <h3 className="text-slate-400 font-semibold text-xs uppercase tracking-wide">{getLabel('requests', 'Requests')}</h3>
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-white mb-1">{kpiData.requestsCount}</p>
