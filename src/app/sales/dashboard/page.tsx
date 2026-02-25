@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import LeadCard from '@/components/LeadCard';
+import MarkAttendanceCard from '@/components/MarkAttendanceCard';
 
 interface Lead {
   _id: string;
@@ -183,6 +184,9 @@ export default function SalesDashboard() {
         </div>
 
         {/* Quick Stats */}
+        <div className="mb-8">
+          <MarkAttendanceCard />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all">
             <div className="flex items-center justify-between">
