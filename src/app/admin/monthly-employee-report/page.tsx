@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, TrendingUp, Users, Download, AlertCircle } from 'lucide-react';
+import useLabels from '@/hooks/useLabels';
 import { calculateEmployeeKPI, EmployeeMetrics, KPIScores } from '@/lib/kpiCalculator';
 import { countWorkdaysInMonth } from '@/lib/workdays';
 
@@ -42,6 +43,7 @@ export default function MonthlyEmployeeReport() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { get: getLabel } = useLabels();
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
@@ -613,13 +615,13 @@ export default function MonthlyEmployeeReport() {
       'Employee Name',
       'Position',
       'Salary',
-      'Leads',
-      'Deals',
-      'Attendance %',
-      'Sheets',
-      'Meetings',
-      'Assessments',
-      'Requests',
+      getLabel('leads', 'Leads'),
+      getLabel('deals', 'Deals'),
+      getLabel('attendance', 'Attendance %'),
+      getLabel('sheets', 'Sheets'),
+      getLabel('meetings', 'Meetings'),
+      getLabel('assessments', 'Assessments'),
+      getLabel('requests', 'Requests'),
       'KPI %',
     ];
 
@@ -776,25 +778,25 @@ export default function MonthlyEmployeeReport() {
                       Salary
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-emerald-300 border-l border-slate-700 bg-emerald-600/10">
-                      Leads
+                      {getLabel('leads', 'Leads')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-cyan-300 border-l border-slate-700 bg-cyan-600/10">
-                      Deals
+                      {getLabel('deals', 'Deals')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-blue-300 border-l border-slate-700 bg-blue-600/10">
-                      Attendance %
+                      {getLabel('attendance', 'Attendance %')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-yellow-300 border-l border-slate-700 bg-yellow-600/10">
-                      Sheets
+                      {getLabel('sheets', 'Sheets')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-pink-300 border-l border-slate-700 bg-pink-600/10">
-                      Meetings
+                      {getLabel('meetings', 'Meetings')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-purple-300 border-l border-slate-700 bg-purple-600/10">
-                      Assessments
+                      {getLabel('assessments', 'Assessments')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-orange-300 border-l border-slate-700 bg-orange-600/10">
-                      Requests
+                      {getLabel('requests', 'Requests')}
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-orange-300 border-l border-slate-700 bg-orange-600/10">
                       KPI %
@@ -906,7 +908,7 @@ export default function MonthlyEmployeeReport() {
               </div>
 
               <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-cyan-500 transition-all group">
-                <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">Total Leads</h3>
+                <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">{getLabel('leads', 'Total Leads')}</h3>
                 <div className="flex items-center justify-between">
                   <p className="text-4xl font-bold text-white">
                     {reportData.reduce((sum, emp) => sum + emp.leadsCount, 0)}
@@ -918,7 +920,7 @@ export default function MonthlyEmployeeReport() {
               </div>
 
               <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-purple-500 transition-all group">
-                <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">Total Deals</h3>
+                <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">{getLabel('deals', 'Total Deals')}</h3>
                 <div className="flex items-center justify-between">
                   <p className="text-4xl font-bold text-white">
                     {reportData.reduce((sum, emp) => sum + emp.closedDealsCount, 0)}
@@ -930,7 +932,7 @@ export default function MonthlyEmployeeReport() {
               </div>
 
               <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-blue-500 transition-all group">
-                <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">Avg Attendance</h3>
+                <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">{getLabel('attendance', 'Avg Attendance')}</h3>
                 <div className="flex items-center justify-between">
                   <p className="text-4xl font-bold text-white">
                     {reportData.length > 0
