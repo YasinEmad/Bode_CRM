@@ -72,15 +72,17 @@ export default function KPISettingsPage() {
   // Fetch KPI settings
   useEffect(() => {
     if (token) {
-      fetchKpiSettings();
+      fetchKpiSettings(scope);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const fetchKpiSettings = async () => {
+  const fetchKpiSettings = async (roleParam?: 'global' | 'team-leader') => {
     try {
       setLoadingData(true);
-      console.log('Fetching KPI settings with token:', token?.substring(0, 20) + '...');
-      const res = await fetch(`/api/kpi-settings?role=${encodeURIComponent(scope)}`, {
+      const roleToUse = roleParam || scope;
+      console.log('Fetching KPI settings for role:', roleToUse, 'token:', token?.substring(0, 20) + '...');
+      const res = await fetch(`/api/kpi-settings?role=${encodeURIComponent(roleToUse)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -256,7 +258,7 @@ export default function KPISettingsPage() {
             onChange={(e) => {
               const val = e.target.value as 'global' | 'team-leader';
               setScope(val);
-              fetchKpiSettings();
+              fetchKpiSettings(val);
             }}
             className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white"
           >
