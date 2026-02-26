@@ -5,8 +5,8 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get('token')?.value;
   const { pathname } = req.nextUrl;
 
-  // حماية مسارات /admin و /sales
-  if (pathname.startsWith('/admin') || pathname.startsWith('/sales')) {
+  // حماية مسارات /admin و /sales و /media-buyer
+  if (pathname.startsWith('/admin') || pathname.startsWith('/sales') || pathname.startsWith('/media-buyer')) {
     if (!token) {
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('next', pathname);
@@ -22,6 +22,7 @@ export const config = {
   matcher: [
     '/admin/:path*', 
     '/sales/:path*',
+    '/media-buyer/:path*',
     '/login' // ضفنا الـ login عشان لو مسجل دخول مايدخلهاش تاني
   ],
 };

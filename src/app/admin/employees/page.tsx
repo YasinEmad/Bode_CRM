@@ -21,7 +21,7 @@ interface Employee {
   closedDealsCount?: number;
 }
 
-const POSITION_CHOICES = ['senior', 'team lead', 'fresh', 'mid'];
+const POSITION_CHOICES = ['senior', 'team lead', 'fresh', 'mid', 'media buyer'];
 
 // Normalize position to ensure 'team lead' variants are stored consistently
 const normalizePosition = (position: string): string => {

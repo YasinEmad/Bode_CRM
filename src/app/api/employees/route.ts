@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const employees = await User.find({ role: 'sales' }).select('_id username name email phone position salary createdAt joinDate deviceId deviceIds');
+    const employees = await User.find({ role: { $in: ['sales', 'media buyer'] } }).select('_id username name email phone position salary createdAt joinDate deviceId deviceIds');
     
     console.log('📋 Fetched employees:', employees.map(e => ({ 
       name: e.name, 
@@ -111,11 +111,14 @@ export async function POST(req: NextRequest) {
 
     const hashed = await hashPassword(pwd);
 
+    // Determine role based on position
+    const role = position && position.toLowerCase().trim() === 'media buyer' ? 'media buyer' : 'sales';
+
     const user = await User.create({
       username: username.trim(),
       password: hashed,
       name,
-      role: 'sales',
+      role: role,
       position: position || '',
       phone: phone || '',
       salary: Number(salary) || 0,

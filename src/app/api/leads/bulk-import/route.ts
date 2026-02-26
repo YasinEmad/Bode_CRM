@@ -22,11 +22,21 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!payload || (payload.role !== 'admin' && payload.role !== 'media buyer')) {
+      return NextResponse.json({ error: 'Admin or media buyer access required' }, { status: 403 });
     }
 
     await connectDB();
+
+    // Resolve actor username for createdBy on imported leads
+    let actorUsername = '';
+    try {
+      const User = (await import('@/models/User')).default;
+      const actor = await User.findById(payload.userId).select('username');
+      actorUsername = actor?.username || '';
+    } catch (e) {
+      console.warn('Could not resolve actor username for bulk import', e);
+    }
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -113,6 +123,7 @@ export async function POST(req: NextRequest) {
         sourceText: finalSourceText,
         notes: String(notes).trim(),
         assignedTo: assignedTo ? String(assignedTo).trim() : null,
+        createdBy: actorUsername,
       });
     });
 

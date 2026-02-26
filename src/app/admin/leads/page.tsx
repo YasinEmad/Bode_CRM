@@ -29,7 +29,7 @@ interface Lead {
   notes: string;
   proofImage?: string;
   assignedTo?: { _id: string; name: string };
-  createdBy?: { _id: string; name: string };
+  createdBy?: string; // username of creator
 }
 
 interface Employee {
@@ -380,7 +380,7 @@ export default function AdminLeads() {
       'Phone': lead.phone,
       'Status': lead.status,
       'Source': lead.displaySource || ((lead as any).sourceText && (lead as any).sourceText.trim().length > 0 ? (lead as any).sourceText : lead.source),
-      'Created By': lead.createdBy?.name || 'Admin',
+      'Created By': lead.createdBy || 'Admin',
       'Assigned To': lead.assignedTo?.name || 'Unassigned',
       'Notes': lead.notes || '',
     }));
@@ -965,7 +965,7 @@ export default function AdminLeads() {
                         <td className="px-4 py-3">
                           {lead.createdBy ? (
                             <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-medium inline-block">
-                              ✏️ {lead.createdBy.name}
+                              ✏️ {lead.createdBy}
                             </span>
                           ) : (
                             <span className="text-slate-500 text-xs">System</span>

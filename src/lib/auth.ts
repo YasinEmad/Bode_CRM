@@ -10,7 +10,7 @@ if (!JWT_SECRET) {
 // 2. تعريف شكل البيانات داخل التوكن (Type Safety)
 interface JWTPayload {
   userId: string;
-  role: 'admin' | 'sales';
+  role: 'admin' | 'sales' | 'media buyer';
   type: 'session' | 'refresh';
 }
 
@@ -53,7 +53,7 @@ export function verifyToken(token: string): JWTPayload | null {
 /**
  * إنشاء توكن الجلسة (Helper function)
  */
-export function generateSessionToken(userId: string, role: 'admin' | 'sales'): string {
+export function generateSessionToken(userId: string, role: 'admin' | 'sales' | 'media buyer'): string {
   return signToken({ userId, role, type: 'session' });
 }
 

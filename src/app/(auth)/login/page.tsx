@@ -56,7 +56,12 @@ export default function LoginPage() {
       
       // Force page reload to clear any stale state
       // Use window.location instead of router.push to force full page load
-      const redirectPath = data.user.role === 'admin' ? '/admin/dashboard' : '/sales/dashboard';
+      let redirectPath = '/sales/dashboard';
+      if (data.user.role === 'admin') {
+        redirectPath = '/admin/dashboard';
+      } else if (data.user.role === 'media buyer') {
+        redirectPath = '/media-buyer';
+      }
       
       // Small delay to ensure localStorage is written before reload
       setTimeout(() => {

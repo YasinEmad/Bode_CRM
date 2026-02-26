@@ -95,7 +95,8 @@ export default function Navbar() {
     );
   }
 
-  const navLinks: NavLink[] = user?.role === 'admin' 
+  // Only admin and sales users see navigation links. Media buyer sees no page links in navbar.
+  const navLinks: NavLink[] = user?.role === 'admin'
     ? [
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/leads', label: 'Leads' },
@@ -106,10 +107,10 @@ export default function Navbar() {
         { href: '/admin/team-leaders-monthly-report', label: 'Team Leaders' },
         { href: '/admin/commissions', label: 'Commissions' },
         { href: '/admin/logs', label: 'Logs' },
-
         { href: '/admin/settings', label: 'Settings' },
       ]
-    : [
+    : user?.role === 'sales'
+      ? [
         { href: '/sales/dashboard', label: 'Dashboard' },
         { href: '/sales/leads', label: 'My Leads' },
         { href: '/sales/my-monthly-kpis', label: 'My KPIs' },
@@ -122,7 +123,8 @@ export default function Navbar() {
         ] : []),
         { href: '/sales/commissions', label: 'My Commissions' },
         { href: '/sales/attendance', label: 'Attendance' },
-      ];
+      ]
+      : [];
 
   if (isAuthPage) {
     return null;

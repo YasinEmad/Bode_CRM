@@ -2,7 +2,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from './useAuth';
 
-export function useProtectedRoute(requiredRole?: 'admin' | 'sales') {
+export function useProtectedRoute(requiredRole?: 'admin' | 'sales' | 'media buyer') {
   const router = useRouter();
   const { user, loading } = useAuth();
 

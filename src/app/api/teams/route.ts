@@ -4,6 +4,7 @@ import Team from '@/models/Team';
 import User from '@/models/User';
 import Lead from '@/models/Lead';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -112,6 +113,21 @@ export async function POST(req: NextRequest) {
     }
     // Ensure leader also has teamId
     await User.findByIdAndUpdate(leaderId, { teamId: team._id });
+
+    // log team creation
+    try {
+      await logAdminAction({
+        adminId: payload.userId,
+        action: 'create',
+        resourceType: 'team',
+        resourceId: team._id,
+        resourceName: team.name,
+        description: `Admin created team ${team.name}`,
+        details: { leaderId, memberIds: members },
+      });
+    } catch (e) {
+      console.error('Failed to log admin action for team creation:', e);
+    }
 
     return NextResponse.json({ success: true, team: { id: team._id, name: team.name } }, { status: 201 });
   } catch (error) {

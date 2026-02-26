@@ -5,6 +5,7 @@ import Commission from '@/models/Commission';
 import User from '@/models/User';
 import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
+import { logAdminAction } from '@/lib/adminLogger';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
@@ -284,6 +285,21 @@ export async function DELETE(
 
     if (!lead) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    // log deletion
+    try {
+      await logAdminAction({
+        adminId: payload.userId,
+        action: 'delete',
+        resourceType: 'lead',
+        resourceId: lead._id,
+        resourceName: lead.name,
+        description: `Admin deleted lead ${lead.name}`,
+        details: { phone: lead.phone, email: lead.email, assignedTo: lead.assignedTo || null },
+      });
+    } catch (e) {
+      console.error('Failed to log admin action for lead deletion:', e);
     }
 
     return NextResponse.json({ message: 'Lead deleted successfully', lead });

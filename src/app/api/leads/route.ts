@@ -25,6 +25,16 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
+    // Resolve the username of the actor so we can set `createdBy` on leads
+    let actorUsername = '';
+    try {
+      const User = (await import('@/models/User')).default;
+      const actor = await User.findById(payload.userId).select('username');
+      actorUsername = actor?.username || '';
+    } catch (e) {
+      console.warn('Could not resolve actor username for lead creation', e);
+    }
+
     const userId = req.nextUrl.searchParams.get('userId');
     const status = req.nextUrl.searchParams.get('status');
     const includeSnapshots = req.nextUrl.searchParams.get('includeSnapshots');
@@ -116,12 +126,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Allow both admin and sales users to create leads
-    if (payload.role !== 'admin' && payload.role !== 'sales') {
-      return NextResponse.json({ error: 'Admin or sales access required' }, { status: 403 });
+    // Allow admin, sales, and media buyer users to create leads
+    if (payload.role !== 'admin' && payload.role !== 'sales' && payload.role !== 'media buyer') {
+      return NextResponse.json({ error: 'Admin, sales or media buyer access required' }, { status: 403 });
     }
 
     await connectDB();
+
+    // Resolve actor username for createdBy
+    let actorUsername = '';
+    try {
+      const User = (await import('@/models/User')).default;
+      const actor = await User.findById(payload.userId).select('username');
+      actorUsername = actor?.username || '';
+    } catch (e) {
+      console.warn('Could not resolve actor username for lead creation (POST)', e);
+    }
 
     const body = await req.json();
     const { name, project, phone, email, status, source, sourceText, notes, assignedTo } = body;
@@ -166,6 +186,7 @@ export async function POST(req: NextRequest) {
       sourceText: sourceText || '',
       notes: notes || '',
       assignedTo: assignedToId,
+      createdBy: actorUsername,
     });
     try {
       console.log('[API /api/leads] created lead (raw):', JSON.stringify(lead.toObject()));

@@ -21,6 +21,8 @@ export default function Home() {
           const userData = JSON.parse(user);
           if (userData.role === 'admin') {
             router.push('/admin/dashboard');
+          } else if (userData.role === 'media buyer') {
+            router.push('/media-buyer');
           } else {
             router.push('/sales/dashboard');
           }
