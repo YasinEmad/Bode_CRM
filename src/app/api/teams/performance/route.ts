@@ -257,6 +257,12 @@ export async function GET(req: NextRequest) {
         ClosedDealSnapshot.find(snapQuery).lean(),
       ]);
 
+      // Build lead status map to filter snapshots correctly (same as Employees page)
+      const leadStatusMap = new Map<string, string>();
+      teamLeads.forEach((lead: any) => {
+        leadStatusMap.set(String(lead._id), lead.status);
+      });
+
       const leadsByUser = new Map<string, { leadsCount: number }>();
       for (const l of teamLeads) {
         const assignee = String((l as any).assignedTo || '');
@@ -266,13 +272,30 @@ export async function GET(req: NextRequest) {
         leadsByUser.set(assignee, cur);
       }
 
+      // Count deals per user - only count snapshots where the associated Lead has status = 'closed'
+      // This matches the Employees page logic and prevents counting "closed_pending_approval"
       const dealsByUser = new Map<string, number>();
       for (const s of snaps) {
         const assigned = s.assignedTo ? String(s.assignedTo) : null;
         const userIdField = s.userId ? String(s.userId) : null;
         const key = assigned || userIdField;
         if (!key) continue;
-        dealsByUser.set(key, (dealsByUser.get(key) || 0) + 1);
+
+        // Only count if lead status is 'closed' or if lead was deleted
+        if (s.leadId) {
+          const leadStatus = leadStatusMap.get(String(s.leadId));
+          if (leadStatus === undefined) {
+            // Lead was deleted, preserve the deal
+            dealsByUser.set(key, (dealsByUser.get(key) || 0) + 1);
+          } else if (leadStatus === 'closed') {
+            // Lead is closed, count it
+            dealsByUser.set(key, (dealsByUser.get(key) || 0) + 1);
+          }
+          // Otherwise skip it (e.g., closed_pending_approval, lost, etc.)
+        } else {
+          // No leadId, preserve the deal
+          dealsByUser.set(key, (dealsByUser.get(key) || 0) + 1);
+        }
       }
 
       // Attach to teamData rows
@@ -296,6 +319,12 @@ export async function GET(req: NextRequest) {
           aggregated.aggregatedLeads += leadStats.leadsCount;
           aggregated.aggregatedDeals += deals;
         }
+        // also include leader's own counts
+        const leaderIdStr = String(team.leader);
+        const leaderLeadStats = leadsByUser.get(leaderIdStr) || { leadsCount: 0 };
+        const leaderDeals = dealsByUser.get(leaderIdStr) || 0;
+        aggregated.aggregatedLeads += leaderLeadStats.leadsCount;
+        aggregated.aggregatedDeals += leaderDeals;
       } else {
         // Leader-only mode: only leader's stats
         const leaderIdStr = String(team.leader);

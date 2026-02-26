@@ -215,8 +215,8 @@ export default function TeamReport() {
           editedByAdmin: lp.editedByAdmin || false,
           adminLocks: lp.adminLocks || { sheets: {}, assessments: {}, meetings: {}, requests: {} },
           leaderPersonal: true,
-          leadsCount: (lp as any).leaderOwnLeads ?? 0,
-          dealsCount: (lp as any).leaderOwnDeals ?? 0,
+          leadsCount: lp.leadsCount ?? 0,
+          dealsCount: lp.dealsCount ?? 0,
         };
         if (formattedData.length > 0 && formattedData[0].aggregated) {
           formattedData.splice(1, 0, formattedLeader);
