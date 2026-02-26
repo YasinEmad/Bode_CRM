@@ -7,7 +7,13 @@ export interface ITeamLeaderPerformance extends Document {
   assessments: Record<string, number>; // day1-day31
   meetings: Record<string, number>; // day1-day31
   requests: Record<string, number>; // day1-day31
-  editedByAdmin?: boolean; // Flag to indicate if data was edited by admin
+  editedByAdmin?: boolean | Record<string, boolean>; // Flag or per-category flags (legacy)
+  adminLocks?: {
+    sheets: Record<string, boolean>;
+    assessments: Record<string, boolean>;
+    meetings: Record<string, boolean>;
+    requests: Record<string, boolean>;
+  }; // Per-day admin locks
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,8 +50,31 @@ const TeamLeaderPerformanceSchema = new Schema<ITeamLeaderPerformance>(
       default: () => ({}),
     },
     editedByAdmin: {
-      type: Boolean,
-      default: false,
+      type: Map,
+      of: Boolean,
+      default: () => ({}),
+    },
+    adminLocks: {
+      sheets: {
+        type: Map,
+        of: Boolean,
+        default: () => ({}),
+      },
+      assessments: {
+        type: Map,
+        of: Boolean,
+        default: () => ({}),
+      },
+      meetings: {
+        type: Map,
+        of: Boolean,
+        default: () => ({}),
+      },
+      requests: {
+        type: Map,
+        of: Boolean,
+        default: () => ({}),
+      },
     },
   },
   {

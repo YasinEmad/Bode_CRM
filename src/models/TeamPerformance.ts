@@ -8,7 +8,7 @@ export interface ITeamPerformance extends Document {
   assessments: Record<string, number>; // day1-day31
   meetings: Record<string, number>; // day1-day31
   requests: Record<string, number>; // day1-day31
-  editedByAdmin?: boolean; // Flag to indicate if data was edited by admin
+  editedByAdmin?: boolean | Record<string, boolean>; // Flag or per-category flags
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,8 +50,9 @@ const TeamPerformanceSchema = new Schema<ITeamPerformance>(
       default: () => ({}),
     },
     editedByAdmin: {
-      type: Boolean,
-      default: false,
+      type: Map,
+      of: Boolean,
+      default: () => ({}),
     },
   },
   {

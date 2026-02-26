@@ -84,6 +84,8 @@ export async function GET(req: NextRequest) {
       leaderOwnDeals: perf!.leaderOwnDeals,
       teamLeadsCount: perf!.teamLeadsCount,
       teamDealsCount: perf!.teamDealsCount,
+      editedByAdmin: perf!.editedByAdmin,
+      adminLocks: perf!.adminLocks,
     }));
 
     return NextResponse.json({ performances: formattedPerformances });
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
     const { userId, month, sheets, assessments, meetings, requests } = await req.json();
 
     if (!userId || !month) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields: userId and month are required' }, { status: 400 });
     }
 
     // Verify the user is actually a team leader
@@ -125,24 +127,101 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User is not a team leader' }, { status: 403 });
     }
 
-    // Find or create performance record using upsert
-    const performance = await TeamLeaderPerformance.findOneAndUpdate(
-      { userId, month },
-      {
+    // Find existing performance so we can merge adminLocks
+    const existing = await TeamLeaderPerformance.findOne({ userId, month });
+
+    // Convert existing document to plain object to remove all Mongoose internals
+    const existingPlain = existing ? existing.toObject() : null;
+
+    // Build adminLocks object - tracks per-day admin edits
+    let adminLocksObj: any = {
+      sheets: {},
+      assessments: {},
+      meetings: {},
+      requests: {},
+    };
+
+    // Merge existing adminLocks
+    if (existingPlain?.adminLocks) {
+      if (typeof existingPlain.adminLocks === 'object') {
+        adminLocksObj = JSON.parse(JSON.stringify(existingPlain.adminLocks));
+      }
+    }
+
+    // Track which days are being updated in each category
+    if (sheets && typeof sheets === 'object') {
+      const sheetsDays = Object.keys(sheets);
+      for (const day of sheetsDays) {
+        adminLocksObj.sheets[day] = true;
+      }
+    }
+    if (assessments && typeof assessments === 'object') {
+      const assessmentsDays = Object.keys(assessments);
+      for (const day of assessmentsDays) {
+        adminLocksObj.assessments[day] = true;
+      }
+    }
+    if (meetings && typeof meetings === 'object') {
+      const meetingsDays = Object.keys(meetings);
+      for (const day of meetingsDays) {
+        adminLocksObj.meetings[day] = true;
+      }
+    }
+    if (requests && typeof requests === 'object') {
+      const requestsDays = Object.keys(requests);
+      for (const day of requestsDays) {
+        adminLocksObj.requests[day] = true;
+      }
+    }
+
+    // Clean the data by converting to plain objects to remove Mongoose internals
+    const sheetsData = sheets ? JSON.parse(JSON.stringify(sheets)) : undefined;
+    const assessmentsData = assessments ? JSON.parse(JSON.stringify(assessments)) : undefined;
+    const meetingsData = meetings ? JSON.parse(JSON.stringify(meetings)) : undefined;
+    const requestsData = requests ? JSON.parse(JSON.stringify(requests)) : undefined;
+    const adminLocksData = JSON.parse(JSON.stringify(adminLocksObj));
+
+    // Prepare update object using $set to let Mongoose handle the conversion
+    const updateObj: any = {
+      $set: {
         userId,
         month,
-        ...(sheets && { sheets: new Map(Object.entries(sheets)) }),
-        ...(assessments && { assessments: new Map(Object.entries(assessments)) }),
-        ...(meetings && { meetings: new Map(Object.entries(meetings)) }),
-        ...(requests && { requests: new Map(Object.entries(requests)) }),
-        editedByAdmin: true, // Mark as edited by admin
+        adminLocks: adminLocksData,
       },
+    };
+
+    // Add only the fields that are being updated
+    if (sheetsData) {
+      updateObj.$set.sheets = sheetsData;
+    }
+    if (assessmentsData) {
+      updateObj.$set.assessments = assessmentsData;
+    }
+    if (meetingsData) {
+      updateObj.$set.meetings = meetingsData;
+    }
+    if (requestsData) {
+      updateObj.$set.requests = requestsData;
+    }
+
+    // Upsert performance record
+    const performance = await TeamLeaderPerformance.findOneAndUpdate(
+      { userId, month },
+      updateObj,
       { upsert: true, new: true }
     );
 
+    if (!performance) {
+      return NextResponse.json({ error: 'Failed to save performance record' }, { status: 500 });
+    }
+
     return NextResponse.json({ performance }, { status: 200 });
   } catch (error) {
-    console.error('Error updating team leader performance:', error);
-    return NextResponse.json({ error: 'Failed to update team leader performance' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error updating team leader performance:', errorMessage);
+    return NextResponse.json(
+      { error: `Failed to update team leader performance: ${errorMessage}` },
+      { status: 500 }
+    );
   }
 }

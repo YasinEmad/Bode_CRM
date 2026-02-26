@@ -28,6 +28,20 @@ function convertMongoMapToObject(data: any): Record<string, number> {
   return typeof data === 'object' ? data : {};
 }
 
+function validateDayKeys(data: Record<string, any> | undefined, currentDay: number): boolean {
+  if (!data) return true;
+  
+  const expectedKey = `day${currentDay}`;
+  const allowedKeys = [expectedKey];
+  
+  for (const key in data) {
+    if (!allowedKeys.includes(key)) {
+      return false;
+    }
+  }
+  
+  return true;
+}
 export async function GET(req: NextRequest) {
   try {
     const token = extractToken(req);
@@ -59,21 +73,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Month parameter is required' }, { status: 400 });
     }
 
-    // Fetch team members
-    const teamMembers = await User.find({ _id: { $in: team.members }, role: 'sales' }).select(
-      '_id name'
-    );
-
-    // Fetch performance data for all team members + the team leader for the given month
-    const memberIds = teamMembers.map((m) => m._id.toString());
-    // include team leader id to allow aggregation
-    memberIds.push(team.leader.toString());
-
-    const performances = await TeamPerformance.find({
-      teamId: team._id,
-      month: month,
-      userId: { $in: memberIds },
-    });
+    // Fetch team members, performances, KPI settings and leader user in parallel
+    // Use `team.members` and `team.leader` to scope performance query without waiting for user docs
+    const perfUserIds = [...(((team.members as any[]) || []).map((id) => String(id))), String(team.leader)];
+    const [teamMembers, performances, teamLeaderSettings, leaderUser] = await Promise.all([
+      User.find({ _id: { $in: team.members }, role: 'sales' }).select('_id name'),
+      TeamPerformance.find({ teamId: team._id, month: month, userId: { $in: perfUserIds } }),
+      KPISetting.findOne({ scope: 'team-leader' }),
+      User.findById(team.leader),
+    ]);
 
     // Create a map of performance data
     const performanceMap = new Map(performances.map((p) => [p.userId.toString(), p]));
@@ -130,11 +138,8 @@ export async function GET(req: NextRequest) {
     const emptyAgg: Record<string, number> = {};
     for (let i = 1; i <= daysInMonth; i++) emptyAgg[`day${i}`] = 0;
 
-    // Fetch team leader's KPI settings to determine aggregation mode
-    const teamLeaderSettings = await KPISetting.findOne({ scope: 'team-leader' });
+    // `teamLeaderSettings` and `leaderUser` were fetched above in parallel
     const aggregationConfig = teamLeaderSettings ? getAggregationConfig(teamLeaderSettings.indicators) : {};
-
-    const leaderUser = await User.findById(team.leader);
     const aggregated = {
       userId: team.leader,
       name: leaderUser?.name || 'Team Total',
@@ -232,21 +237,25 @@ export async function GET(req: NextRequest) {
       // Check if deals should include team data
       const dealsIncludeTeam = shouldIncludeTeamData('deals', aggregationConfig);
 
-      // Leads: count based on aggregationMode for 'leads' indicator
-      let teamLeads;
-      if (leadsIncludeTeam) {
-        // Team+Leader mode: include all team members' leads
-        teamLeads = await Lead.find({
-          assignedTo: { $in: memberObjectIds },
-          createdAt: { $gte: monthStart, $lte: monthEnd },
-        });
-      } else {
-        // Leader-only mode: only leader's leads
-        teamLeads = await Lead.find({
-          assignedTo: team.leader,
-          createdAt: { $gte: monthStart, $lte: monthEnd },
-        });
-      }
+      // Build lead and snap queries, then run them in parallel to reduce latency
+      const leadQuery = leadsIncludeTeam
+        ? { assignedTo: { $in: memberObjectIds }, createdAt: { $gte: monthStart, $lte: monthEnd } }
+        : { assignedTo: team.leader, createdAt: { $gte: monthStart, $lte: monthEnd } };
+
+      const snapQuery: any = dealsIncludeTeam
+        ? {
+            createdAt: { $gte: monthStart, $lte: monthEnd },
+            $or: [{ assignedTo: { $in: memberObjectIds } }, { userId: { $in: memberObjectIds } }],
+          }
+        : {
+            createdAt: { $gte: monthStart, $lte: monthEnd },
+            $or: [{ assignedTo: team.leader }, { userId: team.leader }],
+          };
+
+      const [teamLeads, snaps] = await Promise.all([
+        Lead.find(leadQuery),
+        ClosedDealSnapshot.find(snapQuery).lean(),
+      ]);
 
       const leadsByUser = new Map<string, { leadsCount: number }>();
       for (const l of teamLeads) {
@@ -255,27 +264,6 @@ export async function GET(req: NextRequest) {
         const cur = leadsByUser.get(assignee) || { leadsCount: 0 };
         cur.leadsCount += 1;
         leadsByUser.set(assignee, cur);
-      }
-
-      // Deals: count closed deals based on aggregationMode
-      let snaps;
-      if (dealsIncludeTeam) {
-        // Team+Leader mode: include all team members' deals
-        const snapQuery: any = {
-          createdAt: { $gte: monthStart, $lte: monthEnd },
-          $or: [{ assignedTo: { $in: memberObjectIds } }, { userId: { $in: memberObjectIds } }],
-        };
-        snaps = await ClosedDealSnapshot.find(snapQuery).lean();
-      } else {
-        // Leader-only mode: only leader's deals
-        const leaderSnapQuery: any = {
-          createdAt: { $gte: monthStart, $lte: monthEnd },
-          $or: [
-            { assignedTo: team.leader },
-            { userId: team.leader },
-          ],
-        };
-        snaps = await ClosedDealSnapshot.find(leaderSnapQuery).lean();
       }
 
       const dealsByUser = new Map<string, number>();
@@ -376,11 +364,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You can only edit data for the current month' }, { status: 403 });
     }
 
-    // NOTE: Day-level validation (only today) is enforced on the frontend.
-    // The frontend sends all days to preserve existing data.
-    // Additional validation could be added here if needed, but frontend
-    // already restricts edits to today only with client-side checks.
 
+      // Only today's values will be persisted. Frontend may send full objects
+      // (for convenience) — sanitize and write only `day${currentDay}` keys.
+      const currentDay = now.getDate();
+      const dayKey = `day${currentDay}`;
+
+      const getDayValue = (obj: Record<string, any> | undefined) => {
+        if (!obj) return undefined;
+        return Object.prototype.hasOwnProperty.call(obj, dayKey) ? obj[dayKey] : undefined;
+      };
+
+      const sheetValue = getDayValue(sheets);
+      const assessmentsValue = getDayValue(assessments);
+      const meetingsValue = getDayValue(meetings);
+      const requestsValue = getDayValue(requests);
+
+      // If the caller sent metric objects but none include today's key, reject
+      const sentAnyMetric = !!(sheets || assessments || meetings || requests);
+      if (sentAnyMetric && sheetValue === undefined && assessmentsValue === undefined && meetingsValue === undefined && requestsValue === undefined) {
+        return NextResponse.json(
+          { error: `Request must include today's key (${dayKey}) for at least one metric.` },
+          { status: 400 }
+        );
+      }
     // Verify the target user is in the team or is the leader
     const targetUser = await User.findById(userId);
     if (!targetUser || (!team.members.includes(targetUser._id) && !team.leader.equals(targetUser._id))) {
@@ -394,31 +401,60 @@ export async function POST(req: NextRequest) {
       month,
     });
 
-    if (existingPerformance && existingPerformance.editedByAdmin) {
-      return NextResponse.json(
-        { error: 'This data was edited by admin and cannot be modified by team members' },
-        { status: 403 }
-      );
+    if (existingPerformance) {
+      const edited = existingPerformance.editedByAdmin;
+      if (edited === true) {
+        return NextResponse.json(
+          { error: 'This data was edited by admin and cannot be modified by team members' },
+          { status: 403 }
+        );
+      }
+
+      if (edited && typeof edited === 'object') {
+        const attemptingToEditSheets = !!sheets;
+        const attemptingToEditAssessments = !!assessments;
+        const attemptingToEditMeetings = !!meetings;
+        const attemptingToEditRequests = !!requests;
+
+        if (
+          (attemptingToEditSheets && edited.sheets) ||
+          (attemptingToEditAssessments && edited.assessments) ||
+          (attemptingToEditMeetings && edited.meetings) ||
+          (attemptingToEditRequests && edited.requests)
+        ) {
+          return NextResponse.json(
+            { error: 'This data was edited by admin and cannot be modified by team members' },
+            { status: 403 }
+          );
+        }
+      }
     }
 
-    // Find or create performance record
-    const performance = await TeamPerformance.findOneAndUpdate(
-      {
-        userId,
-        teamId: team._id,
-        month,
-      },
-      {
-        userId,
-        teamId: team._id,
-        month,
-        ...(sheets && { sheets: new Map(Object.entries(sheets)) }),
-        ...(assessments && { assessments: new Map(Object.entries(assessments)) }),
-        ...(meetings && { meetings: new Map(Object.entries(meetings)) }),
-        ...(requests && { requests: new Map(Object.entries(requests)) }),
-      },
-      { upsert: true, new: true }
-    );
+    // Persist only today's keys to avoid overwriting historical data.
+    const updateOps: any = {};
+    if (sheetValue !== undefined) updateOps[`sheets.${dayKey}`] = sheetValue;
+    if (assessmentsValue !== undefined) updateOps[`assessments.${dayKey}`] = assessmentsValue;
+    if (meetingsValue !== undefined) updateOps[`meetings.${dayKey}`] = meetingsValue;
+    if (requestsValue !== undefined) updateOps[`requests.${dayKey}`] = requestsValue;
+
+    // Ensure required identifying fields exist on insert
+    const setOnInsert: any = { userId, teamId: team._id, month };
+
+    let performance;
+    if (Object.keys(updateOps).length > 0) {
+      performance = await TeamPerformance.findOneAndUpdate(
+        { userId, teamId: team._id, month },
+        { $set: updateOps, $setOnInsert: setOnInsert },
+        { upsert: true, new: true }
+      );
+    } else {
+      // Nothing to update (shouldn't happen because of earlier check), but return existing or created doc
+      performance = await TeamPerformance.findOneAndUpdate(
+        { userId, teamId: team._id, month },
+        { $setOnInsert: setOnInsert },
+        { upsert: true, new: true }
+      );
+    }
 
     return NextResponse.json({ performance }, { status: 200 });
   } catch (error) {

@@ -177,7 +177,9 @@ export default function TeamLeadersMonthlyReport() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save data');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to save data`;
+        throw new Error(errorMessage);
       }
 
       setLeaderData((prevData) =>
@@ -205,8 +207,9 @@ export default function TeamLeadersMonthlyReport() {
       await fetchLeaderData();
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {
-      console.error('Error saving data:', error);
-      addToast('Error saving data', 'error');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error saving data:', message);
+      addToast(`Error saving data: ${message}`, 'error');
     } finally {
       setSavingData(false);
     }
@@ -232,13 +235,18 @@ export default function TeamLeadersMonthlyReport() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to save data');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to save data`;
+        throw new Error(errorMessage);
+      }
 
       await fetchLeaderData();
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {
-      console.error('Error saving data:', error);
-      addToast('Error saving data', 'error');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error saving data:', message);
+      addToast(`Error saving data: ${message}`, 'error');
     } finally {
       setSavingData(false);
     }

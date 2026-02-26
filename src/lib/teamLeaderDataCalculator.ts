@@ -13,6 +13,26 @@ import { getAggregationConfig, shouldIncludeTeamData } from '@/lib/kpiCalculator
 import KPISetting from '@/models/KPISetting';
 import mongoose from 'mongoose';
 
+function convertMongoMapToBoolean(data: any): Record<string, boolean> {
+  if (!data) return {};
+  if (data instanceof Map) {
+    const result: Record<string, boolean> = {};
+    for (const [key, value] of data) {
+      result[key] = Boolean(value);
+    }
+    return result;
+  }
+  // If it's already a plain object, convert values to boolean
+  if (typeof data === 'object') {
+    const result: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(data)) {
+      result[key] = Boolean(value);
+    }
+    return result;
+  }
+  return {};
+}
+
 function convertMongoMapToObject(data: any): Record<string, number> {
   if (!data) return {};
   if (data instanceof Map) {
@@ -49,7 +69,13 @@ export interface LeaderPerformanceData {
   leaderOwnDeals: number;
   teamLeadsCount: number;
   teamDealsCount: number;
-  editedByAdmin: boolean; // Flag indicating if data was edited by admin
+  editedByAdmin?: boolean | Record<string, boolean>; // Flag or per-category flags indicating admin edits (legacy)
+  adminLocks?: {
+    sheets: Record<string, boolean>;
+    assessments: Record<string, boolean>;
+    meetings: Record<string, boolean>;
+    requests: Record<string, boolean>;
+  }; // Per-day admin locks
 }
 
 /**
@@ -283,6 +309,40 @@ export async function calculateTeamLeaderPerformance(
     leaderOwnDeals: leaderDeals,
     teamLeadsCount: aggregatedLeads,
     teamDealsCount: aggregatedDeals,
-    editedByAdmin: !!adminLeaderPerf, // True if admin has edited this data
+    editedByAdmin: (() => {
+      if (!adminLeaderPerf) return false;
+      const existing = (adminLeaderPerf as any).editedByAdmin;
+      if (existing === true) {
+        return { sheets: true, assessments: true, meetings: true, requests: true };
+      }
+      if (existing && typeof existing === 'object') return existing;
+      // Legacy: adminLeaderPerf exists but no flags - treat as all-true
+      return { sheets: true, assessments: true, meetings: true, requests: true };
+    })(),
+    adminLocks: (() => {
+      if (!adminLeaderPerf) {
+        return {
+          sheets: {},
+          assessments: {},
+          meetings: {},
+          requests: {},
+        };
+      }
+      const locks = (adminLeaderPerf as any).adminLocks;
+      if (locks && typeof locks === 'object') {
+        return {
+          sheets: convertMongoMapToBoolean(locks.sheets) || {},
+          assessments: convertMongoMapToBoolean(locks.assessments) || {},
+          meetings: convertMongoMapToBoolean(locks.meetings) || {},
+          requests: convertMongoMapToBoolean(locks.requests) || {},
+        };
+      }
+      return {
+        sheets: {},
+        assessments: {},
+        meetings: {},
+        requests: {},
+      };
+    })(),
   };
 }
