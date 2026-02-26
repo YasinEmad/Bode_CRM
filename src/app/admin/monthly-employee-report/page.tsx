@@ -224,97 +224,73 @@ export default function MonthlyEmployeeReport() {
     try {
       setLoadingReport(true);
 
-      // Fetch all employees
-      const employeesResponse = await fetch('/api/employees', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // Kick off all of the API requests in parallel to save round‑trip time
+      const employeesPromise = fetch('/api/employees', {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      const leadsPromise = fetch('/api/leads', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const closedDealsPromise = fetch(`/api/closed-deals?month=${selectedYear}-${selectedMonth}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const attendancePromise = fetch(
+        `/api/admin/attendance-records?month=${selectedYear}-${selectedMonth}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const perfPromise = fetch(
+        `/api/admin/team-performance?month=${selectedYear}-${selectedMonth}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const leaderPerfPromise = fetch(
+        `/api/admin/team-leaders-performance?month=${selectedYear}-${selectedMonth}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      if (!employeesResponse.ok) {
-        throw new Error('Failed to fetch employees');
-      }
+      const [
+        employeesResponse,
+        leadsResponse,
+        closedDealsResponse,
+        attendanceResponse,
+        performanceResponse,
+        leaderPerformanceResponse,
+      ] = await Promise.all([
+        employeesPromise,
+        leadsPromise,
+        closedDealsPromise,
+        attendancePromise,
+        perfPromise,
+        leaderPerfPromise,
+      ]);
 
+      if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
       const employeesData = await employeesResponse.json();
-
-      // Ensure team leaders who may not be in the regular employees list appear
-      // in the monthly report when they have performance entries (e.g., team leaders)
       const employeesList: any[] = Array.isArray(employeesData.employees)
         ? [...employeesData.employees]
         : [];
 
-
-      // Fetch all leads for the month
-      const leadsResponse = await fetch('/api/leads', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!leadsResponse.ok) {
-        throw new Error('Failed to fetch leads');
-      }
-
+      if (!leadsResponse.ok) throw new Error('Failed to fetch leads');
       const leadsData = await leadsResponse.json();
 
-      // Fetch closed-deals snapshots for the selected month
-      const closedDealsResponse = await fetch(`/api/closed-deals?month=${selectedYear}-${selectedMonth}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const closedDealsData = closedDealsResponse.ok ? await closedDealsResponse.json() : { snapshots: [] };
+      const closedDealsData = closedDealsResponse.ok
+        ? await closedDealsResponse.json()
+        : { snapshots: [] };
 
-      // Fetch attendance records for the selected month
-      const attendanceResponse = await fetch(
-        `/api/admin/attendance-records?month=${selectedYear}-${selectedMonth}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!attendanceResponse.ok) {
-        throw new Error('Failed to fetch attendance records');
-      }
-
+      if (!attendanceResponse.ok) throw new Error('Failed to fetch attendance records');
       const attendanceData = await attendanceResponse.json();
 
-      // Fetch team performance data for the selected month (for team members)
-      const performanceResponse = await fetch(
-        `/api/admin/team-performance?month=${selectedYear}-${selectedMonth}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!performanceResponse.ok) {
-        throw new Error('Failed to fetch team performance');
-      }
-
+      if (!performanceResponse.ok) throw new Error('Failed to fetch team performance');
       const performanceData = await performanceResponse.json();
 
-      // Fetch team leader performance data for the selected month
-      const leaderPerformanceResponse = await fetch(
-        `/api/admin/team-leaders-performance?month=${selectedYear}-${selectedMonth}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!leaderPerformanceResponse.ok) {
-        throw new Error('Failed to fetch team leader performance');
-      }
-
+      if (!leaderPerformanceResponse.ok) throw new Error('Failed to fetch team leader performance');
       const leaderPerformanceData = await leaderPerformanceResponse.json();
 
       // Calculate leads and deals for the selected month
       const selectedMonthStart = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
       const selectedMonthEnd = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0);
       selectedMonthEnd.setHours(23, 59, 59, 999);
+      const startTs = selectedMonthStart.getTime();
+      const endTs = selectedMonthEnd.getTime();
 
       const leadsByEmployee = new Map<string, { leadsCount: number; dealsCount: number }>();
 
@@ -326,20 +302,16 @@ export default function MonthlyEmployeeReport() {
           leadStatusById.set(idStr, lead.status);
         }
 
-        const leadDate = new Date(lead.createdAt);
-
-        // Check if lead was created in the selected month
-        if (leadDate >= selectedMonthStart && leadDate <= selectedMonthEnd) {
+        const t = new Date(lead.createdAt).getTime();
+        // Check if lead was created in the selected month (numeric compare saves allocations)
+        if (t >= startTs && t <= endTs) {
           const rawEmployeeId = lead.assignedTo?._id || lead.assignedTo;
           const employeeId = rawEmployeeId ? String(rawEmployeeId) : null;
           if (!employeeId) return;
-
           if (!leadsByEmployee.has(employeeId)) {
             leadsByEmployee.set(employeeId, { leadsCount: 0, dealsCount: 0 });
           }
-
-          const stats = leadsByEmployee.get(employeeId)!;
-          stats.leadsCount += 1;
+          leadsByEmployee.get(employeeId)!.leadsCount += 1;
         }
       });
 
