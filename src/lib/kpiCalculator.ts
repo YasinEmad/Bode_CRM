@@ -3,10 +3,13 @@
  * Provides functions to calculate KPI scores based on settings and employee data
  */
 
+import { Types } from 'mongoose';
+
 export interface KPIIndicator {
   name: string;
   target: number;
   weight: number;
+  aggregationMode?: 'leader-only' | 'leader+team'; // For team leader KPI calculation
 }
 
 export interface EmployeeMetrics {
@@ -290,4 +293,32 @@ export function getKPIBreakdown(
   breakdown.totalKPI = parseFloat(scores.total.toFixed(2));
 
   return breakdown;
+}
+
+/**
+ * Calculate aggregated metrics for a team leader based on aggregationMode per indicator
+ * 
+ * aggregationMode options:
+ * - 'leader-only': Only the team leader's personal metrics
+ * - 'leader+team': Team leader's metrics + all team members' metrics
+ * 
+ * This function helps determine which data should be included in the calculation
+ * Returns configuration for how to aggregate each metric type
+ */
+export function getAggregationConfig(indicators: KPIIndicator[]): Record<string, 'leader-only' | 'leader+team'> {
+  const config: Record<string, 'leader-only' | 'leader+team'> = {};
+  
+  indicators.forEach((ind) => {
+    config[ind.name] = ind.aggregationMode || 'leader+team'; // Default to 'leader+team' for backward compatibility
+  });
+  
+  return config;
+}
+
+/**
+ * Helper to determine if a metric should include team members' data
+ */
+export function shouldIncludeTeamData(indicatorName: string, aggregationConfig: Record<string, 'leader-only' | 'leader+team'>): boolean {
+  const mode = aggregationConfig[indicatorName.toLowerCase()];
+  return mode === undefined ? true : mode === 'leader+team'; // Default to true for backward compatibility
 }

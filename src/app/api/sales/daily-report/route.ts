@@ -11,6 +11,16 @@ function extractToken(req: NextRequest): string | null {
   return authHeader.slice(7);
 }
 
+function convertMongoMapToObject(data: any): Record<string, number> {
+  if (!data) return {};
+  // MongoDB Map fields might come back as plain objects or Maps
+  if (data instanceof Map) {
+    return Object.fromEntries(data);
+  }
+  // If it's already a plain object, return it directly
+  return typeof data === 'object' ? data : {};
+}
+
 export async function GET(req: NextRequest) {
   try {
     const token = extractToken(req);
@@ -48,9 +58,9 @@ export async function GET(req: NextRequest) {
       teamId: team?._id || null,
       month,
       daysInMonth,
-      sheets: performance ? Object.fromEntries(performance.sheets || new Map()) : emptyDays,
-      meetings: performance ? Object.fromEntries(performance.meetings || new Map()) : emptyDays,
-      requests: performance ? Object.fromEntries(performance.requests || new Map()) : emptyDays,
+      sheets: performance ? convertMongoMapToObject(performance.sheets) : emptyDays,
+      meetings: performance ? convertMongoMapToObject(performance.meetings) : emptyDays,
+      requests: performance ? convertMongoMapToObject(performance.requests) : emptyDays,
       today: `day${now.getDate()}`,
     };
 

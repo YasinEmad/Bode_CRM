@@ -6,12 +6,25 @@ import User from '@/models/User';
 import TeamPerformance from '@/models/TeamPerformance';
 import Lead from '@/models/Lead';
 import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
+import KPISetting from '@/models/KPISetting';
 import { verifyToken } from '@/lib/auth';
+import { getAggregationConfig, shouldIncludeTeamData } from '@/lib/kpiCalculator';
+import { calculateTeamLeaderPerformance } from '@/lib/teamLeaderDataCalculator';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   return authHeader.slice(7);
+}
+
+function convertMongoMapToObject(data: any): Record<string, number> {
+  if (!data) return {};
+  // MongoDB Map fields might come back as plain objects or Maps
+  if (data instanceof Map) {
+    return Object.fromEntries(data);
+  }
+  // If it's already a plain object, return it directly
+  return typeof data === 'object' ? data : {};
 }
 
 export async function GET(req: NextRequest) {
@@ -41,164 +54,39 @@ export async function GET(req: NextRequest) {
 
     // Get all team leaders (users who lead a team)
     const teamLeaders = await Team.find().populate('leader', '_id name').exec();
-    // Filter out teams without a leader to avoid runtime errors
     const validTeamLeaders = teamLeaders.filter((team: any) => team.leader && team.leader._id);
-    const leaderIds = validTeamLeaders.map((team: any) => team.leader._id);
+    const leaderIds = validTeamLeaders.map((team: any) => String(team.leader._id));
 
-    // Fetch performance data for all team leaders for the given month
-    const performances = await TeamLeaderPerformance.find({
-      month: month,
-      userId: { $in: leaderIds },
-    }).populate('userId', '_id name');
-
-    // Create a map of performance data
-    const performanceMap = new Map(performances.map((p: any) => [String(p.userId._id || p.userId), p]));
-
-    // Get number of days in the month
-    const [year, monthNum] = month.split('-');
-    const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
-
-    // Build response with all team leaders, creating empty records if needed
+    // Use unified calculator for all team leaders
     const leaderPerformances = await Promise.all(
-      validTeamLeaders.map(async (team) => {
-        const leader = team.leader as any;
-        const leaderIdStr = String(leader._id);
-        const performance = performanceMap.get(leaderIdStr);
-
-        // Prepare empty day buckets
-        const emptyDays: Record<string, number> = {};
-        for (let i = 1; i <= daysInMonth; i++) {
-          emptyDays[`day${i}`] = 0;
-        }
-
-        // Get leader's personal performance data (from TeamLeaderPerformance model)
-        let leaderPersonalSheets = { ...emptyDays };
-        let leaderPersonalAssessments = { ...emptyDays };
-        let leaderPersonalMeetings = { ...emptyDays };
-        let leaderPersonalRequests = { ...emptyDays };
-
-        if (performance) {
-          leaderPersonalSheets = Object.fromEntries(performance.sheets || new Map());
-          leaderPersonalAssessments = Object.fromEntries(performance.assessments || new Map());
-          leaderPersonalMeetings = Object.fromEntries(performance.meetings || new Map());
-          leaderPersonalRequests = Object.fromEntries(performance.requests || new Map());
-        }
-
-        // Fetch all team member performances for this team (members + leader + admin-added)
-        const teamPerformances = await TeamPerformance.find({ teamId: team._id, month });
-
-        // Build aggregated totals across all team performances
-        const aggregated = {
-          userId: leaderIdStr,
-          leaderName: leader.name || '',
-          month,
-          daysInMonth,
-          sheets: { ...emptyDays },
-          assessments: { ...emptyDays },
-          meetings: { ...emptyDays },
-          requests: { ...emptyDays },
-        } as any;
-
-        for (const p of teamPerformances) {
-          const sheets = Object.fromEntries(p.sheets || new Map());
-          const meetings = Object.fromEntries(p.meetings || new Map());
-          const requests = Object.fromEntries(p.requests || new Map());
-          const assessments = Object.fromEntries(p.assessments || new Map());
-
-          for (const [k, v] of Object.entries(sheets)) {
-            aggregated.sheets[k] = (aggregated.sheets[k] || 0) + Number(v || 0);
-          }
-          for (const [k, v] of Object.entries(meetings)) {
-            aggregated.meetings[k] = (aggregated.meetings[k] || 0) + Number(v || 0);
-          }
-          for (const [k, v] of Object.entries(requests)) {
-            aggregated.requests[k] = (aggregated.requests[k] || 0) + Number(v || 0);
-          }
-          for (const [k, v] of Object.entries(assessments)) {
-            aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
-          }
-        }
-
-        // Aggregate leads and closed deals for the whole team within the month
-        try {
-          const memberIds = Array.isArray(team.members)
-            ? team.members.map((m: any) => String(m))
-            : [];
-          // include leader in the member list to capture leader-assigned leads too
-          if (leader && leader._id) memberIds.push(String(leader._id));
-
-          const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
-          const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
-
-          // Count leads created by team members in the month (may miss deleted leads)
-          const teamLeads = await Lead.find({
-            assignedTo: { $in: memberIds },
-            createdAt: { $gte: monthStart, $lte: monthEnd },
-          });
-          aggregated.aggregatedLeads = teamLeads.length;
-
-          // Count closed deals using ClosedDealSnapshot to preserve history even if Leads are deleted.
-          try {
-            const snapQuery: any = {
-              createdAt: { $gte: monthStart, $lte: monthEnd },
-              $or: [
-                { assignedTo: { $in: memberIds } },
-                { userId: { $in: memberIds } },
-              ],
-            };
-            const snapCount = await ClosedDealSnapshot.countDocuments(snapQuery);
-            aggregated.aggregatedDeals = snapCount;
-
-            // Leader-specific counts: leader's own leads and deals
-            aggregated.leaderLeads = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr).length;
-            const leaderSnapQuery: any = {
-              createdAt: { $gte: monthStart, $lte: monthEnd },
-              $or: [
-                { assignedTo: leaderIdStr },
-                { userId: leaderIdStr },
-              ],
-            };
-            aggregated.leaderDeals = await ClosedDealSnapshot.countDocuments(leaderSnapQuery);
-          } catch (e) {
-            aggregated.aggregatedDeals = 0;
-            aggregated.leaderLeads = teamLeads.filter((l: any) => String(l.assignedTo) === leaderIdStr).length || 0;
-            aggregated.leaderDeals = 0;
-          }
-        } catch (e) {
-          aggregated.aggregatedLeads = 0;
-          aggregated.aggregatedDeals = 0;
-          aggregated.leaderLeads = 0;
-          aggregated.leaderDeals = 0;
-        }
-
-        return {
-          userId: performance ? String(performance.userId._id || performance.userId) : leaderIdStr,
-          leaderName: leader.name || '',
-          month: performance?.month || month,
-          daysInMonth,
-          // Team-aggregated day buckets (leader + all members)
-          sheets: aggregated.sheets,
-          assessments: aggregated.assessments,
-          meetings: aggregated.meetings,
-          requests: aggregated.requests,
-          // Leader's personal day buckets 
-          leaderPersonal: {
-            sheets: leaderPersonalSheets,
-            assessments: leaderPersonalAssessments,
-            meetings: leaderPersonalMeetings,
-            requests: leaderPersonalRequests,
-          },
-          aggregated,
-          // explicit top-level counts for convenience
-          leaderOwnLeads: aggregated.leaderLeads ?? 0,
-          leaderOwnDeals: aggregated.leaderDeals ?? 0,
-          teamLeadsCount: aggregated.aggregatedLeads ?? 0,
-          teamDealsCount: aggregated.aggregatedDeals ?? 0,
-        };
+      leaderIds.map(async (leaderId) => {
+        const perfData = await calculateTeamLeaderPerformance(leaderId, month);
+        return perfData || null;
       })
     );
 
-    return NextResponse.json({ performances: leaderPerformances });
+    // Filter out null results
+    const validPerformances = leaderPerformances.filter((p) => p !== null);
+
+    // Format response to match original API contract
+    const formattedPerformances = validPerformances.map((perf) => ({
+      userId: perf!.userId,
+      leaderName: perf!.leaderName,
+      month: perf!.month,
+      daysInMonth: perf!.daysInMonth,
+      sheets: perf!.aggregated.sheets,
+      assessments: perf!.aggregated.assessments,
+      meetings: perf!.aggregated.meetings,
+      requests: perf!.aggregated.requests,
+      leaderPersonal: perf!.leaderPersonal,
+      aggregated: perf!.aggregated,
+      leaderOwnLeads: perf!.leaderOwnLeads,
+      leaderOwnDeals: perf!.leaderOwnDeals,
+      teamLeadsCount: perf!.teamLeadsCount,
+      teamDealsCount: perf!.teamDealsCount,
+    }));
+
+    return NextResponse.json({ performances: formattedPerformances });
   } catch (error) {
     console.error('Error fetching team leader performance:', error);
     return NextResponse.json({ error: 'Failed to fetch team leader performance' }, { status: 500 });
@@ -247,6 +135,7 @@ export async function POST(req: NextRequest) {
         ...(assessments && { assessments: new Map(Object.entries(assessments)) }),
         ...(meetings && { meetings: new Map(Object.entries(meetings)) }),
         ...(requests && { requests: new Map(Object.entries(requests)) }),
+        editedByAdmin: true, // Mark as edited by admin
       },
       { upsert: true, new: true }
     );

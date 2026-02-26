@@ -6,12 +6,26 @@ import Lead from '@/models/Lead';
 import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import User from '@/models/User';
 import Team from '@/models/Team';
+import KPISetting from '@/models/KPISetting';
 import { verifyToken } from '@/lib/auth';
+import { getAggregationConfig, shouldIncludeTeamData } from '@/lib/kpiCalculator';
+import { calculateTeamLeaderPerformance } from '@/lib/teamLeaderDataCalculator';
+import mongoose from 'mongoose';
 
 function extractToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   return authHeader.slice(7);
+}
+
+function convertMongoMapToObject(data: any): Record<string, number> {
+  if (!data) return {};
+  // MongoDB Map fields might come back as plain objects or Maps
+  if (data instanceof Map) {
+    return Object.fromEntries(data);
+  }
+  // If it's already a plain object, return it directly
+  return typeof data === 'object' ? data : {};
 }
 
 export async function GET(req: NextRequest) {
@@ -85,10 +99,11 @@ export async function GET(req: NextRequest) {
           teamId: team._id,
           month: month,
           daysInMonth,
-          sheets: Object.fromEntries(performance.sheets || new Map()),
-          assessments: Object.fromEntries(performance.assessments || new Map()),
-          meetings: Object.fromEntries(performance.meetings || new Map()),
-          requests: Object.fromEntries(performance.requests || new Map()),
+          sheets: convertMongoMapToObject(performance.sheets),
+          assessments: convertMongoMapToObject(performance.assessments),
+          meetings: convertMongoMapToObject(performance.meetings),
+          requests: convertMongoMapToObject(performance.requests),
+          editedByAdmin: performance.editedByAdmin || false, // Include admin edit flag
           // leads/deals will be attached below from Lead collection (read-only)
           leadsCount: 0,
           dealsCount: 0,
@@ -107,12 +122,17 @@ export async function GET(req: NextRequest) {
         assessments: emptyDays,
         meetings: emptyDays,
         requests: emptyDays,
+        editedByAdmin: false,
       };
     });
 
     // Build aggregated totals for the team leader: sum of leader's own entries + all team members + any admin-added values
     const emptyAgg: Record<string, number> = {};
     for (let i = 1; i <= daysInMonth; i++) emptyAgg[`day${i}`] = 0;
+
+    // Fetch team leader's KPI settings to determine aggregation mode
+    const teamLeaderSettings = await KPISetting.findOne({ scope: 'team-leader' });
+    const aggregationConfig = teamLeaderSettings ? getAggregationConfig(teamLeaderSettings.indicators) : {};
 
     const leaderUser = await User.findById(team.leader);
     const aggregated = {
@@ -130,158 +150,103 @@ export async function GET(req: NextRequest) {
       aggregatedDeals: 0,
     } as any;
 
+    // Determine which metrics should include team data based on aggregationMode
+    const sheetsIncludeTeam = shouldIncludeTeamData('sheets', aggregationConfig);
+    const assessmentsIncludeTeam = shouldIncludeTeamData('assessments', aggregationConfig);
+    const meetingsIncludeTeam = shouldIncludeTeamData('meetings', aggregationConfig);
+    const requestsIncludeTeam = shouldIncludeTeamData('requests', aggregationConfig);
+    const leadsIncludeTeam = shouldIncludeTeamData('leads', aggregationConfig);
+
     // Try to fetch any admin-edited leader performance (TeamLeaderPerformance).
     // We'll prefer admin-edited values for displaying the leader's personal row.
+    // USE UNIFIED CALCULATOR FOR LEADER DATA
     let adminLeaderPerf: any = null;
-    try {
-      adminLeaderPerf = await TeamLeaderPerformance.findOne({ userId: team.leader, month });
-    } catch (e) {
-      // ignore
-    }
-
-    // Also extract the leader's personal performance (if any) so UI can show both personal and aggregated rows.
-    const leaderPerf = performances.find((p) => p.userId.toString() === team.leader.toString());
-    
-    // Create empty day buckets for fallback
-    const emptyLeaderDays: Record<string, number> = {};
-    for (let i = 1; i <= daysInMonth; i++) emptyLeaderDays[`day${i}`] = 0;
-    
     let leaderPersonal: any = null;
-    // Build leaderPersonal by merging admin-edited TeamLeaderPerformance (if any)
-    // with the leader's own TeamPerformance entry (if any). Leader's own values
-    // should override admin values for the same day.
-    const adminDays = adminLeaderPerf
-      ? {
-          sheets: Object.fromEntries(adminLeaderPerf.sheets || new Map()),
-          assessments: Object.fromEntries(adminLeaderPerf.assessments || new Map()),
-          meetings: Object.fromEntries(adminLeaderPerf.meetings || new Map()),
-          requests: Object.fromEntries(adminLeaderPerf.requests || new Map()),
-        }
-      : null;
+    let aggregatedLeaderData: any = null;
 
-    const leaderPerfDays = leaderPerf
-      ? {
-          sheets: Object.fromEntries(leaderPerf.sheets || new Map()),
-          assessments: Object.fromEntries(leaderPerf.assessments || new Map()),
-          meetings: Object.fromEntries(leaderPerf.meetings || new Map()),
-          requests: Object.fromEntries(leaderPerf.requests || new Map()),
-        }
-      : null;
+    try {
+      // Use unified calculator which handles all data sources
+      const calcResult = await calculateTeamLeaderPerformance(String(team.leader), month);
+      if (calcResult) {
+        // Build leaderPersonal response object
+        leaderPersonal = {
+          userId: calcResult.userId,
+          name: (leaderUser?.name || 'Leader') + ' (You)',
+          month: calcResult.month,
+          daysInMonth: calcResult.daysInMonth,
+          sheets: calcResult.leaderPersonal.sheets,
+          assessments: calcResult.leaderPersonal.assessments,
+          meetings: calcResult.leaderPersonal.meetings,
+          requests: calcResult.leaderPersonal.requests,
+          editedByAdmin: calcResult.editedByAdmin, // Include admin edit flag
+          adminLocks: {
+            sheets: {},
+            assessments: {},
+            meetings: {},
+            requests: {},
+          },
+          leaderPersonal: true,
+          leadsCount: calcResult.leaderOwnLeads,
+          dealsCount: calcResult.leaderOwnDeals,
+        };
 
-    // Merge with preference to adminDays over leaderPerfDays (admin overrides leader)
-    const merged = {
-      sheets: { ...emptyLeaderDays, ...(leaderPerfDays?.sheets || {}), ...(adminDays?.sheets || {}) },
-      assessments: { ...emptyLeaderDays, ...(leaderPerfDays?.assessments || {}), ...(adminDays?.assessments || {}) },
-      meetings: { ...emptyLeaderDays, ...(leaderPerfDays?.meetings || {}), ...(adminDays?.meetings || {}) },
-      requests: { ...emptyLeaderDays, ...(leaderPerfDays?.requests || {}), ...(adminDays?.requests || {}) },
-    };
-
-    // Build adminLocks per-category/day so frontend can disable leader edits where admin provided values
-    const adminLocks: any = {
-      sheets: {},
-      assessments: {},
-      meetings: {},
-      requests: {},
-    };
-    if (adminDays) {
-      for (let i = 1; i <= daysInMonth; i++) {
-        const key = `day${i}`;
-        adminLocks.sheets[key] = Object.prototype.hasOwnProperty.call(adminDays.sheets || {}, key);
-        adminLocks.assessments[key] = Object.prototype.hasOwnProperty.call(adminDays.assessments || {}, key);
-        adminLocks.meetings[key] = Object.prototype.hasOwnProperty.call(adminDays.meetings || {}, key);
-        adminLocks.requests[key] = Object.prototype.hasOwnProperty.call(adminDays.requests || {}, key);
+        // Also store aggregated data for later use
+        aggregatedLeaderData = {
+          sheets: calcResult.aggregated.sheets,
+          assessments: calcResult.aggregated.assessments,
+          meetings: calcResult.aggregated.meetings,
+          requests: calcResult.aggregated.requests,
+          aggregatedLeads: calcResult.aggregated.aggregatedLeads,
+          aggregatedDeals: calcResult.aggregated.aggregatedDeals,
+        };
       }
-    }
-
-    leaderPersonal = {
-      _id: adminLeaderPerf?._id || leaderPerf?._id || undefined,
-      userId: adminLeaderPerf?.userId || leaderPerf?.userId || team.leader,
-      name: leaderUser?.name || 'Leader',
-      teamId: leaderPerf?.teamId || undefined,
-      month: adminLeaderPerf?.month || leaderPerf?.month || month,
-      daysInMonth,
-      sheets: merged.sheets,
-      assessments: merged.assessments,
-      meetings: merged.meetings,
-      requests: merged.requests,
-      adminLocks,
-    };
-
-    // Sum sheets/meetings/requests across all performances
-    for (const p of performances) {
-      // If admin edited leader performance, prefer admin values for the leader's own record
-      const isLeaderPerf = String(p.userId) === String(team.leader);
-
-      let sheets = Object.fromEntries(p.sheets || new Map());
-      let meetings = Object.fromEntries(p.meetings || new Map());
-      let requests = Object.fromEntries(p.requests || new Map());
-      let assessments = Object.fromEntries(p.assessments || new Map());
-
-      if (isLeaderPerf && adminLeaderPerf) {
-        // replace leader's daily buckets with admin values (admin overrides leader for aggregation)
-        sheets = Object.fromEntries(adminLeaderPerf.sheets || new Map());
-        meetings = Object.fromEntries(adminLeaderPerf.meetings || new Map());
-        requests = Object.fromEntries(adminLeaderPerf.requests || new Map());
-        assessments = Object.fromEntries(adminLeaderPerf.assessments || new Map());
-      }
-
-      for (const [k, v] of Object.entries(sheets)) {
-        aggregated.sheets[k] = (aggregated.sheets[k] || 0) + Number(v || 0);
-      }
-      for (const [k, v] of Object.entries(meetings)) {
-        aggregated.meetings[k] = (aggregated.meetings[k] || 0) + Number(v || 0);
-      }
-      for (const [k, v] of Object.entries(requests)) {
-        aggregated.requests[k] = (aggregated.requests[k] || 0) + Number(v || 0);
-      }
-
-      // For assessments: leader or admin may have written assessments on member records.
-      // Sum all assessments across performances (only leader/admin can write them),
-      // so aggregated includes any assessments present on member or leader records.
-      for (const [k, v] of Object.entries(assessments)) {
-        aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
-      }
-    }
-
-    // If adminLeaderPerf exists but there was no leader TeamPerformance record included
-    // in `performances`, we still need to include admin values once into aggregated totals.
-    if (adminLeaderPerf && !leaderPerf) {
-      try {
-        const sheets = Object.fromEntries(adminLeaderPerf.sheets || new Map());
-        const meetings = Object.fromEntries(adminLeaderPerf.meetings || new Map());
-        const requests = Object.fromEntries(adminLeaderPerf.requests || new Map());
-        const assessments = Object.fromEntries(adminLeaderPerf.assessments || new Map());
-
-        for (const [k, v] of Object.entries(sheets)) {
-          aggregated.sheets[k] = (aggregated.sheets[k] || 0) + Number(v || 0);
-        }
-        for (const [k, v] of Object.entries(meetings)) {
-          aggregated.meetings[k] = (aggregated.meetings[k] || 0) + Number(v || 0);
-        }
-        for (const [k, v] of Object.entries(requests)) {
-          aggregated.requests[k] = (aggregated.requests[k] || 0) + Number(v || 0);
-        }
-        for (const [k, v] of Object.entries(assessments)) {
-          aggregated.assessments[k] = (aggregated.assessments[k] || 0) + Number(v || 0);
-        }
-      } catch (e) {
-        // ignore
-      }
+    } catch (e) {
+      console.error('Error calculating leader performance:', e);
     }
 
     // --- Compute leads (from Lead) and deals (from ClosedDealSnapshot) ---
     try {
+      // Use aggregated data from helper if available (sheets/meetings/etc)
+      if (aggregatedLeaderData) {
+        aggregated.sheets = aggregatedLeaderData.sheets;
+        aggregated.assessments = aggregatedLeaderData.assessments;
+        aggregated.meetings = aggregatedLeaderData.meetings;
+        aggregated.requests = aggregatedLeaderData.requests;
+      }
+
       const memberIdStrings = teamMembers.map((m) => String(m._id));
       if (team.leader) memberIdStrings.push(String(team.leader));
+
+      // Convert to ObjectIds for proper MongoDB query matching
+      const memberObjectIds = memberIdStrings.map((id) => {
+        try {
+          return new mongoose.Types.ObjectId(id);
+        } catch {
+          return null;
+        }
+      }).filter((id): id is mongoose.Types.ObjectId => id !== null);
 
       const monthStart = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
       const monthEnd = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999);
 
-      // Leads: keep counting created leads from Lead collection (may miss deleted leads)
-      const teamLeads = await Lead.find({
-        assignedTo: { $in: memberIdStrings },
-        createdAt: { $gte: monthStart, $lte: monthEnd },
-      });
+      // Check if deals should include team data
+      const dealsIncludeTeam = shouldIncludeTeamData('deals', aggregationConfig);
+
+      // Leads: count based on aggregationMode for 'leads' indicator
+      let teamLeads;
+      if (leadsIncludeTeam) {
+        // Team+Leader mode: include all team members' leads
+        teamLeads = await Lead.find({
+          assignedTo: { $in: memberObjectIds },
+          createdAt: { $gte: monthStart, $lte: monthEnd },
+        });
+      } else {
+        // Leader-only mode: only leader's leads
+        teamLeads = await Lead.find({
+          assignedTo: team.leader,
+          createdAt: { $gte: monthStart, $lte: monthEnd },
+        });
+      }
 
       const leadsByUser = new Map<string, { leadsCount: number }>();
       for (const l of teamLeads) {
@@ -292,12 +257,26 @@ export async function GET(req: NextRequest) {
         leadsByUser.set(assignee, cur);
       }
 
-      // Deals: count closed deals from snapshots so deleted leads still count
-      const snapQuery: any = {
-        createdAt: { $gte: monthStart, $lte: monthEnd },
-        $or: [{ assignedTo: { $in: memberIdStrings } }, { userId: { $in: memberIdStrings } }],
-      };
-      const snaps = await ClosedDealSnapshot.find(snapQuery).lean();
+      // Deals: count closed deals based on aggregationMode
+      let snaps;
+      if (dealsIncludeTeam) {
+        // Team+Leader mode: include all team members' deals
+        const snapQuery: any = {
+          createdAt: { $gte: monthStart, $lte: monthEnd },
+          $or: [{ assignedTo: { $in: memberObjectIds } }, { userId: { $in: memberObjectIds } }],
+        };
+        snaps = await ClosedDealSnapshot.find(snapQuery).lean();
+      } else {
+        // Leader-only mode: only leader's deals
+        const leaderSnapQuery: any = {
+          createdAt: { $gte: monthStart, $lte: monthEnd },
+          $or: [
+            { assignedTo: team.leader },
+            { userId: team.leader },
+          ],
+        };
+        snaps = await ClosedDealSnapshot.find(leaderSnapQuery).lean();
+      }
 
       const dealsByUser = new Map<string, number>();
       for (const s of snaps) {
@@ -315,8 +294,27 @@ export async function GET(req: NextRequest) {
         const deals = dealsByUser.get(id) || 0;
         row.leadsCount = leadStats.leadsCount;
         row.dealsCount = deals;
-        aggregated.aggregatedLeads += leadStats.leadsCount;
-        aggregated.aggregatedDeals += deals;
+      }
+
+      // Always calculate aggregated leads/deals (not just when aggregatedLeaderData is missing)
+      aggregated.aggregatedLeads = 0;
+      aggregated.aggregatedDeals = 0;
+      
+      if (dealsIncludeTeam) {
+        // Team+Leader mode: sum all team members + leader
+        for (const row of teamData) {
+          const leadStats = leadsByUser.get(String(row.userId)) || { leadsCount: 0 };
+          const deals = dealsByUser.get(String(row.userId)) || 0;
+          aggregated.aggregatedLeads += leadStats.leadsCount;
+          aggregated.aggregatedDeals += deals;
+        }
+      } else {
+        // Leader-only mode: only leader's stats
+        const leaderIdStr = String(team.leader);
+        const leaderLeadStats = leadsByUser.get(leaderIdStr) || { leadsCount: 0 };
+        const leaderDeals = dealsByUser.get(leaderIdStr) || 0;
+        aggregated.aggregatedLeads = leaderLeadStats.leadsCount;
+        aggregated.aggregatedDeals = leaderDeals;
       }
 
       // Attach leader personal counts if present
@@ -324,8 +322,8 @@ export async function GET(req: NextRequest) {
         const leaderIdStr = String(team.leader);
         const leaderLeads = leadsByUser.get(leaderIdStr) || { leadsCount: 0 };
         const leaderDeals = dealsByUser.get(leaderIdStr) || 0;
-        (leaderPersonal as any).leaderOwnLeads = leaderLeads.leadsCount;
-        (leaderPersonal as any).leaderOwnDeals = leaderDeals;
+        (leaderPersonal as any).leadsCount = leaderLeads.leadsCount;
+        (leaderPersonal as any).dealsCount = leaderDeals;
       }
     } catch (e) {
       console.error('Error computing team leads/deals with snapshots', e);
@@ -387,6 +385,20 @@ export async function POST(req: NextRequest) {
     const targetUser = await User.findById(userId);
     if (!targetUser || (!team.members.includes(targetUser._id) && !team.leader.equals(targetUser._id))) {
       return NextResponse.json({ error: 'User not in your team' }, { status: 403 });
+    }
+
+    // Check if existing performance data was edited by admin - if so, prevent team leader from modifying
+    const existingPerformance = await TeamPerformance.findOne({
+      userId,
+      teamId: team._id,
+      month,
+    });
+
+    if (existingPerformance && existingPerformance.editedByAdmin) {
+      return NextResponse.json(
+        { error: 'This data was edited by admin and cannot be modified by team members' },
+        { status: 403 }
+      );
     }
 
     // Find or create performance record

@@ -359,7 +359,7 @@ export default function MonthlyEmployeeReport() {
 
       // Create map of team leader performance data by userId (guard when userId is missing)
       // Store both explicit (admin-edited) and aggregated data so UI can choose appropriately.
-      const leaderPerformanceByEmployee = new Map<string, { explicit?: any; aggregated?: any }>();
+      const leaderPerformanceByEmployee = new Map<string, { explicit?: any; aggregated?: any; aggregatedDaily?: any }>();
       leaderPerformanceData.performances?.forEach((perf: any) => {
         const rawId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
         if (!rawId) return;
@@ -398,9 +398,20 @@ export default function MonthlyEmployeeReport() {
           requests: { ...emptyDays, ...(teamLeaderPersonal?.requests || {}), ...(adminLeaderPersonal?.requests || {}) },
         };
 
+        // Store both aggregated data (daily buckets respecting aggregationMode) and metadata counts
         const aggregated = perf.aggregated ? perf.aggregated : undefined;
+        const aggregatedDaily = {
+          sheets: perf.sheets || {},
+          assessments: perf.assessments || {},
+          meetings: perf.meetings || {},
+          requests: perf.requests || {},
+        };
 
-        leaderPerformanceByEmployee.set(employeeId, { explicit, aggregated });
+        leaderPerformanceByEmployee.set(employeeId, { 
+          explicit, 
+          aggregated,
+          aggregatedDaily  // Daily buckets from API aggregated calculation
+        });
       });
 
       // Calculate attendance percentage for each employee
@@ -503,48 +514,44 @@ export default function MonthlyEmployeeReport() {
           ? Math.round((attendanceStats.presentDays / currentDaysInMonth) * 100)
           : 0;
 
-        // Get sheets, meetings, assessments, requests from team performance (team members)
-        // If not found, check team leader performance (for team leaders)
-        // Prefer leader aggregated totals (if provided by admin API) over personal team performance
+        // For team leaders, use the aggregated data from the API which already has aggregationMode applied
+        // This ensures sheets/meetings/etc. are calculated correctly based on the configured mode
+        // (either 'leader-only' or 'leader+team' as set in KPI Settings)
         
-
-        const sheetsCount = explicitLeader
-          ? calculateTotal(explicitLeader.sheets)
+        // If leaderStats exists, it's a team leader and API returned data with mode applied
+        const sheetsCount = leaderStats
+          ? calculateTotal((leaderStats as any).aggregatedDaily?.sheets || {})  // API returns aggregated data with mode applied
           : performanceStats
           ? calculateTotal(performanceStats.sheets)
           : 0;
 
-        const meetingsCount = explicitLeader
-          ? calculateTotal(explicitLeader.meetings)
+        const meetingsCount = leaderStats
+          ? calculateTotal((leaderStats as any).aggregatedDaily?.meetings || {})
           : performanceStats
           ? calculateTotal(performanceStats.meetings)
           : 0;
 
-        const assessmentsCount = explicitLeader
-          ? calculateTotal(explicitLeader.assessments)
+        const assessmentsCount = leaderStats
+          ? calculateTotal((leaderStats as any).aggregatedDaily?.assessments || {})
           : performanceStats
           ? calculateTotal(performanceStats.assessments)
           : 0;
 
-        const requestsCount = explicitLeader
-          ? calculateTotal(explicitLeader.requests)
+        const requestsCount = leaderStats
+          ? calculateTotal((leaderStats as any).aggregatedDaily?.requests || {})
           : performanceStats
           ? calculateTotal(performanceStats.requests)
           : 0;
 
-        // For team leaders prefer the Aggregated totals (Team + Admin + Leader) for leads/deals.
-        // Fall back to explicit leaderOwn fields (admin edits) or personal leads count.
-        const finalLeadsCount = aggregatedLeader && typeof aggregatedLeader.aggregatedLeads === 'number'
-          ? aggregatedLeader.aggregatedLeads
-          : typeof (explicitLeader as any)?.leaderOwnLeads === 'number'
-          ? (explicitLeader as any).leaderOwnLeads
-          : leadsStats.leadsCount;
+        // For team leaders: use the aggregated leads/deals which respect aggregationMode
+        // These are calculated by the API based on aggregationMode per metric
+        const finalLeadsCount = isLeaderAggregatedLeads
+  ? aggregatedLeader.aggregatedLeads
+  : leadsStats.leadsCount;
 
-        const finalDealsCount = aggregatedLeader && typeof aggregatedLeader.aggregatedDeals === 'number'
-          ? aggregatedLeader.aggregatedDeals
-          : typeof (explicitLeader as any)?.leaderOwnDeals === 'number'
-          ? (explicitLeader as any).leaderOwnDeals
-          : leadsStats.dealsCount;
+const finalDealsCount = isLeaderAggregatedDeals
+  ? aggregatedLeader.aggregatedDeals
+  : leadsStats.dealsCount;
 
         // Calculate KPI if settings are available (now we may have global and teamLeader bundles)
         let kpiPercentage = 0;
@@ -563,8 +570,18 @@ export default function MonthlyEmployeeReport() {
             : kpiSettingsData.global.indicators;
 
           console.log(`\n📊 === KPI Calculation for ${emp.name} ===`);
+          console.log(`Is Team Leader: ${!!leaderStats}`);
           console.log('🔹 Metrics:', metrics);
-          console.log('🔹 Using Indicators:', indicatorsToUse.map((ind: any) => `${ind.name} (target: ${ind.target}, weight: ${ind.weight})`));
+          console.log('🔹 Using Indicators:', indicatorsToUse.map((ind: any) => `${ind.name} (target: ${ind.target}, weight: ${ind.weight}, mode: ${ind.aggregationMode || 'leader+team'})`));
+          
+          // For team leaders, show which aggregation mode was used for each metric
+          if (leaderStats && aggregatedLeader) {
+            console.log('🔹 Aggregation Modes Applied:');
+            indicatorsToUse.forEach((ind: any) => {
+              const mode = ind.aggregationMode || 'leader+team';
+              console.log(`   - ${ind.name}: ${mode}`);
+            });
+          }
 
           const kpiScores: KPIScores = calculateEmployeeKPI(metrics, indicatorsToUse);
           kpiPercentage = Math.round(kpiScores.total * 10) / 10; // Round to 1 decimal place

@@ -29,6 +29,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Month parameter is required' }, { status: 400 });
     }
 
+    const convertToObject = (data: any): Record<string, any> => {
+      if (!data) return {};
+      if (data instanceof Map) {
+        return Object.fromEntries(data);
+      }
+      return typeof data === 'object' ? data : {};
+    };
+
     // Fetch user's own performance data for the given month
     const performance = await TeamPerformance.findOne({
       userId: payload.userId,
@@ -39,11 +47,10 @@ export async function GET(req: NextRequest) {
       // Try falling back to team leader performance (for users who are leaders)
       const leaderPerf = await TeamLeaderPerformance.findOne({ userId: payload.userId, month });
       if (leaderPerf) {
-        const toObj = (m: any) => (m ? Object.fromEntries(m) : {});
-        const sheets = toObj(leaderPerf.sheets);
-        const meetings = toObj(leaderPerf.meetings);
-        const assessments = toObj(leaderPerf.assessments);
-        const requests = toObj(leaderPerf.requests);
+        const sheets = convertToObject(leaderPerf.sheets);
+        const meetings = convertToObject(leaderPerf.meetings);
+        const assessments = convertToObject(leaderPerf.assessments);
+        const requests = convertToObject(leaderPerf.requests);
 
         const sum = (o: Record<string, any>) => Object.values(o).reduce((s, v) => s + (Number(v) || 0), 0);
 
@@ -69,11 +76,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate total counts from day-keyed maps
-    const toObj = (m: any) => (m ? Object.fromEntries(m) : {});
-    const sheets = toObj(performance.sheets);
-    const meetings = toObj(performance.meetings);
-    const assessments = toObj(performance.assessments);
-    const requests = toObj(performance.requests);
+    const sheets = convertToObject(performance.sheets);
+    const meetings = convertToObject(performance.meetings);
+    const assessments = convertToObject(performance.assessments);
+    const requests = convertToObject(performance.requests);
 
     const sum = (o: Record<string, any>) => Object.values(o).reduce((s, v) => s + (Number(v) || 0), 0);
 

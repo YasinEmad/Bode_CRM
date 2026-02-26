@@ -183,6 +183,15 @@ export async function PUT(req: NextRequest) {
           { status: 400 }
         );
       }
+
+      // Validate aggregationMode if provided
+      if (indicator.aggregationMode && !['leader-only', 'leader+team'].includes(indicator.aggregationMode)) {
+        console.log('❌ Invalid aggregationMode for', indicator.name);
+        return NextResponse.json(
+          { error: `Aggregation mode for ${indicator.name} must be 'leader-only' or 'leader+team'` },
+          { status: 400 }
+        );
+      }
     }
 
     // Calculate total weight
@@ -203,11 +212,12 @@ export async function PUT(req: NextRequest) {
     console.log('🟡 Finding existing KPI settings for scope...');
     let kpiSettings = await KPISetting.findOne({ scope: role });
 
-    // Ensure all values are valid numbers
+    // Ensure all values are valid numbers and include aggregationMode
     const sanitizedIndicators = indicators.map((ind: any) => ({
       name: ind.name,
       target: Number(ind.target) || 0,
       weight: Number(ind.weight) || 0,
+      aggregationMode: ind.aggregationMode || 'leader+team', // Default to 'leader+team' for backward compatibility
     }));
 
     if (!kpiSettings) {
@@ -259,6 +269,7 @@ export async function PUT(req: NextRequest) {
           name: ind.name,
           target: ind.target,
           weight: ind.weight,
+          aggregationMode: ind.aggregationMode || 'leader+team',
         })),
         totalWeight,
       },

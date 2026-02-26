@@ -16,6 +16,7 @@ interface PerformanceData {
   assessments: Record<string, number>;
   meetings: Record<string, number>;
   requests: Record<string, number>;
+  editedByAdmin?: boolean; // Flag indicating if data was edited by admin
   adminLocks?: {
     sheets: Record<string, boolean>;
     assessments: Record<string, boolean>;
@@ -157,6 +158,7 @@ export default function TeamReport() {
           assessments: { ...emptyDays, ...(perf.assessments || {}) },
           meetings: { ...emptyDays, ...(perf.meetings || {}) },
           requests: { ...emptyDays, ...(perf.requests || {}) },
+          editedByAdmin: perf.editedByAdmin || false, // Include admin edit flag
           leadsCount: perf.leadsCount || 0,
           dealsCount: perf.dealsCount || 0,
         };
@@ -192,6 +194,7 @@ export default function TeamReport() {
           assessments: lp.assessments,
           meetings: lp.meetings,
           requests: lp.requests,
+          editedByAdmin: lp.editedByAdmin || false, // Include admin edit flag
           // adminLocks indicates which days/categories were set by admin and should be locked
           adminLocks: lp.adminLocks || { sheets: {}, assessments: {}, meetings: {}, requests: {} },
           leaderPersonal: true,
@@ -488,89 +491,131 @@ export default function TeamReport() {
                   {/* Collapsible Content */}
                   {isExpanded && (
                     <div className={`border-t ${employee.aggregated ? 'border-yellow-700' : 'border-slate-600'} p-6 space-y-6 animate-in fade-in duration-200`}>
-                      {/* Daily Grid - Calendar View */}
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
-                        <p className="text-xs text-amber-400 mb-3">📝 You can only edit today's data</p>
-                        <div className="grid gap-1 sm:gap-2" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(45px, 1fr))'}}>
-                          {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
-                            const day = dayIndex + 1;
-                            const dayKey = `day${day}`;
-                            const value = employee[selectedCategory][dayKey] || 0;
-                            const isToday = canEditDay(day, employee.month);
-                            const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                            });
+                      {employee.editedByAdmin ? (
+                        // Read-only view: Show as statistics, no input fields
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
+                          <div className="grid gap-2 sm:gap-3" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))'}}>
+                            {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
+                              const day = dayIndex + 1;
+                              const dayKey = `day${day}`;
+                              const value = employee[selectedCategory][dayKey] || 0;
+                              const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                              });
 
-                            return (
-                              <div
-                                key={day}
-                                className={`bg-slate-900/50 rounded-lg p-1 sm:p-2 border-2 transition hover:shadow-lg ${
-                                  isToday
-                                    ? value > 0
-                                      ? selectedCategoryObj?.color === 'blue'
-                                        ? 'border-blue-500 bg-blue-500/10'
-                                        : selectedCategoryObj?.color === 'emerald'
-                                        ? 'border-emerald-500 bg-emerald-500/10'
-                                        : selectedCategoryObj?.color === 'purple'
-                                        ? 'border-purple-500 bg-purple-500/10'
-                                        : 'border-orange-500 bg-orange-500/10'
-                                      : 'border-slate-600 hover:border-slate-500'
-                                    : 'border-slate-700 bg-slate-800/50 opacity-60'
-                                }`}
-                              >
-                                <div className="text-xs text-slate-400 mb-0.5 sm:mb-1 font-semibold hidden sm:block">{dayOfWeek}</div>
-                                <div className="text-xs text-slate-500 mb-1 sm:mb-2 font-semibold">{day}</div>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={value}
-                                  disabled={
-                                    !!employee.aggregated || !isToday ||
-                                    !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey])
-                                  }
-                                  onChange={(e) => {
-                                    const adminLocked = !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey]);
-                                    if (employee.aggregated || !isToday || adminLocked) return;
-                                    handleLocalChange(
-                                      employee.userId,
-                                      selectedCategory,
-                                      dayKey,
-                                      Math.max(0, parseInt(e.target.value) || 0)
-                                    );
-                                  }}
-                                  className={`w-full px-0.5 sm:px-1 py-1 sm:py-2 ${
-                                    employee.aggregated 
-                                      ? 'bg-yellow-800 border-yellow-600 text-yellow-100' 
-                                      : !isToday
-                                      ? 'bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed'
-                                      : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'
-                                  } rounded text-center text-xs sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
-                                    selectedCategoryObj?.color === 'blue'
-                                      ? 'focus:ring-blue-500'
-                                      : selectedCategoryObj?.color === 'emerald'
-                                      ? 'focus:ring-emerald-500'
-                                      : selectedCategoryObj?.color === 'purple'
-                                      ? 'focus:ring-purple-500'
-                                      : 'focus:ring-orange-500'
-                                  }`}
-                                  title={!isToday ? 'You can only edit today\'s data' : ''}
-                                />
-                              </div>
-                            );
-                          })}
+                              return (
+                                <div
+                                  key={day}
+                                  className={`bg-slate-900/50 rounded-lg p-2 sm:p-3 border border-slate-700 text-center`}
+                                >
+                                  <div className="text-xs text-slate-400 mb-0.5 font-semibold hidden sm:block">{dayOfWeek}</div>
+                                  <div className="text-xs text-slate-500 mb-1 font-semibold">{day}</div>
+                                  <div className="text-lg sm:text-xl font-bold text-slate-200">{value}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        // Editable view: Show input fields
+                        <>
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h4>
+                            <p className="text-xs text-amber-400 mb-3">📝 You can only edit today's data</p>
+                            <div className="grid gap-1 sm:gap-2" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(45px, 1fr))'}}>
+                              {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
+                                const day = dayIndex + 1;
+                                const dayKey = `day${day}`;
+                                const value = employee[selectedCategory][dayKey] || 0;
+                                const isToday = canEditDay(day, employee.month);
+                                const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                });
 
-                      <div className="mt-3 flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => saveEmployeeChanges(employee)}
-                          disabled={savingData}
-                          className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${savingData ? 'opacity-60 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
-                        >
-                          {savingData ? 'Saving...' : 'Save'}
-                        </button>
-                      </div>
+                                return (
+                                  <div
+                                    key={day}
+                                    className={`bg-slate-900/50 rounded-lg p-1 sm:p-2 border-2 transition hover:shadow-lg ${
+                                      isToday
+                                        ? value > 0
+                                          ? selectedCategoryObj?.color === 'blue'
+                                            ? 'border-blue-500 bg-blue-500/10'
+                                            : selectedCategoryObj?.color === 'emerald'
+                                            ? 'border-emerald-500 bg-emerald-500/10'
+                                            : selectedCategoryObj?.color === 'purple'
+                                            ? 'border-purple-500 bg-purple-500/10'
+                                            : 'border-orange-500 bg-orange-500/10'
+                                          : 'border-slate-600 hover:border-slate-500'
+                                        : 'border-slate-700 bg-slate-800/50 opacity-60'
+                                    }`}
+                                  >
+                                    <div className="text-xs text-slate-400 mb-0.5 sm:mb-1 font-semibold hidden sm:block">{dayOfWeek}</div>
+                                    <div className="text-xs text-slate-500 mb-1 sm:mb-2 font-semibold">{day}</div>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={value}
+                                      disabled={
+                                        !!employee.aggregated || 
+                                        !isToday ||
+                                        !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey])
+                                      }
+                                      onChange={(e) => {
+                                        const adminLocked = !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey]);
+                                        if (employee.aggregated || !isToday || adminLocked) return;
+                                        handleLocalChange(
+                                          employee.userId,
+                                          selectedCategory,
+                                          dayKey,
+                                          Math.max(0, parseInt(e.target.value) || 0)
+                                        );
+                                      }}
+                                      className={`w-full px-0.5 sm:px-1 py-1 sm:py-2 ${
+                                        employee.aggregated 
+                                          ? 'bg-yellow-800 border-yellow-600 text-yellow-100' 
+                                          : !isToday
+                                          ? 'bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed'
+                                          : 'bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white'
+                                      } rounded text-center text-xs sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                        selectedCategoryObj?.color === 'blue'
+                                          ? 'focus:ring-blue-500'
+                                          : selectedCategoryObj?.color === 'emerald'
+                                          ? 'focus:ring-emerald-500'
+                                          : selectedCategoryObj?.color === 'purple'
+                                          ? 'focus:ring-purple-500'
+                                          : 'focus:ring-orange-500'
+                                      }`}
+                                      title={!isToday ? 'You can only edit today\'s data' : ''}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => saveEmployeeChanges(employee)}
+                              disabled={savingData || employee.aggregated}
+                              title={
+                                employee.aggregated
+                                  ? 'This is aggregated data - you cannot save'
+                                  : ''
+                              }
+                              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                                employee.aggregated
+                                  ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400'
+                                  : savingData 
+                                  ? 'opacity-60 cursor-wait bg-blue-600'
+                                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+                              }`}
+                            >
+                              {savingData ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                        </>
+                      )}
 
                       {/* Weekly Summary */}
                       <div className={`rounded-lg p-3 sm:p-4 border ${employee.aggregated ? 'bg-yellow-900/20 border-yellow-700' : 'bg-slate-900/30 border-slate-600'}`}>

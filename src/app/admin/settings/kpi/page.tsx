@@ -11,6 +11,7 @@ interface KPIIndicator {
   name: string;
   target: number;
   weight: number;
+  aggregationMode?: 'leader-only' | 'leader+team'; // For team leader KPI calculation
 }
 
 interface KPISetting {
@@ -177,7 +178,7 @@ export default function KPISettingsPage() {
     return errors.length === 0;
   };
 
-  const handleUpdateIndicator = (name: string, field: 'target' | 'weight', value: number) => {
+  const handleUpdateIndicator = (name: string, field: 'target' | 'weight' | 'aggregationMode', value: number | string) => {
     if (kpiSettings) {
       const updatedIndicators = kpiSettings.indicators.map((indicator) =>
         indicator.name === name ? { ...indicator, [field]: value } : indicator
@@ -185,6 +186,41 @@ export default function KPISettingsPage() {
       setKpiSettings({ ...kpiSettings, indicators: updatedIndicators });
       // Clear errors when user starts editing
       setFormErrors([]);
+
+      // If aggregationMode changed, save immediately to DB
+      if (field === 'aggregationMode') {
+        handleAggregationModeSave(updatedIndicators);
+      }
+    }
+  };
+
+  const handleAggregationModeSave = async (updatedIndicators: KPIIndicator[]) => {
+    try {
+      // Quick save just the aggregationMode change without validating other fields
+      const res = await fetch(`/api/kpi-settings?role=${scope}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          indicators: updatedIndicators,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        addToast(`Failed to update aggregation mode: ${error.error}`, 'error');
+        return;
+      }
+
+      addToast('Aggregation mode updated successfully', 'success');
+
+      // Re-fetch to ensure we're in sync
+      await fetchKpiSettings();
+    } catch (error) {
+      console.error('Error saving aggregation mode:', error);
+      addToast('Error saving aggregation mode', 'error');
     }
   };
 
@@ -447,6 +483,46 @@ export default function KPISettingsPage() {
                     </div>
                     <p className="text-xs text-slate-400 mt-1">How much this indicator affects the overall KPI</p>
                   </div>
+
+                  {/* Aggregation Mode Toggle - Only for Team Leader Scope */}
+                  {scope === 'team-leader' && (
+                    <div className="mt-6 pt-4 border-t border-slate-600">
+                      <label className="block text-sm font-semibold text-slate-300 mb-3">
+                        Calculation Mode
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            handleUpdateIndicator(indicator.name, 'aggregationMode', 'leader-only')
+                          }
+                          className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                            (indicator.aggregationMode || 'leader+team') === 'leader-only'
+                              ? 'bg-blue-600 text-white shadow-lg'
+                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          }`}
+                        >
+                          Team Leader Only
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleUpdateIndicator(indicator.name, 'aggregationMode', 'leader+team')
+                          }
+                          className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                            (indicator.aggregationMode || 'leader+team') === 'leader+team'
+                              ? 'bg-emerald-600 text-white shadow-lg'
+                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          }`}
+                        >
+                          Team Leader + Team
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-2">
+                        {(indicator.aggregationMode || 'leader+team') === 'leader-only'
+                          ? '📊 Only the team leader\'s personal metrics'
+                          : '📊 Combines team leader + all team members\' metrics'}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Visual Progress Bar for Weight */}
                   <div className="mt-4 pt-4 border-t border-slate-600">

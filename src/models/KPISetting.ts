@@ -4,6 +4,7 @@ export interface KPIIndicator {
   name: string; // 'attendance' | 'deals' | 'sheets' | 'meetings' | 'assessments' | 'requests'
   target: number;
   weight: number;
+  aggregationMode?: 'leader-only' | 'leader+team'; // For team leader KPI calculation
 }
 
 export interface IKPISetting extends Document {
@@ -31,6 +32,11 @@ const KPIIndicatorSchema = new Schema<KPIIndicator>({
     required: true,
     min: 0,
     max: 100,
+  },
+  aggregationMode: {
+    type: String,
+    enum: ['leader-only', 'leader+team'],
+    default: 'leader+team',
   },
 });
 
