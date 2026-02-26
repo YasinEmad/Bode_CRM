@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import Lead from '@/models/Lead';
+import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import { verifyToken } from '@/lib/auth';
 import { hashPassword } from '@/lib/auth';
 
@@ -34,13 +35,31 @@ export async function GET(req: NextRequest) {
     })));
     
     // Get leads and deals data for each employee
+    // Build a map of lead IDs to their status for filtering snapshots
+    const allLeads = await Lead.find({}).select('_id assignedTo status');
+    const leadStatusMap = new Map<string, string>();
+    allLeads.forEach((lead: any) => {
+      leadStatusMap.set(String(lead._id), lead.status);
+    });
+    
     const employeesWithStats = await Promise.all(
       employees.map(async (emp: any) => {
         const leadsCount = await Lead.countDocuments({ assignedTo: emp._id });
-        const closedDealsCount = await Lead.countDocuments({ 
-          assignedTo: emp._id,
-          status: 'closed'
-        });
+        
+        // Get closed deals from snapshots (preserves deleted leads)
+        // Only count snapshots where the associated Lead has status = 'closed'
+        const closedSnapshots = await ClosedDealSnapshot.find({
+          $or: [{ assignedTo: emp._id }, { userId: emp._id }],
+        }).lean();
+        
+        // Filter to only count snapshots where the Lead is 'closed' or was deleted
+        const closedDealsCount = closedSnapshots.filter((snap: any) => {
+          if (!snap.leadId) return true; // If no leadId, preserve the deal
+          const leadStatus = leadStatusMap.get(String(snap.leadId));
+          if (leadStatus === undefined) return true; // Lead was deleted, preserve the deal
+          return leadStatus === 'closed';
+        }).length;
+        
         return {
           ...emp.toObject(),
           leadsCount,

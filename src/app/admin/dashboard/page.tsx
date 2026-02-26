@@ -72,6 +72,12 @@ export default function AdminDashboard() {
   const conversionRate = stats.totalLeads > 0 ? ((stats.closedDeals / stats.totalLeads) * 100).toFixed(1) : 0;
   const avgCommission = stats.closedDeals > 0 ? (stats.totalCommissions / stats.closedDeals).toLocaleString('en-US', {maximumFractionDigits: 0}) : 0;
 
+  // format total commissions with thousands separators and two decimal places
+  const formattedTotalCommission = stats.totalCommissions.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -120,8 +126,8 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-slate-400 text-sm font-medium">Total Commission</p>
-                <p className="text-4xl font-bold text-white mt-2">EGP {(stats.totalCommissions / 1000).toFixed(1)}K</p>
-                <p className="text-xs text-slate-500 mt-2">Cumulative earnings</p>
+                <p className="text-5xl lg:text-4xl xl:text-3xl font-bold text-white mt-2">EGP {formattedTotalCommission}</p>
+                <p className="text-[0.65rem] text-slate-500 mt-2">Cumulative earnings</p>
               </div>
               <div className="bg-gradient-to-br from-purple-600 to-purple-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
                 <DollarSign size={32} className="text-white" />

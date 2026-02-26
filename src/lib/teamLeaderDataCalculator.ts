@@ -259,26 +259,58 @@ export async function calculateTeamLeaderPerformance(
       leaderLeads = leaderLeadsData.length;
     }
 
+    // Build a map of lead IDs to their status for filtering snapshots
+    // Only count deals where the associated Lead has status = 'closed'
+    const leadStatusMap = new Map<string, string>();
+    const allLeads = await Lead.find({ createdAt: { $gte: monthStart, $lte: monthEnd } });
+    allLeads.forEach((lead: any) => {
+      leadStatusMap.set(String(lead._id), lead.status);
+    });
+
     if (dealsIncludeTeam) {
       const dealsQuery: any = {
         createdAt: { $gte: monthStart, $lte: monthEnd },
         $or: [{ assignedTo: { $in: memberIds } }, { userId: { $in: memberIds } }],
       };
-      aggregatedDeals = await ClosedDealSnapshot.countDocuments(dealsQuery);
+      const snapshots = await ClosedDealSnapshot.find(dealsQuery).lean();
+      // Filter snapshots to only count those with associated Lead status = 'closed'
+      // If Lead was deleted (not in leadStatusMap), preserve the deal (same as employees)
+      aggregatedDeals = snapshots.filter((snap: any) => {
+        if (!snap.leadId) return true; // If no leadId, include it (preserved history)
+        const leadStatus = leadStatusMap.get(String(snap.leadId));
+        if (leadStatus === undefined) return true; // Lead was deleted, preserve the deal
+        return leadStatus === 'closed';
+      }).length;
 
       const leaderDealsQuery: any = {
         createdAt: { $gte: monthStart, $lte: monthEnd },
         $or: [{ assignedTo: leaderId }, { userId: leaderId }],
       };
-      leaderDeals = await ClosedDealSnapshot.countDocuments(leaderDealsQuery);
+      const leaderSnapshots = await ClosedDealSnapshot.find(leaderDealsQuery).lean();
+      // Filter leader snapshots to only count those with associated Lead status = 'closed'
+      // If Lead was deleted (not in leadStatusMap), preserve the deal (same as employees)
+      leaderDeals = leaderSnapshots.filter((snap: any) => {
+        if (!snap.leadId) return true; // If no leadId, include it (preserved history)
+        const leadStatus = leadStatusMap.get(String(snap.leadId));
+        if (leadStatus === undefined) return true; // Lead was deleted, preserve the deal
+        return leadStatus === 'closed';
+      }).length;
     } else {
       const leaderDealsQuery: any = {
         createdAt: { $gte: monthStart, $lte: monthEnd },
         $or: [{ assignedTo: leaderId }, { userId: leaderId }],
       };
-      const leaderDealsData = await ClosedDealSnapshot.countDocuments(leaderDealsQuery);
-      aggregatedDeals = leaderDealsData;
-      leaderDeals = leaderDealsData;
+      const leaderSnapshots = await ClosedDealSnapshot.find(leaderDealsQuery).lean();
+      // Filter leader snapshots to only count those with associated Lead status = 'closed'
+      // If Lead was deleted (not in leadStatusMap), preserve the deal (same as employees)
+      const filteredLeaderDeals = leaderSnapshots.filter((snap: any) => {
+        if (!snap.leadId) return true; // If no leadId, include it (preserved history)
+        const leadStatus = leadStatusMap.get(String(snap.leadId));
+        if (leadStatus === undefined) return true; // Lead was deleted, preserve the deal
+        return leadStatus === 'closed';
+      }).length;
+      aggregatedDeals = filteredLeaderDeals;
+      leaderDeals = filteredLeaderDeals;
     }
   } catch (e) {
     console.error('Error calculating leads/deals:', e);

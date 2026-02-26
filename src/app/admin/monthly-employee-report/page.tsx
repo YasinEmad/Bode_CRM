@@ -318,7 +318,14 @@ export default function MonthlyEmployeeReport() {
 
       const leadsByEmployee = new Map<string, { leadsCount: number; dealsCount: number }>();
 
+      // build an index of lead statuses so we can decide whether a snapshot should count
+      const leadStatusById = new Map<string, string>();
       leadsData.leads?.forEach((lead: any) => {
+        const idStr = lead._id ? String(lead._id) : null;
+        if (idStr) {
+          leadStatusById.set(idStr, lead.status);
+        }
+
         const leadDate = new Date(lead.createdAt);
 
         // Check if lead was created in the selected month
@@ -337,10 +344,21 @@ export default function MonthlyEmployeeReport() {
       });
 
       // Use closed-deals snapshots to count deals (preserves history even if Lead deleted)
+      // however only tally a snapshot if its associated Lead is currently marked `closed`.
+      // this mirrors the logic used on Manage Employees where deals = leads.status==='closed'.
       (closedDealsData.snapshots || []).forEach((snap: any) => {
         const rawAssigned = snap.assignedTo || snap.userId || null;
         const employeeId = rawAssigned ? String(rawAssigned) : null;
         if (!employeeId) return;
+
+        // skip snapshots whose lead (if known) isn't fully closed
+        if (snap.leadId) {
+          const leadStatus = leadStatusById.get(String(snap.leadId));
+          if (leadStatus && leadStatus !== 'closed') {
+            return; // ignore pending‑approval, rejected, etc.
+          }
+        }
+
         if (!leadsByEmployee.has(employeeId)) {
           leadsByEmployee.set(employeeId, { leadsCount: 0, dealsCount: 0 });
         }
