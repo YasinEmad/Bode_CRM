@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, Calendar, TrendingUp, AlertCircle, Download, Target } from 'lucide-react';
-import { calculateEmployeeKPI, EmployeeMetrics, KPIScores } from '@/lib/kpiCalculator';
-import { countWorkdaysInMonth } from '@/lib/workdays';
+// KPI calculation is now handled on the server; component simply consumes the
+// prepared results. we no longer need to import the calculator or workday
+// helper here.
 import useLabels from '@/hooks/useLabels';
 
 interface MyKPIData {
@@ -58,8 +59,8 @@ export default function MyMonthlyKPIs() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [kpiData, setKpiData] = useState<MyKPIData | null>(null);
   const [loadingData, setLoadingData] = useState(false);
-  const [kpiSettings, setKpiSettings] = useState<any>(null);
-  const [kpiLoadError, setKpiLoadError] = useState<string | null>(null);
+  // KPI settings and load error are not needed; the new API returns ready-to-
+  // display KPI results (including any warning about settings).
 
   // Set default month to current month
   useEffect(() => {
@@ -80,292 +81,34 @@ export default function MyMonthlyKPIs() {
   // Fetch KPI data when month/year changes or user changes
   useEffect(() => {
     if (selectedMonth && selectedYear && token && user) {
-      const loadData = async () => {
-        const kpiSettingsData = await fetchKpiSettingsAndReturn();
-        if (kpiSettingsData) {
-          await fetchMyKPIData(kpiSettingsData);
-        }
-      };
-      loadData();
+      // no need to prefetch KPI settings; the server endpoint returns a
+      // ready-made object that already includes KPI percentages and
+      // breakdown.
+      fetchMyKPIData();
     }
   }, [selectedMonth, selectedYear, token, user]);
 
-  const fetchKpiSettingsAndReturn = async (): Promise<any> => {
-    try {
-      console.log('📊 Fetching KPI settings (global + team-leader)...');
-      const [globalRes, leaderRes] = await Promise.all([
-        fetch('/api/kpi-settings', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/kpi-settings?role=team-leader', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+  // we no longer need to fetch KPI settings on the client; the new
+  // `/api/reports/my-monthly` endpoint handles KPI calculation server-side
+  // (including loading and validating the settings).
 
-      if (!globalRes.ok) {
-        const err = await globalRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to load global KPI settings');
-      }
-
-      const globalData = await globalRes.json();
-      const leaderData = leaderRes.ok ? await leaderRes.json() : null;
-
-      if (!globalData.kpiSettings || !Array.isArray(globalData.kpiSettings.indicators) || globalData.kpiSettings.indicators.length === 0) {
-        throw new Error('Invalid KPI settings format');
-      }
-
-      // Basic validation: required indicators and total weight
-      const requiredIndicators = ['attendance', 'deals', 'sheets', 'meetings', 'assessments'];
-      const providedIndicators = globalData.kpiSettings.indicators.map((ind: any) => ind.name);
-      const missing = requiredIndicators.filter((r) => !providedIndicators.includes(r));
-      if (missing.length > 0) throw new Error(`Missing indicators: ${missing.join(', ')}`);
-
-      const totalWeight = globalData.kpiSettings.indicators.reduce((s: number, ind: any) => s + ind.weight, 0);
-      if (Math.abs(totalWeight - 100) > 0.01) throw new Error(`Total weight must be 100%, got ${totalWeight.toFixed(2)}%`);
-
-      setKpiSettings(globalData.kpiSettings);
-      setKpiLoadError(null);
-      return { global: globalData.kpiSettings, teamLeader: leaderData?.kpiSettings || null };
-    } catch (error) {
-      console.error('❌ Error fetching KPI settings:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Failed to load KPI settings';
-      setKpiLoadError(errorMsg);
-      setKpiSettings(null);
-      return null;
-    }
-  };
-
-  const fetchMyKPIData = async (kpiSettingsData: any) => {
+  const fetchMyKPIData = async () => {
     try {
       setLoadingData(true);
-
-      if (!user?.id) {
-        throw new Error('User ID not available');
-      }
-
-      // Fetch current user details using auth endpoint
-      const userResponse = await fetch(`/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch user details');
-      }
-
-      const userData = await userResponse.json();
-
-      console.log('👤 User data received:', { 
-        name: userData.user.name, 
-        joinDate: userData.user.joinDate,
-        joinDateType: typeof userData.user.joinDate
-      });
-
-      // Fetch leads for this employee for the selected month
-      const leadsResponse = await fetch('/api/leads', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!leadsResponse.ok) {
-        throw new Error('Failed to fetch leads');
-      }
-
-      const leadsData = await leadsResponse.json();
-
-      // Fetch attendance records for the selected month
-      const attendanceResponse = await fetch(
-        `/api/attendance?month=${selectedYear}-${selectedMonth}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const resp = await fetch(
+        `/api/reports/my-monthly?month=${selectedYear}-${selectedMonth}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      if (!attendanceResponse.ok) {
-        throw new Error('Failed to fetch attendance records');
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to load personal KPI report');
       }
-
-      const attendanceData = await attendanceResponse.json();
-
-      // Fetch user's own performance data (for calls, meetings, assessments)
-      const performanceResponse = await fetch(
-        `/api/performance/my-performance?month=${selectedYear}-${selectedMonth}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!performanceResponse.ok) {
-        throw new Error('Failed to fetch team performance');
-      }
-
-      const performanceData = await performanceResponse.json();
-
-      // Try fetching team performance (aggregated) if user is a team leader — this endpoint returns aggregatedLeader and leaderPersonal
-      let teamPerfData: any = null;
-      try {
-        const teamRes = await fetch(`/api/teams/performance?month=${selectedYear}-${selectedMonth}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (teamRes.ok) {
-          teamPerfData = await teamRes.json();
-        }
-      } catch (e) {
-        // ignore - not a leader or endpoint inaccessible
-      }
-
-      // Calculate leads and deals for the selected month
-      const selectedMonthStart = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
-      const selectedMonthEnd = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0);
-      selectedMonthEnd.setHours(23, 59, 59, 999);
-
-      let leadsCount = 0;
-      let dealsCount = 0;
-
-      // Count leads created by user in the month (may exclude deleted leads)
-      leadsData.leads?.forEach((lead: any) => {
-        const leadDate = new Date(lead.createdAt);
-        const employeeId = lead.assignedTo?._id || lead.assignedTo;
-
-        if (employeeId === user.id && leadDate >= selectedMonthStart && leadDate <= selectedMonthEnd) {
-          leadsCount++;
-        }
-      });
-
-      // Fetch closed-deal snapshots for the selected month and current user
-      try {
-        const snapsRes = await fetch(
-          `/api/closed-deals?month=${selectedYear}-${selectedMonth}&userId=${user.id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (snapsRes.ok) {
-          const snapsData = await snapsRes.json();
-          // Count snapshots where either userId or assignedTo matches the user
-          dealsCount = (snapsData.snapshots || []).filter((s: any) => {
-            const assigned = s.assignedTo ? String(s.assignedTo) : null;
-            const userIdField = s.userId ? String(s.userId) : null;
-            return userIdField === user.id || assigned === user.id;
-          }).length;
-        } else {
-          console.warn('Failed to fetch closed-deals for KPI page', snapsRes.status);
-        }
-      } catch (e) {
-        console.error('Error fetching closed-deals snapshots for KPI page', e);
-      }
-
-      // Get attendance percentage
-      let attendancePercentage = 0;
-      const employeeAttendance = attendanceData.attendances || [];
-
-      if (employeeAttendance.length > 0) {
-        // Get the actual number of working days in the month (exclude Friday by default)
-        const daysInMonth = countWorkdaysInMonth(parseInt(selectedYear), parseInt(selectedMonth) - 1);
-        
-        // Count check-in records (each = 1 day present)
-        const presentDays = employeeAttendance.length;
-        
-        // Calculate attendance percentage based on total days in month
-        attendancePercentage = Math.round((presentDays / daysInMonth) * 100);
-      }
-
-      // Helper: sum values in a day-keyed object
-      const calculateTotal = (data?: Record<string, number> | null): number => {
-        if (!data || typeof data !== 'object') return 0;
-        return Object.values(data).reduce((sum, val) => sum + (Number(val) || 0), 0);
-      };
-
-      // Get sheets/meetings/assessments/requests. Prefer admin/team values when available for leaders.
-      let sheetsCount = performanceData.performance?.sheetsCount || 0;
-      let meetingsCount = performanceData.performance?.meetingsCount || 0;
-      let assessmentsCount = performanceData.performance?.assessmentsCount || 0;
-      let requestsCount = performanceData.performance?.requestsCount || 0;
-
-      // If we received team performance (leader) data, prefer its explicit/leaderPersonal values for daily metrics
-      if (teamPerfData) {
-        const leaderPersonal = teamPerfData.leaderPersonal || null;
-        const aggregatedLeader = teamPerfData.aggregatedLeader || null;
-
-        if (leaderPersonal) {
-          // leaderPersonal contains day-keyed objects similar to admin API
-          sheetsCount = calculateTotal(leaderPersonal.sheets) || sheetsCount;
-          meetingsCount = calculateTotal(leaderPersonal.meetings) || meetingsCount;
-          assessmentsCount = calculateTotal(leaderPersonal.assessments) || assessmentsCount;
-          requestsCount = calculateTotal(leaderPersonal.requests) || requestsCount;
-        }
-
-        // For leads/deals, prefer aggregated totals across the team when available
-        if (aggregatedLeader && typeof aggregatedLeader.aggregatedLeads === 'number') {
-          leadsCount = aggregatedLeader.aggregatedLeads;
-        }
-        if (aggregatedLeader && typeof aggregatedLeader.aggregatedDeals === 'number') {
-          dealsCount = aggregatedLeader.aggregatedDeals;
-        }
-      }
-
-      // Calculate KPI
-      let kpiPercentage = 0;
-      let kpiBreakdown = {
-        attendance: 0,
-        deals: 0,
-        sheets: 0,
-        meetings: 0,
-        assessments: 0,
-        requests: 0,
-      };
-
-      if (kpiSettingsData && (kpiSettingsData.global || kpiSettingsData.teamLeader)) {
-        const isLeader = (user?.position || '').toLowerCase().includes('lead') || (user?.position || '').toLowerCase().includes('leader');
-        const indicatorsToUse = isLeader && kpiSettingsData.teamLeader && kpiSettingsData.teamLeader.indicators && kpiSettingsData.teamLeader.indicators.length > 0
-          ? kpiSettingsData.teamLeader.indicators
-          : kpiSettingsData.global.indicators;
-
-        const metrics: EmployeeMetrics = {
-          attendancePercentage,
-          closedDealsCount: dealsCount,
-          sheetsCount,
-          meetingsCount,
-          assessmentsCount,
-          requestsCount,
-        };
-
-        console.log(`📊 Calculating KPI for ${userData.user.name}:`, metrics);
-
-        const result: KPIScores = calculateEmployeeKPI(metrics, indicatorsToUse);
-        kpiPercentage = Math.round(result.total * 10) / 10; // match monthly report rounding
-
-        // Use KPI scores from calculation result
-        if (result) {
-          kpiBreakdown.attendance = result.attendance;
-          kpiBreakdown.deals = result.deals;
-          kpiBreakdown.sheets = result.sheets;
-          kpiBreakdown.meetings = result.meetings;
-          kpiBreakdown.assessments = result.assessments;
-          kpiBreakdown.requests = result.requests;
-        }
-
-        console.log(`✅ Final KPI Percentage: ${kpiPercentage}%`);
+      const json = await resp.json();
+      if (json && json.data) {
+        setKpiData(json.data);
       } else {
-        console.log(`⚠️ KPI Settings NOT available`);
+        throw new Error('Unexpected response from server');
       }
-
-      setKpiData({
-        _id: userData.user._id,
-        name: userData.user.name,
-        position: userData.user.position || 'N/A',
-        salary: userData.user.salary || 0,
-        joinDate: userData.user.joinDate,
-        leadsCount,
-        closedDealsCount: dealsCount,
-        attendancePercentage,
-        sheetsCount,
-        meetingsCount,
-        assessmentsCount,
-        requestsCount,
-        kpiPercentage,
-        kpiBreakdown,
-      });
     } catch (error) {
       console.error('Error fetching KPI data:', error);
       addToast('Error loading KPI data', 'error');
@@ -502,18 +245,6 @@ export default function MyMonthlyKPIs() {
           </div>
         ) : (
           <>
-            {/* KPI Load Error Warning */}
-            {kpiLoadError && (
-              <div className="mb-6 bg-amber-900/20 border border-amber-700 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
-                <div>
-                  <h3 className="text-amber-200 font-semibold">KPI Settings Warning</h3>
-                  <p className="text-amber-300 text-sm mt-1">
-                    {kpiLoadError}. KPI score will not be calculated. Please contact your administrator.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {!kpiData ? (
               <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">

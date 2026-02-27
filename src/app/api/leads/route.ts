@@ -244,6 +244,48 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Notify admins in-app (Notification documents) and via web-push
+    try {
+      const Notification = (await import('@/models/Notification')).default;
+      const PushSubscription = (await import('@/models/PushSubscription')).default;
+      const { sendPushToSubscription } = await import('@/lib/push');
+      const User = (await import('@/models/User')).default;
+
+      const admins = await User.find({ role: 'admin' }).select('_id name email').lean();
+      const adminIds = admins.map(a => a._id).filter(Boolean);
+
+      if (adminIds.length > 0) {
+        const title = `New lead: ${lead.name}`;
+        const message = `${lead.name} (${lead.phone}) - ${lead.project || 'No project'}`;
+
+        // create Notification documents for admins
+        try {
+          const notifications = adminIds.map((uid: any) => ({
+            userId: uid,
+            title,
+            message,
+            type: 'new_lead',
+            leadId: lead._id,
+            fromUser: payload.userId,
+          }));
+          await Notification.insertMany(notifications);
+        } catch (e) {
+          console.warn('Failed to create Notification documents for admins', e);
+        }
+
+        // send web-push to admin subscriptions
+        try {
+          const subs = await PushSubscription.find({ userId: { $in: adminIds } }).lean();
+          const payloadToSend = { title, message, url: '/admin/leads', data: { leadId: String(lead._id) } };
+          await Promise.all(subs.map((s: any) => sendPushToSubscription(s.subscription, payloadToSend)));
+        } catch (e) {
+          console.warn('Failed to send web-push to admins', e);
+        }
+      }
+    } catch (e) {
+      console.warn('Admin notification flow failed for new lead', e);
+    }
+
     return NextResponse.json({ lead: fullLead }, { status: 201 });
   } catch (error) {
     console.error('Error creating lead:', error);

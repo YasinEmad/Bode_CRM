@@ -43,9 +43,26 @@ export default function NotificationsBell() {
         if (!mounted) return;
         fetchNotifications();
       }, 30000);
+      // Real-time admin lead stream via SSE
+      let es: EventSource | null = null;
+      if (user?.role === 'admin') {
+        try {
+          es = new EventSource(`/api/admin/lead-stream?token=${token}`);
+          es.addEventListener('new-lead', () => {
+            // refresh notifications from server to avoid duplicate/temporary items
+            fetchNotifications();
+          });
+          es.onerror = () => {
+            try { es?.close(); } catch {};
+          };
+        } catch (e) {
+          console.warn('SSE connect failed', e);
+        }
+      }
       return () => {
         mounted = false;
         clearInterval(interval);
+        try { es?.close(); } catch {}
       };
     }
   }, [token, user]);

@@ -309,7 +309,9 @@ export function getAggregationConfig(indicators: KPIIndicator[]): Record<string,
   const config: Record<string, 'leader-only' | 'leader+team'> = {};
   
   indicators.forEach((ind) => {
-    config[ind.name] = ind.aggregationMode || 'leader+team'; // Default to 'leader+team' for backward compatibility
+    // Normalize indicator names to lowercase so lookups are consistent
+    // with `shouldIncludeTeamData` which uses lowercased keys.
+    config[ind.name.toLowerCase()] = ind.aggregationMode || 'leader+team'; // Default to 'leader+team' for backward compatibility
   });
   
   return config;

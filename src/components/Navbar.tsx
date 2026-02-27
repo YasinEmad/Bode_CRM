@@ -166,7 +166,7 @@ export default function Navbar() {
 
                 {/* Icons - visible on all screen sizes */}
                 <div className="flex items-center gap-1 sm:gap-3">
-                  {user.role === 'sales' && <NotificationsBell />}
+                  {(user.role === 'sales' || user.role === 'admin') && <NotificationsBell />}
                   {/* Theme toggle - minimal styling to avoid changing navbar appearance */}
                   <ThemeToggle className="p-2 rounded-lg" />
                   {user.role === 'sales' && (
@@ -230,7 +230,7 @@ export default function Navbar() {
             ))}
 
             {/* Mobile-only actions: Remove since icons are now visible on all screens */}
-            {user && user.role === 'sales' && (
+            {user && (user.role === 'sales' || user.role === 'admin') && (
               <div className="flex items-center gap-2 mt-3 px-3">
                 <p className="text-xs text-slate-400">Notifications and messages available in navbar above</p>
               </div>
