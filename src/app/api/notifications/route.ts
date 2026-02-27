@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     // الحصول على جميع الإشعارات للمستخدم الحالي
     const notifications = await Notification.find({ userId: payload.userId })
       .populate('leadId', 'name phone')
-      .populate('fromUser', 'name')
+      .populate('fromUser', 'username name')
       .sort({ createdAt: -1 });
 
     // عد الإشعارات غير المقروءة

@@ -3,7 +3,8 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, Plus, X } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 import LeadCard from '@/components/LeadCard';
 import MarkAttendanceCard from '@/components/MarkAttendanceCard';
 
@@ -36,6 +37,18 @@ export default function SalesDashboard() {
     closed: 0,
   });
   const [loadingLeads, setLoadingLeads] = useState(true);
+  const { addToast, updateToast } = useToast();
+  const [isCreatingLead, setIsCreatingLead] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newLeadData, setNewLeadData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    project: '',
+    source: 'other',
+    sourceText: '',
+    notes: '',
+  });
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'sales')) {
@@ -166,6 +179,56 @@ export default function SalesDashboard() {
     }
   };
 
+  const handleCreateLead = async () => {
+    if (!newLeadData.name || !newLeadData.phone) {
+      addToast('Please fill in name and phone', 'error');
+      return;
+    }
+
+    if (newLeadData.source === 'other' && (!newLeadData.sourceText || newLeadData.sourceText.trim() === '')) {
+      addToast('Please provide a custom source when Source is Other', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const toastId = addToast('Creating lead...', 'loading');
+
+    try {
+      const payload = {
+        name: newLeadData.name,
+        phone: newLeadData.phone,
+        email: newLeadData.email || '',
+        project: newLeadData.project || '',
+        source: newLeadData.source || 'other',
+        sourceText: newLeadData.source === 'other' ? (newLeadData.sourceText || '') : (newLeadData.sourceText || ''),
+        notes: newLeadData.notes || '',
+      };
+
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create lead');
+
+      addToast('✅ Lead created and assigned to you!', 'success');
+      setNewLeadData({ name: '', phone: '', email: '', project: '', source: 'other', sourceText: '', notes: '' });
+      setIsCreatingLead(false);
+      // refresh leads
+      fetchLeads();
+      updateToast(toastId, '✅ Lead created', 'success');
+    } catch (error) {
+      updateToast(toastId, error instanceof Error ? error.message : 'Failed to create lead', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -179,8 +242,18 @@ export default function SalesDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Sales Dashboard</h1>
-          <p className="text-slate-400">Track your leads and progress at a glance</p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Sales Dashboard</h1>
+              <p className="text-slate-400">Track your leads and progress at a glance</p>
+            </div>
+            <button
+              onClick={() => setIsCreatingLead(true)}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2 whitespace-nowrap"
+            >
+              <Plus size={20} /> Add New Lead
+            </button>
+          </div>
         </div>
 
         {/* Quick Stats */}
@@ -283,6 +356,127 @@ export default function SalesDashboard() {
                 onNotesChange={(notes) => handleNotesChange(lead._id, notes)}
               />
             ))}
+          </div>
+        )}
+
+        {isCreatingLead && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-700 flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800 flex-shrink-0">
+                <h2 className="text-2xl font-bold text-white">Add New Lead</h2>
+                <button
+                  onClick={() => setIsCreatingLead(false)}
+                  className="text-slate-400 hover:text-white transition"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Name *</label>
+                  <input
+                    type="text"
+                    placeholder="Enter client name"
+                    value={newLeadData.name}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Phone *</label>
+                  <input
+                    type="tel"
+                    placeholder="Enter phone number"
+                    value={newLeadData.phone}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, phone: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Email</label>
+                  <input
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newLeadData.email}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, email: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Project</label>
+                  <input
+                    type="text"
+                    placeholder="Enter project name"
+                    value={newLeadData.project}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, project: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Source</label>
+                  <select
+                    value={newLeadData.source}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, source: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700"
+                  >
+                    <option value="website">Website</option>
+                    <option value="referral">Referral</option>
+                    <option value="phone">Phone</option>
+                    <option value="email">Email</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="google ads">Google Ads</option>
+                    <option value="other">Other</option>
+                  </select>
+                <div className="mt-3">
+                  <label className="block text-sm font-semibold text-white mb-2">Specify Source (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter custom source"
+                    value={newLeadData.sourceText}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, sourceText: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                  />
+                </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">Notes</label>
+                  <textarea
+                    placeholder="Add any notes about this lead..."
+                    value={newLeadData.notes}
+                    onChange={(e) => setNewLeadData({ ...newLeadData, notes: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-700 placeholder-slate-400"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="bg-blue-900 bg-opacity-30 p-3 rounded-lg border border-blue-700 text-sm text-blue-200">
+                  ℹ️ This lead will be automatically assigned to you
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-slate-700 bg-slate-900 flex gap-3 flex-col sm:flex-row flex-shrink-0">
+                <button
+                  onClick={handleCreateLead}
+                  disabled={isSubmitting}
+                  className="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? 'Creating...' : <><Plus size={18} /> Create Lead</> }
+                </button>
+                <button
+                  onClick={() => setIsCreatingLead(false)}
+                  className="w-full sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-semibold transition border border-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

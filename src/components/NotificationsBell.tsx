@@ -17,7 +17,8 @@ interface Notification {
   };
   fromUser?: {
     _id: string;
-    name: string;
+    name?: string;
+    username?: string;
   };
   isRead: boolean;
   createdAt: string;
@@ -297,6 +298,11 @@ export default function NotificationsBell() {
                         <p className={`text-sm mt-1 break-words leading-relaxed ${isDark ? 'text-slate-300' : 'text-gray-900'}`}>
                           {notification.message}
                         </p>
+                        {notification.fromUser && (
+                          <p className={`text-xs mt-2 ${isDark ? 'text-slate-500' : 'text-gray-700'}`}>
+                            <strong>Added by:</strong> {notification.fromUser.username || notification.fromUser.name}
+                          </p>
+                        )}
                         <p className={`text-xs mt-2 font-medium ${isDark ? 'text-slate-500' : 'text-gray-700'}`}>
                           {formatTime(notification.createdAt)}
                         </p>

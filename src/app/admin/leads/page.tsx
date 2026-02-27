@@ -808,11 +808,16 @@ export default function AdminLeads() {
                     className="px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-slate-900 text-white placeholder-slate-500"
                   >
                     <option value="">Select employee...</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.name}
-                      </option>
-                    ))}
+                    {employees
+                      .filter((emp: any) => {
+                        const pos = (emp.position || emp.role || '').toString().toLowerCase();
+                        return pos !== 'media buyer';
+                      })
+                      .map((emp) => (
+                        <option key={emp._id} value={emp._id}>
+                          {emp.name}
+                        </option>
+                      ))}
                   </select>
                   <button
                     onClick={handleBulkAssign}
@@ -1114,11 +1119,16 @@ export default function AdminLeads() {
                       className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900"
                     >
                       <option value="">Unassigned</option>
-                      {employees.map((emp) => (
-                        <option key={emp._id} value={emp._id}>
-                          {emp.name}
-                        </option>
-                      ))}
+                        {employees
+                          .filter((emp: any) => {
+                            const pos = (emp.position || emp.role || '').toString().toLowerCase();
+                            return pos !== 'media buyer';
+                          })
+                          .map((emp) => (
+                            <option key={emp._id} value={emp._id}>
+                              {emp.name}
+                            </option>
+                          ))}
                     </select>
                   </div>
                 </div>

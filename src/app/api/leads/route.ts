@@ -252,11 +252,16 @@ export async function POST(req: NextRequest) {
       const User = (await import('@/models/User')).default;
 
       const admins = await User.find({ role: 'admin' }).select('_id name email').lean();
-      const adminIds = admins.map(a => a._id).filter(Boolean);
+      // exclude the admin who created the lead (payload.userId)
+      const adminIds = admins
+        .map(a => String(a._id))
+        .filter(id => id && id !== String(payload.userId));
 
       if (adminIds.length > 0) {
         const title = `New lead: ${lead.name}`;
-        const message = `${lead.name} (${lead.phone}) - ${lead.project || 'No project'}`;
+        // Include actor username when available so admins see who created the lead
+        const actorLabel = actorUsername || String(payload.userId || '');
+        const message = `${lead.name} (${lead.phone}) - ${lead.project || 'No project'}${actorLabel ? ` (by ${actorLabel})` : ''}`;
 
         // create Notification documents for admins
         try {
