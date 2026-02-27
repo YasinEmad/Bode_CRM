@@ -122,21 +122,24 @@ export default function TeamLeadersMonthlyReport() {
         const emptyDays: Record<string, number> = {};
         for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
 
+        // Ensure leaderPersonal exists and is properly populated
+        // This is the SINGLE SOURCE OF TRUTH for what's displayed
+        const safeLeaderPersonal = {
+          sheets: { ...emptyDays, ...(p.leaderPersonal?.sheets || {}) },
+          assessments: { ...emptyDays, ...(p.leaderPersonal?.assessments || {}) },
+          meetings: { ...emptyDays, ...(p.leaderPersonal?.meetings || {}) },
+          requests: { ...emptyDays, ...(p.leaderPersonal?.requests || {}) },
+        };
+
         return {
           ...p,
-          // clear team-aggregated buckets to avoid accidental display
+          // Explicitly set leaderPersonal to ensure it's always available for display
+          leaderPersonal: safeLeaderPersonal,
+          // Keep other fields as-is but ensure no team-aggregated data is used for display
           sheets: { ...emptyDays },
           assessments: { ...emptyDays },
           meetings: { ...emptyDays },
           requests: { ...emptyDays },
-          // ensure leaderPersonal exists and has the four categories
-          // merge saved values over zero-filled buckets so missing days show 0
-          leaderPersonal: {
-            sheets: { ...emptyDays, ...(p.leaderPersonal?.sheets || {}) },
-            assessments: { ...emptyDays, ...(p.leaderPersonal?.assessments || {}) },
-            meetings: { ...emptyDays, ...(p.leaderPersonal?.meetings || {}) },
-            requests: { ...emptyDays, ...(p.leaderPersonal?.requests || {}) },
-          },
         };
       });
 
@@ -161,8 +164,8 @@ export default function TeamLeadersMonthlyReport() {
       const updatedData = {
         userId: leader.userId,
         month: leader.month,
+        // send only the single changed day instead of entire month map
         [category]: {
-          ...(leader.leaderPersonal?.[category] || {}),
           [day]: newValue,
         },
       };
@@ -182,20 +185,31 @@ export default function TeamLeadersMonthlyReport() {
         throw new Error(errorMessage);
       }
 
+      // ✅ Immediately update local state with the new value
+      // This ensures the UI reflects the change right away
       setLeaderData((prevData) =>
         prevData.map((l) => {
           if (l.userId === leader.userId) {
-            const updatedCategory = {
-              ...(l.leaderPersonal?.[category] || {}),
-              [day]: newValue,
-            };
+            // Update the leaderPersonal data structure with new value
             return {
               ...l,
               leaderPersonal: {
-                sheets: category === 'sheets' ? updatedCategory : (l.leaderPersonal?.sheets || {}),
-                assessments: category === 'assessments' ? updatedCategory : (l.leaderPersonal?.assessments || {}),
-                meetings: category === 'meetings' ? updatedCategory : (l.leaderPersonal?.meetings || {}),
-                requests: category === 'requests' ? updatedCategory : (l.leaderPersonal?.requests || {}),
+                sheets:
+                  category === 'sheets'
+                    ? { ...(l.leaderPersonal?.sheets || {}), [day]: newValue }
+                    : (l.leaderPersonal?.sheets || {}),
+                assessments:
+                  category === 'assessments'
+                    ? { ...(l.leaderPersonal?.assessments || {}), [day]: newValue }
+                    : (l.leaderPersonal?.assessments || {}),
+                meetings:
+                  category === 'meetings'
+                    ? { ...(l.leaderPersonal?.meetings || {}), [day]: newValue }
+                    : (l.leaderPersonal?.meetings || {}),
+                requests:
+                  category === 'requests'
+                    ? { ...(l.leaderPersonal?.requests || {}), [day]: newValue }
+                    : (l.leaderPersonal?.requests || {}),
               },
             };
           }
@@ -203,7 +217,7 @@ export default function TeamLeadersMonthlyReport() {
         })
       );
 
-      // After saving leader's own record, re-fetch to update team-aggregated buckets
+      // ✅ After saving leader's own record, re-fetch to update team-aggregated buckets and verify save
       await fetchLeaderData();
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {
@@ -241,6 +255,13 @@ export default function TeamLeadersMonthlyReport() {
         throw new Error(errorMessage);
       }
 
+      // ✅ Pro-actively update state while fetching verification from API
+      // This ensures UI is responsive even with network delays
+      setLeaderData((prevData) =>
+        prevData.map((l) => (l.userId === leader.userId ? leader : l))
+      );
+
+      // Then fetch fresh data from API for verification and aggregated updates
       await fetchLeaderData();
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {

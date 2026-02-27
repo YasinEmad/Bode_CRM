@@ -127,10 +127,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User is not a team leader' }, { status: 403 });
     }
 
-    // Find existing performance so we can merge adminLocks
+    // Find existing performance so we can merge adminLocks and diff values
     const existing = await TeamLeaderPerformance.findOne({ userId, month });
-
-    // Convert existing document to plain object to remove all Mongoose internals
     const existingPlain = existing ? existing.toObject() : null;
 
     // Build adminLocks object - tracks per-day admin edits
@@ -140,45 +138,55 @@ export async function POST(req: NextRequest) {
       meetings: {},
       requests: {},
     };
-
-    // Merge existing adminLocks
-    if (existingPlain?.adminLocks) {
-      if (typeof existingPlain.adminLocks === 'object') {
-        adminLocksObj = JSON.parse(JSON.stringify(existingPlain.adminLocks));
-      }
+    if (existingPlain?.adminLocks && typeof existingPlain.adminLocks === 'object') {
+      adminLocksObj = JSON.parse(JSON.stringify(existingPlain.adminLocks));
     }
 
-    // Track which days are being updated in each category
-    if (sheets && typeof sheets === 'object') {
-      const sheetsDays = Object.keys(sheets);
-      for (const day of sheetsDays) {
-        adminLocksObj.sheets[day] = true;
-      }
-    }
-    if (assessments && typeof assessments === 'object') {
-      const assessmentsDays = Object.keys(assessments);
-      for (const day of assessmentsDays) {
-        adminLocksObj.assessments[day] = true;
-      }
-    }
-    if (meetings && typeof meetings === 'object') {
-      const meetingsDays = Object.keys(meetings);
-      for (const day of meetingsDays) {
-        adminLocksObj.meetings[day] = true;
-      }
-    }
-    if (requests && typeof requests === 'object') {
-      const requestsDays = Object.keys(requests);
-      for (const day of requestsDays) {
-        adminLocksObj.requests[day] = true;
-      }
-    }
+    // We'll accumulate only those metric updates where the admin actually changed a value
+    const changedSheets: Record<string, any> = {};
+    const changedAssessments: Record<string, any> = {};
+    const changedMeetings: Record<string, any> = {};
+    const changedRequests: Record<string, any> = {};
 
-    // Clean the data by converting to plain objects to remove Mongoose internals
-    const sheetsData = sheets ? JSON.parse(JSON.stringify(sheets)) : undefined;
-    const assessmentsData = assessments ? JSON.parse(JSON.stringify(assessments)) : undefined;
-    const meetingsData = meetings ? JSON.parse(JSON.stringify(meetings)) : undefined;
-    const requestsData = requests ? JSON.parse(JSON.stringify(requests)) : undefined;
+    const markChanged = (
+      dataObj: any,
+      existingObj: any,
+      dest: Record<string, any>,
+      lockObj: Record<string, boolean>
+    ) => {
+      if (dataObj && typeof dataObj === 'object') {
+        for (const day of Object.keys(dataObj)) {
+          const newVal = dataObj[day];
+          const oldVal = existingObj?.[day];
+
+          // if there is a previous value, lock when it differs
+          if (oldVal !== undefined) {
+            if (oldVal !== newVal) {
+              dest[day] = newVal;
+              lockObj[day] = true;
+            }
+          } else {
+            // no previous value; only treat as a change if admin provided a
+            // non-zero metric. the front-end sends a full zero-filled map as a
+            // convenience, which should *not* lock every day.
+            if (newVal !== 0) {
+              dest[day] = newVal;
+              lockObj[day] = true;
+            }
+          }
+        }
+      }
+    };
+
+    markChanged(sheets, existingPlain?.sheets, changedSheets, adminLocksObj.sheets);
+    markChanged(assessments, existingPlain?.assessments, changedAssessments, adminLocksObj.assessments);
+    markChanged(meetings, existingPlain?.meetings, changedMeetings, adminLocksObj.meetings);
+    markChanged(requests, existingPlain?.requests, changedRequests, adminLocksObj.requests);
+
+    const sheetsData = Object.keys(changedSheets).length ? changedSheets : undefined;
+    const assessmentsData = Object.keys(changedAssessments).length ? changedAssessments : undefined;
+    const meetingsData = Object.keys(changedMeetings).length ? changedMeetings : undefined;
+    const requestsData = Object.keys(changedRequests).length ? changedRequests : undefined;
     const adminLocksData = JSON.parse(JSON.stringify(adminLocksObj));
 
     // Prepare update object using $set to let Mongoose handle the conversion
@@ -190,18 +198,26 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    // Add only the fields that are being updated
+    // Add only the fields that are being updated (day-level)
     if (sheetsData) {
-      updateObj.$set.sheets = sheetsData;
+      for (const [day, val] of Object.entries(sheetsData)) {
+        updateObj.$set[`sheets.${day}`] = val;
+      }
     }
     if (assessmentsData) {
-      updateObj.$set.assessments = assessmentsData;
+      for (const [day, val] of Object.entries(assessmentsData)) {
+        updateObj.$set[`assessments.${day}`] = val;
+      }
     }
     if (meetingsData) {
-      updateObj.$set.meetings = meetingsData;
+      for (const [day, val] of Object.entries(meetingsData)) {
+        updateObj.$set[`meetings.${day}`] = val;
+      }
     }
     if (requestsData) {
-      updateObj.$set.requests = requestsData;
+      for (const [day, val] of Object.entries(requestsData)) {
+        updateObj.$set[`requests.${day}`] = val;
+      }
     }
 
     // Upsert performance record

@@ -203,15 +203,20 @@ export default function TeamReport() {
 
       if (data.leaderPersonal) {
         const lp = data.leaderPersonal;
+        const days = lp.daysInMonth || 30;
+        const emptyDays: Record<string, number> = {};
+        for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
+
         const formattedLeader: PerformanceData = {
           userId: String(lp.userId),
           name: (lp.name || 'Leader') + ' (You)',
           month: lp.month,
           daysInMonth: lp.daysInMonth,
-          sheets: lp.sheets,
-          assessments: lp.assessments,
-          meetings: lp.meetings,
-          requests: lp.requests,
+          // merge with emptyDays to guarantee every day key exists
+          sheets: { ...emptyDays, ...(lp.sheets || {}) },
+          assessments: { ...emptyDays, ...(lp.assessments || {}) },
+          meetings: { ...emptyDays, ...(lp.meetings || {}) },
+          requests: { ...emptyDays, ...(lp.requests || {}) },
           editedByAdmin: lp.editedByAdmin || false,
           adminLocks: lp.adminLocks || { sheets: {}, assessments: {}, meetings: {}, requests: {} },
           leaderPersonal: true,
@@ -263,8 +268,9 @@ export default function TeamReport() {
       await fetchTeamData();
       addToast('✅ Data saved successfully!', 'success');
     } catch (error) {
-      console.error('Error saving data:', error);
-      addToast('Error saving data', 'error');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error saving data:', message);
+      addToast(`Error saving data: ${message}`, 'error');
     } finally {
       setSavingData(false);
     }

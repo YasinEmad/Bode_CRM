@@ -119,35 +119,47 @@ export async function calculateTeamLeaderPerformance(
   let leaderPersonalMeetings = { ...emptyDays };
   let leaderPersonalRequests = { ...emptyDays };
 
-  // First, merge from TeamPerformance if it exists (leader's own edits)
+  // First, merge from TeamPerformance if it exists (leader's own edits from team-report)
   if (teamLeaderPerf) {
-    leaderPersonalSheets = { ...emptyDays, ...convertMongoMapToObject(teamLeaderPerf.sheets) };
-    leaderPersonalAssessments = {
-      ...emptyDays,
-      ...convertMongoMapToObject(teamLeaderPerf.assessments),
-    };
-    leaderPersonalMeetings = { ...emptyDays, ...convertMongoMapToObject(teamLeaderPerf.meetings) };
-    leaderPersonalRequests = { ...emptyDays, ...convertMongoMapToObject(teamLeaderPerf.requests) };
+    const sheets = convertMongoMapToObject(teamLeaderPerf.sheets);
+    const assessments = convertMongoMapToObject(teamLeaderPerf.assessments);
+    const meetings = convertMongoMapToObject(teamLeaderPerf.meetings);
+    const requests = convertMongoMapToObject(teamLeaderPerf.requests);
+
+    leaderPersonalSheets = { ...emptyDays, ...sheets };
+    leaderPersonalAssessments = { ...emptyDays, ...assessments };
+    leaderPersonalMeetings = { ...emptyDays, ...meetings };
+    leaderPersonalRequests = { ...emptyDays, ...requests };
   }
 
   // Then, override with TeamLeaderPerformance if it exists (admin edits override)
+  // Admin edits have priority over leader's own edits, but only for days
+  // that admin actually locked/edited. This prevents legacy zeros from
+  // overwriting the leader's own entries.
   if (adminLeaderPerf) {
-    leaderPersonalSheets = {
-      ...leaderPersonalSheets,
-      ...convertMongoMapToObject(adminLeaderPerf.sheets),
-    };
-    leaderPersonalAssessments = {
-      ...leaderPersonalAssessments,
-      ...convertMongoMapToObject(adminLeaderPerf.assessments),
-    };
-    leaderPersonalMeetings = {
-      ...leaderPersonalMeetings,
-      ...convertMongoMapToObject(adminLeaderPerf.meetings),
-    };
-    leaderPersonalRequests = {
-      ...leaderPersonalRequests,
-      ...convertMongoMapToObject(adminLeaderPerf.requests),
-    };
+    const sheets = convertMongoMapToObject(adminLeaderPerf.sheets);
+    const assessments = convertMongoMapToObject(adminLeaderPerf.assessments);
+    const meetings = convertMongoMapToObject(adminLeaderPerf.meetings);
+    const requests = convertMongoMapToObject(adminLeaderPerf.requests);
+
+    const locks = (adminLeaderPerf as any).adminLocks || {};
+    const lockSheets = convertMongoMapToBoolean(locks.sheets) || {};
+    const lockAssess = convertMongoMapToBoolean(locks.assessments) || {};
+    const lockMeet = convertMongoMapToBoolean(locks.meetings) || {};
+    const lockReq = convertMongoMapToBoolean(locks.requests) || {};
+
+    for (const [k, v] of Object.entries(sheets)) {
+      if (lockSheets[k]) leaderPersonalSheets[k] = Number(v) || 0;
+    }
+    for (const [k, v] of Object.entries(assessments)) {
+      if (lockAssess[k]) leaderPersonalAssessments[k] = Number(v) || 0;
+    }
+    for (const [k, v] of Object.entries(meetings)) {
+      if (lockMeet[k]) leaderPersonalMeetings[k] = Number(v) || 0;
+    }
+    for (const [k, v] of Object.entries(requests)) {
+      if (lockReq[k]) leaderPersonalRequests[k] = Number(v) || 0;
+    }
   }
 
   // 5. Get aggregation config from KPI settings
@@ -352,29 +364,47 @@ export async function calculateTeamLeaderPerformance(
       return { sheets: true, assessments: true, meetings: true, requests: true };
     })(),
     adminLocks: (() => {
-      if (!adminLeaderPerf) {
-        return {
-          sheets: {},
-          assessments: {},
-          meetings: {},
-          requests: {},
-        };
-      }
-      const locks = (adminLeaderPerf as any).adminLocks;
-      if (locks && typeof locks === 'object') {
-        return {
-          sheets: convertMongoMapToBoolean(locks.sheets) || {},
-          assessments: convertMongoMapToBoolean(locks.assessments) || {},
-          meetings: convertMongoMapToBoolean(locks.meetings) || {},
-          requests: convertMongoMapToBoolean(locks.requests) || {},
-        };
-      }
-      return {
-        sheets: {},
-        assessments: {},
-        meetings: {},
-        requests: {},
+      // We want locks to reflect *actual* admin edits. Legacy bug may have
+      // populated every day with `true` because the frontend sent a zeros map.
+      // Filter out any locked day where the corresponding leaderPersonal value
+      // is still zero (i.e. admin never really edited it).
+      const result = {
+        sheets: {} as Record<string, boolean>,
+        assessments: {} as Record<string, boolean>,
+        meetings: {} as Record<string, boolean>,
+        requests: {} as Record<string, boolean>,
       };
+
+      if (adminLeaderPerf && adminLeaderPerf.adminLocks && typeof adminLeaderPerf.adminLocks === 'object') {
+        const locks = adminLeaderPerf.adminLocks as any;
+        const sheetMap = convertMongoMapToBoolean(locks.sheets) || {};
+        const assessMap = convertMongoMapToBoolean(locks.assessments) || {};
+        const meetMap = convertMongoMapToBoolean(locks.meetings) || {};
+        const reqMap = convertMongoMapToBoolean(locks.requests) || {};
+
+        for (const [day, locked] of Object.entries(sheetMap)) {
+          if (locked && (leaderPersonalSheets[day] || 0) !== 0) {
+            result.sheets[day] = true;
+          }
+        }
+        for (const [day, locked] of Object.entries(assessMap)) {
+          if (locked && (leaderPersonalAssessments[day] || 0) !== 0) {
+            result.assessments[day] = true;
+          }
+        }
+        for (const [day, locked] of Object.entries(meetMap)) {
+          if (locked && (leaderPersonalMeetings[day] || 0) !== 0) {
+            result.meetings[day] = true;
+          }
+        }
+        for (const [day, locked] of Object.entries(reqMap)) {
+          if (locked && (leaderPersonalRequests[day] || 0) !== 0) {
+            result.requests[day] = true;
+          }
+        }
+      }
+
+      return result;
     })(),
   };
 }

@@ -75,9 +75,14 @@ export async function GET(req: NextRequest) {
 
     // Fetch team members, performances, KPI settings and leader user in parallel
     // Use `team.members` and `team.leader` to scope performance query without waiting for user docs
-    const perfUserIds = [...(((team.members as any[]) || []).map((id) => String(id))), String(team.leader)];
+    // Build a list of member IDs excluding the leader to avoid duplicate rows
+    const memberIds: string[] = Array.isArray(team.members)
+      ? (team.members as any[]).map((id) => String(id)).filter((id) => String(id) !== String(team.leader))
+      : [];
+    const perfUserIds = [...memberIds, String(team.leader)];
+
     const [teamMembers, performances, teamLeaderSettings, leaderUser] = await Promise.all([
-      User.find({ _id: { $in: team.members }, role: 'sales' }).select('_id name'),
+      User.find({ _id: { $in: memberIds }, role: 'sales' }).select('_id name'),
       TeamPerformance.find({ teamId: team._id, month: month, userId: { $in: perfUserIds } }),
       KPISetting.findOne({ scope: 'team-leader' }),
       User.findById(team.leader),
@@ -184,7 +189,8 @@ export async function GET(req: NextRequest) {
           meetings: calcResult.leaderPersonal.meetings,
           requests: calcResult.leaderPersonal.requests,
           editedByAdmin: calcResult.editedByAdmin, // Include admin edit flag
-          adminLocks: {
+          // include any admin locks computed by the shared calculator
+          adminLocks: calcResult.adminLocks || {
             sheets: {},
             assessments: {},
             meetings: {},
@@ -421,6 +427,22 @@ export async function POST(req: NextRequest) {
     const targetUser = await User.findById(userId);
     if (!targetUser || (!team.members.includes(targetUser._id) && !team.leader.equals(targetUser._id))) {
       return NextResponse.json({ error: 'User not in your team' }, { status: 403 });
+    }
+
+    // Also check if admin has locked today for this user by looking at TeamLeaderPerformance
+    const adminLeaderPerf = await TeamLeaderPerformance.findOne({ userId, month });
+    if (adminLeaderPerf && adminLeaderPerf.adminLocks) {
+      const locks = adminLeaderPerf.adminLocks;
+      // if any of the metrics being updated today is locked, reject
+      if ((sheetValue !== undefined && locks.sheets && locks.sheets[dayKey]) ||
+          (assessmentsValue !== undefined && locks.assessments && locks.assessments[dayKey]) ||
+          (meetingsValue !== undefined && locks.meetings && locks.meetings[dayKey]) ||
+          (requestsValue !== undefined && locks.requests && locks.requests[dayKey])) {
+        return NextResponse.json(
+          { error: 'This data was edited by admin and cannot be modified' },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if existing performance data was edited by admin - if so, prevent team leader from modifying
