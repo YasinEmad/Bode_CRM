@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import ThemeProvider from "@/context/ThemeContext";
@@ -20,16 +21,16 @@ export const metadata: Metadata = {
   title: "Bode CRM - Real Estate Management",
   description: "Professional CRM system for real estate teams",
   icons: {
-    icon: "/favicon.ico",           // للمتصفحات العادية
-    apple: "/apple-touch-icon.png", // لأجهزة iOS
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body
@@ -44,6 +45,8 @@ export default function RootLayout({
             </AuthProvider>
           </ThemeProvider>
         </ToastProvider>
+
+        <SpeedInsights />
       </body>
     </html>
   );
