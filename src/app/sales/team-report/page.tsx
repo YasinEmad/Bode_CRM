@@ -81,11 +81,15 @@ export default function TeamReport() {
     }
   }, [user, loading, router]);
 
+  // Whenever the month/year or the currently viewed category changes we
+  // re-fetch the team data.  The extra dependency for `selectedCategory`
+  // ensures that locks applied by the admin in a different category become
+  // visible immediately when the leader switches to inspect them.
   useEffect(() => {
     if (selectedMonth && selectedYear && token && user?.role === 'sales') {
       fetchTeamData();
     }
-  }, [selectedMonth, selectedYear, token, user]);
+  }, [selectedMonth, selectedYear, token, user, selectedCategory]);
 
   // --- Helper Functions ---
   const calculateTotal = (record: Record<string, number> = {}) => {

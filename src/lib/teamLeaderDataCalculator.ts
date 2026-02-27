@@ -364,10 +364,13 @@ export async function calculateTeamLeaderPerformance(
       return { sheets: true, assessments: true, meetings: true, requests: true };
     })(),
     adminLocks: (() => {
-      // We want locks to reflect *actual* admin edits. Legacy bug may have
-      // populated every day with `true` because the frontend sent a zeros map.
-      // Filter out any locked day where the corresponding leaderPersonal value
-      // is still zero (i.e. admin never really edited it).
+      // Any day that was edited by admin should remain locked for that
+      // category (and previous categories) regardless of the current
+      // metric value.  Earlier we filtered out locks when the stored
+      // leaderPersonal value was zero; that allowed a lock to disappear if
+      // the value was later cleared or accidentally reset.  In practice we
+      // only ever add locks on actual edits, so we can safely propagate
+      // the raw lock map without additional conditions.
       const result = {
         sheets: {} as Record<string, boolean>,
         assessments: {} as Record<string, boolean>,
@@ -383,22 +386,22 @@ export async function calculateTeamLeaderPerformance(
         const reqMap = convertMongoMapToBoolean(locks.requests) || {};
 
         for (const [day, locked] of Object.entries(sheetMap)) {
-          if (locked && (leaderPersonalSheets[day] || 0) !== 0) {
+          if (locked) {
             result.sheets[day] = true;
           }
         }
         for (const [day, locked] of Object.entries(assessMap)) {
-          if (locked && (leaderPersonalAssessments[day] || 0) !== 0) {
+          if (locked) {
             result.assessments[day] = true;
           }
         }
         for (const [day, locked] of Object.entries(meetMap)) {
-          if (locked && (leaderPersonalMeetings[day] || 0) !== 0) {
+          if (locked) {
             result.meetings[day] = true;
           }
         }
         for (const [day, locked] of Object.entries(reqMap)) {
-          if (locked && (leaderPersonalRequests[day] || 0) !== 0) {
+          if (locked) {
             result.requests[day] = true;
           }
         }

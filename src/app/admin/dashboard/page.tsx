@@ -47,7 +47,40 @@ export default function AdminDashboard() {
       const commissionData = await commissionsRes.json();
       const commissions = Array.isArray(commissionData.commissions) ? commissionData.commissions : [];
 
-      const closedDeals = leads.filter((l: any) => l.status === 'closed').length;
+      // Use ClosedDealSnapshot API to count closed deals (preserves history)
+      // start with simple lead count as a fallback
+      let closedDeals = leads.filter((l: any) => l.status === 'closed').length;
+      try {
+        const snapsRes = await fetch('/api/closed-deals', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (snapsRes.ok) {
+          const snapsData = await snapsRes.json();
+          const snaps = Array.isArray(snapsData.snapshots) ? snapsData.snapshots : [];
+
+          // only count snapshots whose lead (if provided) is fully closed; this mirrors
+          // the logic used in monthly reports and employee views where pending-approval
+          // deals shouldn't contribute until they become truly closed.
+          const leadStatusById = new Map<string, string>();
+          leads.forEach((l: any) => {
+            if (l._id) leadStatusById.set(String(l._id), l.status);
+          });
+
+          closedDeals = snaps.filter((snap: any) => {
+            if (snap.leadId) {
+              const status = leadStatusById.get(String(snap.leadId));
+              if (status && status !== 'closed') {
+                return false;
+              }
+            }
+            return true;
+          }).length;
+        } else {
+          console.warn('Failed to fetch closed-deals for dashboard', snapsRes.status);
+        }
+      } catch (e) {
+        console.error('Error fetching closed-deals snapshots for dashboard', e);
+      }
       const totalCommissions = commissions.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
 
       setStats({

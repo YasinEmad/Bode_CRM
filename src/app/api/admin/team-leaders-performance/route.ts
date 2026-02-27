@@ -131,7 +131,15 @@ export async function POST(req: NextRequest) {
     const existing = await TeamLeaderPerformance.findOne({ userId, month });
     const existingPlain = existing ? existing.toObject() : null;
 
-    // Build adminLocks object - tracks per-day admin edits
+    // Build adminLocks object - tracks per-day admin edits.
+    // We always start with the previous locks (if any) so that updates
+    // never clear existing locks when the admin only edits a different
+    // category later.  Previously we blindly overwrote the entire object
+    // with a JSON copy of `existingPlain.adminLocks`, which could drop
+    // empty categories or unintentionally remove locks when the document
+    // was sparse.  By initializing each category explicitly and then
+    // merging, we guarantee that the union of old and new locks is
+    // preserved.
     let adminLocksObj: any = {
       sheets: {},
       assessments: {},
@@ -139,7 +147,13 @@ export async function POST(req: NextRequest) {
       requests: {},
     };
     if (existingPlain?.adminLocks && typeof existingPlain.adminLocks === 'object') {
-      adminLocksObj = JSON.parse(JSON.stringify(existingPlain.adminLocks));
+      const prev: any = existingPlain.adminLocks;
+      adminLocksObj = {
+        sheets: { ...(prev.sheets || {}) },
+        assessments: { ...(prev.assessments || {}) },
+        meetings: { ...(prev.meetings || {}) },
+        requests: { ...(prev.requests || {}) },
+      };
     }
 
     // We'll accumulate only those metric updates where the admin actually changed a value
@@ -189,14 +203,25 @@ export async function POST(req: NextRequest) {
     const requestsData = Object.keys(changedRequests).length ? changedRequests : undefined;
     const adminLocksData = JSON.parse(JSON.stringify(adminLocksObj));
 
-    // Prepare update object using $set to let Mongoose handle the conversion
-    const updateObj: any = {
-      $set: {
-        userId,
-        month,
-        adminLocks: adminLocksData,
-      },
-    };
+    // Prepare update object using $set to let Mongoose handle the conversion.
+    // Instead of replacing the entire `adminLocks` object we set individual
+    // map entries (`adminLocks.<category>.<day>`). This ensures MongoDB will
+    // merge the new keys into the existing Map rather than overwriting it,
+    // preventing accidental loss of previously-set locks when the admin
+    // updates a different category later.
+    const updateObj: any = { $set: { userId, month } };
+
+    // Ensure per-day locks are added as individual $set operations
+    if (adminLocksData) {
+      for (const cat of ['sheets', 'assessments', 'meetings', 'requests']) {
+        const map = (adminLocksData as any)[cat] || {};
+        for (const [day, locked] of Object.entries(map)) {
+          if (locked) {
+            updateObj.$set[`adminLocks.${cat}.${day}`] = true;
+          }
+        }
+      }
+    }
 
     // Add only the fields that are being updated (day-level)
     if (sheetsData) {
