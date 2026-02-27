@@ -19,6 +19,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bode CRM - Real Estate Management",
   description: "Professional CRM system for real estate teams",
+  icons: {
+    icon: "/favicon.ico",           // للمتصفحات العادية
+    apple: "/apple-touch-icon.png", // لأجهزة iOS
+  },
 };
 
 export default function RootLayout({
