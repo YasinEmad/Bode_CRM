@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader, Plus, X } from 'lucide-react';
+import { Loader, Plus, X, Info } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import BulkImportComponent from '@/components/BulkImportComponent';
 
@@ -119,12 +119,24 @@ export default function MediaBuyerPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Welcome {user?.name}</h1>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                Welcome, {user?.name}
+              </h1>
               <p className="text-slate-400">Add new leads to the system</p>
             </div>
-          
+
+            {/* action buttons (manual add) */}
+            <div className="flex w-full sm:w-auto">
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-blue-500/50 w-full sm:w-auto"
+              >
+                <Plus size={20} />
+                {showForm ? 'Cancel' : 'Add Lead'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -141,20 +153,21 @@ export default function MediaBuyerPage() {
             />
           )}
 
-          {/* Add Lead Button */}
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-blue-500/50"
-          >
-            <Plus size={20} />
-            {showForm ? 'Cancel' : 'Add Lead Manually'}
-          </button>
+          {/* Add Lead Button (duplicate removed, group above) */}
+          {/* no-op - actions moved to header for improved UI */}
 
           {/* Add Lead Form */}
           {showForm && (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-xl p-8 border border-slate-700">
+            <div className="relative bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-2xl p-8 border border-slate-700 max-w-2xl mx-auto">
+              {/* close icon */}
+              <button
+                onClick={() => setShowForm(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+              >
+                <X size={20} />
+              </button>
               <h2 className="text-2xl font-bold text-white mb-6">Add New Lead</h2>
-              
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Name and Phone */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -306,9 +319,10 @@ export default function MediaBuyerPage() {
           )}
 
           {/* Info Box */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 flex items-center justify-center gap-2">
+            <Info className="text-slate-300" size={20} />
             <p className="text-slate-300 text-center">
-              You can add leads manually or import via Excel 
+              You can add leads manually or import via Excel
             </p>
           </div>
         </div>
