@@ -178,7 +178,7 @@ export default function NotificationsBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className={`relative p-2 rounded-lg transition-all duration-200 ${
+        className={`relative p-1 rounded-lg transition-all duration-200 ${
           isDark
             ? 'hover:bg-slate-800'
             : 'hover:bg-purple-50'
@@ -188,14 +188,14 @@ export default function NotificationsBell() {
       >
         <div className="relative">
           <Bell 
-            size={18} 
+            size={16} 
             className={isDark 
               ? 'text-purple-400 hover:text-purple-300' 
               : 'text-purple-700 hover:text-purple-800'
             }
           />
           {unreadCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white dark:border-slate-900">
+            <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-md shadow-red-500/40 animate-pulse border-2 border-white dark:border-slate-900">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}

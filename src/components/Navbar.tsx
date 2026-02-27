@@ -157,18 +157,18 @@ export default function Navbar() {
             {user && (
               <>
                 {/* Desktop user info - hidden on mobile */}
-                <div className="hidden sm:flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-3 mr-4 sm:mr-6 whitespace-nowrap">
                   <div className="text-right">
-                    <p className="text-xs sm:text-sm font-medium">{user.name}</p>
+                    <p className="text-xs sm:text-sm font-medium">{user.username}</p>
                     <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                   </div>
                 </div>
 
                 {/* Icons - visible on all screen sizes */}
-                <div className="flex items-center gap-1 sm:gap-3">
+                <div className="flex items-center gap-1 sm:gap-3 -ml-6 sm:-ml-8">
                   {(user.role === 'sales' || user.role === 'admin') && <NotificationsBell />}
-                  {/* Theme toggle - minimal styling to avoid changing navbar appearance */}
-                  <ThemeToggle className="p-2 rounded-lg" />
+                  {/* Theme toggle - smaller */}
+                  <ThemeToggle className="p-1 rounded-lg text-sm" />
                   {user.role === 'sales' && (
                     <Link
                       href="/sales/notes"
@@ -176,7 +176,7 @@ export default function Navbar() {
                       title="Notes"
                     >
                       <div className="relative">
-                        <Mail size={18} className="text-blue-400 hover:text-blue-300" />
+                        <Mail size={16} className="text-blue-400 hover:text-blue-300" />
                         {unreadCount > 0 && (
                           <span className="absolute -top-3 -right-3 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-2 border-white text-xs">
                             {unreadCount > 99 ? '99+' : unreadCount}
@@ -192,7 +192,7 @@ export default function Navbar() {
                     className="p-2 rounded-lg transition-all"
                     title="Logout"
                   >
-                    <LogOut size={18} className="text-red-400 hover:text-red-300" />
+                    <LogOut size={16} className="text-red-400 hover:text-red-300" />
                   </button>
                 </div>
               </>
