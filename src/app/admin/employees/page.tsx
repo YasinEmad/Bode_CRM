@@ -33,6 +33,14 @@ const normalizePosition = (position: string): string => {
   return trimmed;
 };
 
+// UI-only label mapping: keep stored values unchanged, change only displayed labels
+const getPositionLabel = (position?: string) => {
+  if (!position) return '';
+  const key = position.trim().toLowerCase();
+  if (key === 'team lead') return 'Team Leader';
+  return position.charAt(0).toUpperCase() + position.slice(1);
+};
+
 export default function AdminEmployees() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
@@ -435,7 +443,7 @@ export default function AdminEmployees() {
         'Employee Name': emp.name,
         'Email': emp.email,
         'Phone': emp.phone || 'N/A',
-        'Position': emp.position ? emp.position.charAt(0).toUpperCase() + emp.position.slice(1) : 'N/A',
+        'Position': emp.position ? getPositionLabel(emp.position) : 'N/A',
         'Salary': emp.salary || 0,
         'Join Date': emp.joinDate ? new Date(emp.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A',
         'Total Leads': emp.leadsCount || 0,
@@ -551,7 +559,7 @@ export default function AdminEmployees() {
                       </div>
                       <div className="text-right">
                         <div className="text-white font-semibold">EGP {(emp.salary || 0).toLocaleString()}</div>
-                        <div className="text-slate-400 text-sm">{emp.position || '—'}{commissionRate > 0 ? ` • ${commissionRate}%` : ''}</div>
+                        <div className="text-slate-400 text-sm">{emp.position ? getPositionLabel(emp.position) : '—'}{commissionRate > 0 ? ` • ${commissionRate}%` : ''}</div>
                       </div>
                     </div>
 
@@ -622,7 +630,7 @@ export default function AdminEmployees() {
                         <td className="px-6 py-4 text-sm text-slate-400">{(emp as any).phone || '—'}</td>
                         <td className="px-6 py-4 text-sm">
                           <span className="inline-block">
-                            <span className="text-white font-medium capitalize">{emp.position || '—'}</span>
+                            <span className="text-white font-medium">{emp.position ? getPositionLabel(emp.position) : '—'}</span>
                             {commissionRate > 0 && (
                               <span className="ml-2 text-emerald-400 text-xs font-semibold">({commissionRate}%)</span>
                             )}
@@ -799,7 +807,7 @@ export default function AdminEmployees() {
                           <option value="">Select Position</option>
                           {POSITION_CHOICES.map((pos) => (
                             <option key={pos} value={pos} className="capitalize">
-                              {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                              {getPositionLabel(pos)}
                             </option>
                           ))}
                           <option value="__custom__">+ Custom Position</option>
@@ -951,7 +959,7 @@ export default function AdminEmployees() {
                           <option value="">Select Position</option>
                           {POSITION_CHOICES.map((pos) => (
                             <option key={pos} value={pos} className="capitalize">
-                              {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                              {getPositionLabel(pos)}
                             </option>
                           ))}
                           <option value="__custom__">+ Custom Position</option>

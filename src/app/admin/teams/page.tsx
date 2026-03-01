@@ -40,6 +40,14 @@ export default function AdminTeams() {
 
   const [form, setForm] = useState<FormState>({ name: '', leaderId: '', memberIds: [] as string[] });
 
+  // UI-only label mapping for positions (keep stored values unchanged)
+  const getPositionLabel = (position?: string) => {
+    if (!position) return '';
+    const key = position.trim().toLowerCase();
+    if (key === 'team lead') return 'Team Leader';
+    return position.charAt(0).toUpperCase() + position.slice(1);
+  };
+
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) router.push('/login');
   }, [user, loading, router]);
@@ -366,7 +374,7 @@ export default function AdminTeams() {
                       <option value="">Select a team leader...</option>
                       {allLeaders.map(l => (
                         <option key={l._id} value={l._id}>
-                          {l.name} — {l.position || l.username}
+                          {l.name} — {l.position ? getPositionLabel(l.position) : l.username}
                         </option>
                       ))}
                     </select>
@@ -458,7 +466,7 @@ export default function AdminTeams() {
                                   />
                                   <div className="flex-1">
                                     <div className="font-medium text-slate-200">{emp.name}</div>
-                                    <div className="text-sm text-slate-400">{emp.position || emp.username}</div>
+                                    <div className="text-sm text-slate-400">{emp.position ? getPositionLabel(emp.position) : emp.username}</div>
                                   </div>
                                 </label>
                               ))}
