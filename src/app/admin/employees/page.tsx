@@ -3,6 +3,9 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
+import '@/styles/daypicker-overrides.css';
 import { Loader, Edit2, Save, X, User, Mail, Phone, Briefcase, DollarSign, Target, CheckCircle, Download, Eye, EyeOff, MessageSquare, Lock, Trash2, Smartphone } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { exportEmployeesToExcel } from '@/lib/exportExcel';
@@ -39,6 +42,16 @@ const getPositionLabel = (position?: string) => {
   const key = position.trim().toLowerCase();
   if (key === 'team lead') return 'Team Leader';
   return position.charAt(0).toUpperCase() + position.slice(1);
+};
+
+// Format date for display only (dd/mm/yyyy) without changing stored value
+const formatDisplayDate = (dateStr?: string) => {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  } catch (e) {
+    return dateStr;
+  }
 };
 
 export default function AdminEmployees() {
@@ -82,6 +95,8 @@ export default function AdminEmployees() {
   const [showAddCustomPosition, setShowAddCustomPosition] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name?: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showEditCalendar, setShowEditCalendar] = useState(false);
+  const [showAddCalendar, setShowAddCalendar] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -445,7 +460,7 @@ export default function AdminEmployees() {
         'Phone': emp.phone || 'N/A',
         'Position': emp.position ? getPositionLabel(emp.position) : 'N/A',
         'Salary': emp.salary || 0,
-        'Join Date': emp.joinDate ? new Date(emp.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A',
+        'Join Date': emp.joinDate ? new Date(emp.joinDate).toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A',
         'Total Leads': emp.leadsCount || 0,
         'Closed Deals': emp.closedDealsCount || 0,
         'Conversion Rate': `${conversionRate}%`,
@@ -639,7 +654,7 @@ export default function AdminEmployees() {
                         <td className="px-6 py-4 text-sm text-white font-semibold">EGP {(emp.salary || 0).toLocaleString()}</td>
                         <td className="px-6 py-4 text-sm text-slate-400">
                           {emp.joinDate ? (
-                            new Date(emp.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                            new Date(emp.joinDate).toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' })
                           ) : '—'}
                         </td>
                         <td className="px-6 py-4 text-sm text-center">
@@ -853,14 +868,33 @@ export default function AdminEmployees() {
                       className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
                     />
                   </div>
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Join Date</label>
                     <input
-                      type="date"
-                      value={editFormData.joinDate || ''}
-                      onChange={(e) => setEditFormData({ ...editFormData, joinDate: e.target.value })}
-                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500"
+                      type="text"
+                      readOnly
+                      value={editFormData.joinDate ? formatDisplayDate(editFormData.joinDate) : ''}
+                      onFocus={() => setShowEditCalendar(true)}
+                      onClick={() => setShowEditCalendar(true)}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-slate-900 placeholder-slate-500 cursor-pointer"
                     />
+                    {showEditCalendar && (
+                      <div className="absolute z-50 daypicker-popup daypicker-popup--above">
+                        <DayPicker
+                          mode="single"
+                          selected={editFormData.joinDate ? new Date(editFormData.joinDate) : undefined}
+                          onSelect={(d) => {
+                            const iso = d ? new Date(d).toISOString() : '';
+                            setEditFormData({ ...editFormData, joinDate: iso });
+                            setShowEditCalendar(false);
+                          }}
+                        />
+                      </div>
+                    )}
+                    {editFormData.joinDate && (
+                      <p className="text-xs text-slate-400 mt-1">Displayed: {formatDisplayDate(editFormData.joinDate)}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1003,14 +1037,33 @@ export default function AdminEmployees() {
                       className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
                     />
                   </div>
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Join Date</label>
                     <input
-                      type="date"
-                      value={addFormData.joinDate || ''}
-                      onChange={(e) => setAddFormData({ ...addFormData, joinDate: e.target.value })}
-                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500"
+                      type="text"
+                      readOnly
+                      value={addFormData.joinDate ? formatDisplayDate(addFormData.joinDate) : ''}
+                      onFocus={() => setShowAddCalendar(true)}
+                      onClick={() => setShowAddCalendar(true)}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-4 py-2 border border-slate-600 rounded-lg text-white bg-slate-900 placeholder-slate-500 cursor-pointer"
                     />
+                    {showAddCalendar && (
+                      <div className="absolute z-50 daypicker-popup daypicker-popup--above">
+                        <DayPicker
+                          mode="single"
+                          selected={addFormData.joinDate ? new Date(addFormData.joinDate) : undefined}
+                          onSelect={(d) => {
+                            const iso = d ? new Date(d).toISOString() : '';
+                            setAddFormData({ ...addFormData, joinDate: iso });
+                            setShowAddCalendar(false);
+                          }}
+                        />
+                      </div>
+                    )}
+                    {addFormData.joinDate && (
+                      <p className="text-xs text-slate-400 mt-1">Displayed: {formatDisplayDate(addFormData.joinDate)}</p>
+                    )}
                   </div>
                 </div>
               </div>

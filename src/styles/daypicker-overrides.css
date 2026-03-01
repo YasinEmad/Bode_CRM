@@ -1,0 +1,70 @@
+.daypicker-popup {
+  position: absolute;
+  z-index: 70;
+  margin-top: 0.25rem;
+  background: #0f1724; /* slate-900 */
+  color: #cbd5e1; /* slate-300 */
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.7);
+  padding: 0.5rem;
+  max-width: 360px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.daypicker-popup--above {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+}
+
+.daypicker-popup .rdp {
+  background: transparent;
+  box-shadow: none;
+}
+
+.daypicker-popup .rdp-caption {
+  color: #e6edf3;
+  font-weight: 600;
+}
+
+.daypicker-popup .rdp-nav {
+  color: #94a3b8;
+}
+
+.daypicker-popup .rdp-nav_button {
+  color: #60a5fa; /* blue */
+  background: transparent;
+}
+
+.daypicker-popup .rdp-weekday {
+  color: #94a3b8;
+}
+
+.daypicker-popup .rdp-day {
+  color: #cbd5e1;
+  border-radius: 0.5rem;
+}
+
+.daypicker-popup .rdp-day:hover {
+  background: rgba(148,163,184,0.08);
+}
+
+.daypicker-popup .rdp-day_selected {
+  background: #10b981 !important; /* emerald-500 */
+  color: #fff !important;
+}
+
+.daypicker-popup .rdp-day_outside {
+  color: #475569;
+}
+
+.daypicker-popup .rdp-months {
+  display: block;
+}
+
+/* make navigation arrows slightly larger and visible on dark background */
+.daypicker-popup .rdp-nav_button svg {
+  stroke: currentColor;
+  width: 18px;
+  height: 18px;
+}

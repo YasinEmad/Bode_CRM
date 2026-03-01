@@ -459,7 +459,7 @@ export default function AttendanceRecords() {
                                       {new Date(record.checkInTime).toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
-                                        hour12: false,
+                                        hour12: true,
                                       })}
                                     </div>
                                     {record.deviceId && (

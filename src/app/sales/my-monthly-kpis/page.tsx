@@ -512,7 +512,7 @@ export default function MyMonthlyKPIs() {
                                 const dateObj = typeof kpiData.joinDate === 'string' 
                                   ? new Date(kpiData.joinDate) 
                                   : kpiData.joinDate;
-                                return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                                return dateObj.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
                               } catch (e) {
                                 return 'N/A';
                               }
