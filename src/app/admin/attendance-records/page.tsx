@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import { Loader, Calendar, Users, CheckCircle, Clock, Download } from 'lucide-react';
 import { countWorkdaysInMonth, countDaysInMonth } from '@/lib/workdays';
 import { exportAttendanceToExcel } from '@/lib/exportExcel';
+import { formatMinutesToHours } from '@/lib/time';
 
 interface AttendanceRecord {
   _id: string;
@@ -157,6 +158,7 @@ export default function AttendanceRecords() {
       }),
       'Status': record.isLate ? 'Late' : 'Present',
       'Late Minutes': record.isLate ? record.lateMinutes : 0,
+      'Late': record.isLate ? formatMinutesToHours(record.lateMinutes) : '',
       'Device ID': record.deviceId || 'N/A',
     }));
 
@@ -452,7 +454,7 @@ export default function AttendanceRecords() {
                                     </div>
                                     {record.isLate && (
                                       <div className="text-orange-400 font-bold text-xs">
-                                        +{record.lateMinutes} min
+                                        +{formatMinutesToHours(record.lateMinutes)}
                                       </div>
                                     )}
                                     <div className="text-slate-400 text-xs font-medium">
@@ -490,7 +492,7 @@ export default function AttendanceRecords() {
                           {/* Total Late Minutes Column */}
                           <td className="px-6 py-4 text-center border-l border-slate-700 bg-orange-600/10">
                             <div className="inline-block bg-gradient-to-br from-orange-600 to-orange-500 rounded-xl px-4 py-3 text-center">
-                              <p className="text-2xl font-bold text-white">{totalLateMinutes}</p>
+                              <p className="text-2xl font-bold text-white">{formatMinutesToHours(totalLateMinutes)}</p>
                               <p className="text-xs text-orange-100 mt-1">Total Minutes</p>
                             </div>
                           </td>

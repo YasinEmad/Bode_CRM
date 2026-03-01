@@ -6,6 +6,7 @@ import { Loader, MapPin, Check, Crosshair, AlertCircle, Copy, X } from 'lucide-r
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getDeviceId, generateDeviceId, setDeviceId } from '@/lib/deviceId';
 import { formatAccuracy, calculateDistance } from '@/lib/geolocation';
+import { formatMinutesToHours } from '@/lib/time';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
@@ -251,9 +252,8 @@ export default function MarkAttendanceCard({ initialTodayAttendance = null, onMa
       removeToast(sendToastId);
 
       if (data.isLate === true) {
-        const hours = Math.floor(data.lateMinutes / 60);
-        const minutes = data.lateMinutes % 60;
-        let lateMessage = `⏰ You are ${minutes > 0 ? `${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}${hours > 0 && minutes > 0 ? ' and ' : ''}${hours > 0 ? `${hours} hour${hours !== 1 ? 's' : ''}` : ''} late!`;
+        const formatted = formatMinutesToHours(data.lateMinutes);
+        let lateMessage = `⏰ You are ${formatted} late!`;
         lateMessage += ` (GPS: ${formatAccuracy(result.accuracy)})`;
         addToast(lateMessage, 'warning');
       } else {

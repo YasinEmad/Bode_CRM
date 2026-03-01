@@ -184,7 +184,7 @@ export default function AdminDashboard() {
 
         {/* Bode Home */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Bode home</h2>
+          <h2 className="text-2xl font-bold text-white mb-6">BODE Home</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <a

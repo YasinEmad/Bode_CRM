@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { Loader, MapPin, Check } from 'lucide-react';
 import MarkAttendanceCard from '@/components/MarkAttendanceCard';
+import { formatMinutesToHours } from '@/lib/time';
 import { getDeviceId, generateDeviceId, setDeviceId } from '@/lib/deviceId';
 import { formatAccuracy, ACCURACY_THRESHOLDS, calculateDistance } from '@/lib/geolocation';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -148,7 +149,7 @@ export default function SalesAttendance() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     {record.isLate && (
                       <span className="px-3 py-2 rounded-full text-sm font-medium bg-amber-600 text-white text-center">
-                        ⏰ {record.lateMinutes}m late
+                        ⏰ {formatMinutesToHours(record.lateMinutes)} late
                       </span>
                     )}
                     <span className={`px-4 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-2 ${record.withinRadius ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
