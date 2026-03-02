@@ -3,13 +3,15 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IAttendance extends Document {
   userId: mongoose.Types.ObjectId;
   date: Date;
-  checkInTime: Date;
+  checkInTime?: Date;
   latitude: number;
   longitude: number;
   withinRadius: boolean;
   isLate: boolean;
   lateMinutes: number; // Number of minutes late
   deviceId: string; // Device ID used for check-in
+  deduction?: number;
+  deductionOnly?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,8 +28,8 @@ const AttendanceSchema = new Schema<IAttendance>(
       default: () => new Date().setHours(0, 0, 0, 0),
     },
     checkInTime: {
-      type: Date,
-      required: true,
+        type: Date,
+        required: false,
     },
     latitude: {
       type: Number,
@@ -52,6 +54,14 @@ const AttendanceSchema = new Schema<IAttendance>(
     deviceId: {
       type: String,
       required: true,
+    },
+    deduction: {
+      type: Number,
+      default: 0,
+    },
+    deductionOnly: {
+      type: Boolean,
+      default: false,
     },
   },
   {

@@ -16,11 +16,13 @@ interface AttendanceRecord {
     name: string;
   } | null;
   date: string;
-  checkInTime: string;
+  checkInTime?: string;
   isLate: boolean;
   lateMinutes: number;
   deviceId: string;
   withinRadius: boolean;
+  deduction?: number;
+  deductionOnly?: boolean;
 }
 
 const months = [
@@ -55,6 +57,13 @@ export default function AttendanceRecords() {
     day?: number;
     record?: AttendanceRecord | null;
   }>({ isOpen: false, action: undefined, employeeId: undefined, day: undefined, record: null });
+  const [deductionModal, setDeductionModal] = useState<{
+    isOpen: boolean;
+    days: number;
+    employeeId?: string;
+    day?: number;
+    record?: AttendanceRecord | null;
+  }>({ isOpen: false, days: 1, employeeId: undefined, day: undefined, record: null });
 
   // Set default month to current month
   useEffect(() => {
@@ -121,7 +130,14 @@ export default function AttendanceRecords() {
     const dayRecords = recordsByEmployee.get(employeeId);
     if (!dayRecords || dayRecords.size === 0) return 0;
 
-    const presentDays = dayRecords.size;
+    // Count only records that are actual presence.
+    // If a record has a deduction but is also marked late, treat it as present (late counts as presence).
+    let presentDays = 0;
+    dayRecords.forEach((rec) => {
+      const hasDeduction = Boolean((rec as any).deduction && (rec as any).deduction > 0) || Boolean((rec as any).deductionOnly);
+      const isDeductionAbsent = hasDeduction && !rec.isLate;
+      if (!isDeductionAbsent) presentDays += 1;
+    });
     const totalWorkDays = currentDaysInMonth;
 
     return Math.round((presentDays / totalWorkDays) * 100);
@@ -151,14 +167,14 @@ export default function AttendanceRecords() {
     const exportData = attendanceRecords.map((record) => ({
       'Employee Name': record.userId && typeof record.userId === 'object' && record.userId.name ? record.userId.name : (record as any).userName || 'Unknown',
       'Date': new Date(record.date).toLocaleDateString('en-US'),
-      'Check-In Time': new Date(record.checkInTime).toLocaleTimeString('en-US', {
+      'Check-In Time': record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-      }),
-      'Status': record.isLate ? 'Late' : 'Present',
-      'Late Minutes': record.isLate ? record.lateMinutes : 0,
-      'Late': record.isLate ? formatMinutesToHours(record.lateMinutes) : '',
+      }) : '',
+      'Status': (record as any).deductionOnly ? 'Deduction' : (record.isLate ? 'Late' : 'Present'),
+      'Late Minutes': (record as any).deductionOnly ? 0 : (record.isLate ? record.lateMinutes : 0),
+      'Late': (record as any).deductionOnly ? '' : (record.isLate ? formatMinutesToHours(record.lateMinutes) : ''),
       'Device ID': record.deviceId || 'N/A',
     }));
 
@@ -266,7 +282,22 @@ export default function AttendanceRecords() {
     if (!recordsByEmployee.has(uid)) {
       recordsByEmployee.set(uid, new Map());
     }
-    recordsByEmployee.get(uid)!.set(day, record);
+    const dayMap = recordsByEmployee.get(uid)!;
+    const existing = dayMap.get(day);
+    if (!existing) {
+      dayMap.set(day, record);
+    } else {
+      const existingHasDeduction = Boolean((existing as any).deduction || (existing as any).deductionOnly);
+      const incomingHasDeduction = Boolean((record as any).deduction || (record as any).deductionOnly);
+      if (existingHasDeduction && !incomingHasDeduction) {
+        // keep existing deduction
+      } else if (!existingHasDeduction && incomingHasDeduction) {
+        dayMap.set(day, record);
+      } else {
+        // otherwise overwrite with the latest record (incoming)
+        dayMap.set(day, record);
+      }
+    }
   });
 
   return (
@@ -321,10 +352,80 @@ export default function AttendanceRecords() {
                       Cancel
                     </button>
                     <button
+                      onClick={() => {
+                        setDeductionModal({ isOpen: true, days: 1, employeeId: confirmModal.employeeId, day: confirmModal.day, record: confirmModal.record });
+                        setConfirmModal({ isOpen: false, action: undefined, employeeId: undefined, day: undefined, record: null });
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg hover:from-red-700 hover:to-red-600 transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-red-500/50"
+                    >
+                      Deduction
+                    </button>
+                    <button
                       onClick={executeConfirmedAction}
                       className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-600 transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/50"
                     >
                       Confirm
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Deduction Modal */}
+            {deductionModal.isOpen && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 overflow-hidden">
+                  <div className="bg-gradient-to-r from-red-600/20 to-red-600/10 border-b border-red-500/30 px-6 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-red-500/20 p-3 rounded-lg">
+                        <Clock className="text-red-400" size={24} />
+                      </div>
+                      <h3 className="text-xl font-bold text-white"> Deduction</h3>
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-6 space-y-4">
+                    <p className="text-slate-300">Specify number of days to deduct for this record's date.</p>
+                    <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
+                      <p className="text-xs text-slate-400 mb-2">Employee:</p>
+                      <p className="text-sm font-semibold text-white mb-1">{deductionModal.employeeId ? employees.get(deductionModal.employeeId) : ''}</p>
+                      <p className="text-xs text-slate-400">Date:</p>
+                      <p className="text-sm font-mono text-white">{deductionModal.day}</p>
+                      <div className="mt-4">
+                        <label className="text-xs text-slate-400 mb-2 block">Days to Deduct</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={deductionModal.days}
+                          onChange={(e) => setDeductionModal({ ...deductionModal, days: Math.max(1, Number(e.target.value) || 1) })}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 px-6 py-4 border-t border-slate-700 bg-slate-900/50">
+                    <button
+                      onClick={() => setDeductionModal({ isOpen: false, days: 1, employeeId: undefined, day: undefined, record: null })}
+                      className="flex-1 px-4 py-2 text-slate-300 border border-slate-600 rounded-lg hover:bg-slate-700/50 hover:text-white transition-all font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        // call API to save deduction
+                        if (!deductionModal.employeeId || !selectedYear || !selectedMonth || !deductionModal.day) return;
+                        const dateStr = `${selectedYear}-${selectedMonth}-${String(deductionModal.day).padStart(2, '0')}`;
+                        const result = await sendPatch({ action: 'deduction', userId: deductionModal.employeeId, date: dateStr, days: deductionModal.days });
+                        if (result?.success) {
+                          addToast('Deduction saved', 'success');
+                          fetchAttendanceRecords();
+                        }
+                        setDeductionModal({ isOpen: false, days: 1, employeeId: undefined, day: undefined, record: null });
+                        setConfirmModal({ isOpen: false, action: undefined, employeeId: undefined, day: undefined, record: null });
+                      }}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg hover:from-red-700 hover:to-red-600 transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-red-500/50"
+                    >
+                      Save Deduction
                     </button>
                   </div>
                 </div>
@@ -418,6 +519,9 @@ export default function AttendanceRecords() {
                     <th className="px-6 py-4 text-center text-sm font-bold text-white border-l border-slate-700 bg-orange-600/20">
                       Total Late (min)
                     </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-white border-l border-slate-700 bg-red-600/20">
+                      Deduction
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -441,35 +545,100 @@ export default function AttendanceRecords() {
                                 key={day}
                                 className="px-3 py-4 text-center text-xs border-r border-slate-700 bg-inherit hover:bg-slate-600/30 transition"
                               >
-                                {record ? (
-                                  <div className="space-y-2">
-                                    <div
-                                      onClick={() => record.isLate && markOnTime(record, employeeId, day)}
-                                      className={`inline-block px-3 py-1.5 rounded-full text-white font-bold text-xs ${
-                                        record.isLate ? 'bg-orange-500 cursor-pointer hover:opacity-90' : 'bg-emerald-500'
-                                      }`}
-                                      title={record.isLate ? 'انقر لتحويل المتأخر إلى حضر في الموعد' : ''}
-                                    >
-                                      {record.isLate ? 'Late' : 'Present'}
-                                    </div>
-                                    {record.isLate && (
-                                      <div className="text-orange-400 font-bold text-xs">
-                                        +{formatMinutesToHours(record.lateMinutes)}
-                                      </div>
-                                    )}
-                                    <div className="text-slate-400 text-xs font-medium">
-                                      {new Date(record.checkInTime).toLocaleTimeString('en-US', {
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: true,
-                                      })}
-                                    </div>
-                                    {record.deviceId && (
-                                      <div className="text-slate-500 text-xs truncate" title={record.deviceId}>
-                                        {record.deviceId.substring(0, 8)}...
-                                      </div>
-                                    )}
-                                  </div>
+                                    {record ? (
+                                      (() => {
+                                        const hasDeduction = Boolean((record as any).deduction && (record as any).deduction > 0) || Boolean((record as any).deductionOnly);
+                                        if (record.isLate) {
+                                          return (
+                                            <div className="space-y-2">
+                                              <div
+                                                onClick={() => record.isLate && markOnTime(record, employeeId, day)}
+                                                className={`inline-block px-3 py-1.5 rounded-full text-white font-bold text-xs ${
+                                                  record.isLate ? 'bg-orange-500 cursor-pointer hover:opacity-90' : 'bg-emerald-500'
+                                                }`}
+                                                title={record.isLate ? 'انقر لتحويل المتأخر إلى حضر في الموعد' : ''}
+                                              >
+                                                Late
+                                              </div>
+                                              {record.isLate && (
+                                                <div className="text-orange-400 font-bold text-xs">
+                                                  +{formatMinutesToHours(record.lateMinutes)}
+                                                </div>
+                                              )}
+                                              {hasDeduction && (
+                                                <div className="text-red-400 font-bold text-xs">-{(record.deduction || 0)} days</div>
+                                              )}
+                                              {record.checkInTime && (
+                                                <div className="text-slate-400 text-xs font-medium">
+                                                  {new Date(record.checkInTime).toLocaleTimeString('en-US', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    hour12: true,
+                                                  })}
+                                                </div>
+                                              )}
+                                              {record.deviceId && (
+                                                <div className="text-slate-500 text-xs truncate" title={record.deviceId}>
+                                                  {record.deviceId.substring(0, 8)}...
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        }
+
+                                        if (hasDeduction) {
+                                          return (
+                                            <div className="space-y-2">
+                                              <span
+                                                onClick={() => markPresent(employeeId, day)}
+                                                className="inline-block px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 font-bold text-xs cursor-pointer hover:bg-red-500/30"
+                                                title="انقر لتحويل الغياب إلى حضور"
+                                              >
+                                                Absent
+                                              </span>
+                                              <div className="text-red-400 font-bold text-xs">-{(record.deduction || 0)} days</div>
+                                              {record.deviceId && (
+                                                <div className="text-slate-500 text-xs truncate" title={record.deviceId}>
+                                                  {record.deviceId.substring(0, 8)}...
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        }
+
+                                        return (
+                                          <div className="space-y-2">
+                                            <div
+                                              onClick={() => record.isLate && markOnTime(record, employeeId, day)}
+                                              className={`inline-block px-3 py-1.5 rounded-full text-white font-bold text-xs ${
+                                                record.isLate ? 'bg-orange-500 cursor-pointer hover:opacity-90' : 'bg-emerald-500'
+                                              }`}
+                                              title={record.isLate ? 'انقر لتحويل المتأخر إلى حضر في الموعد' : ''}
+                                            >
+                                              {record.isLate ? 'Late' : 'Present'}
+                                            </div>
+                                            {record.isLate && (
+                                              <div className="text-orange-400 font-bold text-xs">
+                                                +{formatMinutesToHours(record.lateMinutes)}
+                                              </div>
+                                            )}
+                                            {record.checkInTime && (
+                                              <div className="text-slate-400 text-xs font-medium">
+                                                {new Date(record.checkInTime).toLocaleTimeString('en-US', {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                  hour12: true,
+                                                })}
+                                              </div>
+                                            )}
+                                            {record.deviceId && (
+                                              <div className="text-slate-500 text-xs truncate" title={record.deviceId}>
+                                                {record.deviceId.substring(0, 8)}...
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()
                                 ) : (
                                   <span
                                     onClick={() => markPresent(employeeId, day)}
@@ -494,6 +663,24 @@ export default function AttendanceRecords() {
                             <div className="inline-block bg-gradient-to-br from-orange-600 to-orange-500 rounded-xl px-4 py-3 text-center">
                               <p className="text-2xl font-bold text-white">{formatMinutesToHours(totalLateMinutes)}</p>
                               <p className="text-xs text-orange-100 mt-1">Total Minutes</p>
+                            </div>
+                          </td>
+                          {/* Deduction Column (sum for month) */}
+                          <td className="px-6 py-4 text-center border-l border-slate-700 bg-red-600/10">
+                            <div className="inline-block bg-gradient-to-br from-red-600 to-red-500 rounded-xl px-4 py-3 text-center">
+                              {(() => {
+                                let totalDed = 0;
+                                dayRecords.forEach((r) => {
+                                  // @ts-ignore
+                                  totalDed += (r.deduction || 0);
+                                });
+                                return (
+                                  <>
+                                    <p className="text-2xl font-bold text-white">{totalDed}</p>
+                                    <p className="text-xs text-red-100 mt-1">Days</p>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
@@ -528,7 +715,7 @@ export default function AttendanceRecords() {
                 <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">On Time</h3>
                 <div className="flex items-center justify-between">
                   <p className="text-4xl font-bold text-white">
-                    {attendanceRecords.filter(r => !r.isLate).length}
+                    {attendanceRecords.filter(r => !r.isLate && !((r as any).deduction > 0 || (r as any).deductionOnly)).length}
                   </p>
                   <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
                     <CheckCircle size={24} className="text-white" />
@@ -538,7 +725,7 @@ export default function AttendanceRecords() {
               <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700 hover:shadow-2xl hover:border-orange-500 transition-all group">
                 <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">Late</h3>
                 <div className="flex items-center justify-between">
-                  <p className="text-4xl font-bold text-white">
+                    <p className="text-4xl font-bold text-white">
                     {attendanceRecords.filter(r => r.isLate).length}
                   </p>
                   <div className="bg-gradient-to-br from-orange-600 to-orange-500 rounded-xl p-3 group-hover:scale-110 transition-transform">

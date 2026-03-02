@@ -155,6 +155,52 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true, record: rec });
     }
 
+    if (action === 'deduction') {
+      // attach a deduction (number of days) to the attendance record for that date
+      const { days } = body as any;
+      if (!userId || !date || typeof days !== 'number') {
+        return NextResponse.json({ error: 'userId, date and days required' }, { status: 400 });
+      }
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const uid = new mongoose.Types.ObjectId(userId);
+
+      // If there's an existing record keep its presence fields intact, only set deduction and mark as deduction-only.
+      const existing = await Attendance.findOne({ userId: uid, date: { $gte: dayStart, $lte: dayEnd } });
+      if (existing) {
+        // Preserve existing presence/late status. Only attach deduction value.
+        existing.deduction = days;
+        // If the record was already a presence/late record, do NOT mark it deduction-only.
+        if (!existing.isLate && !existing.checkInTime) {
+          // no check-in and not late => mark as deduction-only (absent with deduction)
+          existing.deductionOnly = true;
+        } else {
+          // preserve deductionOnly as false for existing presence/late records
+          existing.deductionOnly = existing.deductionOnly || false;
+        }
+        await existing.save();
+        return NextResponse.json({ success: true, record: existing });
+      }
+
+      // No existing record: create a deduction-only record. Do NOT mark as present.
+      const created = await Attendance.create({
+        userId: uid,
+        date: dayStart,
+        deduction: days,
+        deductionOnly: true,
+        deviceId: 'admin-deduction',
+        latitude: 0,
+        longitude: 0,
+        withinRadius: true,
+      });
+
+      return NextResponse.json({ success: true, record: created });
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('Error updating attendance record:', error);
