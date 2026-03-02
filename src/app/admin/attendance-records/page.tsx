@@ -300,6 +300,21 @@ export default function AttendanceRecords() {
     }
   });
 
+  // Aggregated stats across all employees/days
+  let aggregatedPresentCount = 0; // counts days considered present (includes late)
+  let aggregatedLateCount = 0;
+  recordsByEmployee.forEach((dayMap) => {
+    dayMap.forEach((rec) => {
+      const hasDeduction = Boolean((rec as any).deduction && (rec as any).deduction > 0) || Boolean((rec as any).deductionOnly);
+      const deductionAbsent = hasDeduction && !rec.isLate; // deduction but not late -> absent
+      if (!deductionAbsent) {
+        aggregatedPresentCount += 1;
+      }
+      if (rec.isLate) aggregatedLateCount += 1;
+    });
+  });
+  const aggregatedOnTimeCount = aggregatedPresentCount - aggregatedLateCount;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -715,7 +730,7 @@ export default function AttendanceRecords() {
                 <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">On Time</h3>
                 <div className="flex items-center justify-between">
                   <p className="text-4xl font-bold text-white">
-                    {attendanceRecords.filter(r => !r.isLate && !((r as any).deduction > 0 || (r as any).deductionOnly)).length}
+                    {aggregatedOnTimeCount}
                   </p>
                   <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
                     <CheckCircle size={24} className="text-white" />
@@ -726,8 +741,8 @@ export default function AttendanceRecords() {
                 <h3 className="text-slate-400 text-sm font-bold mb-3 uppercase tracking-wide">Late</h3>
                 <div className="flex items-center justify-between">
                     <p className="text-4xl font-bold text-white">
-                    {attendanceRecords.filter(r => r.isLate).length}
-                  </p>
+                      {aggregatedLateCount}
+                    </p>
                   <div className="bg-gradient-to-br from-orange-600 to-orange-500 rounded-xl p-3 group-hover:scale-110 transition-transform">
                     <Clock size={24} className="text-white" />
                   </div>
