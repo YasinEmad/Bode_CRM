@@ -106,7 +106,7 @@ export default function BulkImportComponent({
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex-1">
             <h3 className="text-xl font-bold text-white mb-1">Bulk Import Leads</h3>
-            <p className="text-sm text-slate-300">Upload an Excel or CSV file to import multiple leads. Use the sample CSV to match the required columns.</p>
+            <p className="text-sm text-slate-300">Upload an Excel or CSV file to import multiple leads. Required columns: Name, Phone. Optional: Email, Project, Status, Source, Notes.</p>
             <a
               href="/sample-leads.csv"
               download

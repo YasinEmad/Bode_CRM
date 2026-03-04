@@ -93,10 +93,10 @@ export async function POST(req: NextRequest) {
         email = email.toLowerCase();
       }
 
-      if (!name || !project || !phone) {
+      if (!name || !phone) {
         errors.push({
           row: rowNum,
-          error: 'Missing required fields (name, project, phone)',
+          error: 'Missing required fields (name, phone)',
         });
         return;
       }
