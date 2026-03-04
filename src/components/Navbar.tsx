@@ -119,10 +119,12 @@ export default function Navbar() {
 
         ...(isTeamLeader ? [
           { href: '/sales/my-team', label: 'My Team' },
-          { href: '/sales/team-report', label: 'Team Report' }
+          { href: '/sales/team-report', label: 'Team Report' },
         ] : []),
         { href: '/sales/commissions', label: 'My Commissions' },
+        // Keep the regular sales Attendance link. Add separate admin Attendance Records link for team leaders.
         { href: '/sales/attendance', label: 'Attendance' },
+        ...(isTeamLeader ? [{ href: '/admin/attendance-records', label: 'Attendance Records' }] : []),
       ]
       : [];
 

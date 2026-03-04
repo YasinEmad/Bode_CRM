@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { connectDB } from '@/lib/mongodb';
 import Attendance from '@/models/Attendance';
 import User from '@/models/User';
+import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
 
 function extractToken(req: NextRequest): string | null {
@@ -25,9 +26,17 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    // Verify user is admin
+    // Verify user and determine permissions (admin or team leader)
     const user = await User.findById(payload.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Determine if user is a team leader by checking Team.leader
+    const team = await Team.findOne({ leader: user._id }).lean();
+    const isAdmin = user.role === 'admin';
+    const isTeamLeader = Boolean(team);
+    if (!isAdmin && !isTeamLeader) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -43,7 +52,13 @@ export async function GET(req: NextRequest) {
       query.date = { $gte: startDate, $lte: endDate };
     }
 
-    // Fetch all attendance records for the month with user details
+    // If team leader, restrict records to their team members + leader
+    if (isTeamLeader && !isAdmin) {
+      const allowedUserIds = [team.leader, ...(team.members || [])];
+      query.userId = { $in: allowedUserIds };
+    }
+
+    // Fetch attendance records for the month with user details
     const records = await Attendance.find(query)
       .populate('userId', 'name email')
       .sort({ date: 1, userId: 1 });
@@ -69,9 +84,15 @@ export async function PATCH(req: NextRequest) {
 
     await connectDB();
 
-    // Verify user is admin
+    // Verify user and determine permissions (admin or team leader)
     const user = await User.findById(payload.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const team = await Team.findOne({ leader: user._id }).lean();
+    const isAdmin = user.role === 'admin';
+    const isTeamLeader = Boolean(team);
+    if (!isAdmin && !isTeamLeader) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -90,6 +111,14 @@ export async function PATCH(req: NextRequest) {
     if (action === 'mark_present') {
       if (!userId || !date) {
         return NextResponse.json({ error: 'userId and date required' }, { status: 400 });
+      }
+
+      // If team leader, ensure they only modify their team members
+      if (!isAdmin && isTeamLeader) {
+        const allowedUserIds = [team.leader.toString(), ...((team.members || []).map((m: any) => m.toString()))];
+        if (!allowedUserIds.includes(userId)) {
+          return NextResponse.json({ error: 'Forbidden to modify this user' }, { status: 403 });
+        }
       }
 
       // create or update attendance for that day: set isLate=false
@@ -131,6 +160,15 @@ export async function PATCH(req: NextRequest) {
       if (recordId) {
         const rec = await Attendance.findById(recordId);
         if (!rec) return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+
+        // If team leader, ensure record belongs to their team
+        if (!isAdmin && isTeamLeader) {
+          const allowedUserIds = [team.leader.toString(), ...((team.members || []).map((m: any) => m.toString()))];
+          if (!allowedUserIds.includes(String(rec.userId))) {
+            return NextResponse.json({ error: 'Forbidden to modify this record' }, { status: 403 });
+          }
+        }
+
         rec.isLate = false;
         rec.lateMinutes = 0;
         await rec.save();
@@ -145,6 +183,14 @@ export async function PATCH(req: NextRequest) {
       dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
+
+      // Ensure team leader can only modify their team
+      if (!isAdmin && isTeamLeader) {
+        const allowedUserIds = [team.leader.toString(), ...((team.members || []).map((m: any) => m.toString()))];
+        if (!allowedUserIds.includes(userId)) {
+          return NextResponse.json({ error: 'Forbidden to modify this user' }, { status: 403 });
+        }
+      }
 
       const uid = new mongoose.Types.ObjectId(userId);
       const rec = await Attendance.findOne({ userId: uid, date: { $gte: dayStart, $lte: dayEnd } });
@@ -166,6 +212,14 @@ export async function PATCH(req: NextRequest) {
       dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
+
+      // If team leader, ensure they only modify their team members
+      if (!isAdmin && isTeamLeader) {
+        const allowedUserIds = [team.leader.toString(), ...((team.members || []).map((m: any) => m.toString()))];
+        if (!allowedUserIds.includes(userId)) {
+          return NextResponse.json({ error: 'Forbidden to modify this user' }, { status: 403 });
+        }
+      }
 
       const uid = new mongoose.Types.ObjectId(userId);
 

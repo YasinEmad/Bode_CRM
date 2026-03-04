@@ -76,8 +76,35 @@ export default function AttendanceRecords() {
 
   // Check authentication
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'admin')) {
-      router.push('/unauthorized');
+    if (!loading) {
+      const validate = async () => {
+        if (!user || !token) {
+          router.push('/unauthorized');
+          return;
+        }
+
+        if ((user as any).role === 'admin') return; // allow admin
+
+        // For non-admins, verify team-leader status from backend (robust check)
+        try {
+          const res = await fetch('/api/teams/check-team-leader', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            router.push('/unauthorized');
+            return;
+          }
+          const data = await res.json();
+          if (!data.isTeamLeader) {
+            router.push('/unauthorized');
+          }
+        } catch (err) {
+          console.error('Team leader check failed:', err);
+          router.push('/unauthorized');
+        }
+      };
+
+      validate();
     }
   }, [user, loading, router]);
 
