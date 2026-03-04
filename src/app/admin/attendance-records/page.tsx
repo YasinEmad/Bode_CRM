@@ -64,6 +64,7 @@ export default function AttendanceRecords() {
     day?: number;
     record?: AttendanceRecord | null;
   }>({ isOpen: false, days: 1, employeeId: undefined, day: undefined, record: null });
+  const [isTeamLeader, setIsTeamLeader] = useState<boolean>(false);
 
   // Set default month to current month
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function AttendanceRecords() {
           return;
         }
 
-        if ((user as any).role === 'admin') return; // allow admin
+        if ((user as any).role === 'admin') { setIsTeamLeader(false); return; } // allow admin
 
         // For non-admins, verify team-leader status from backend (robust check)
         try {
@@ -97,7 +98,9 @@ export default function AttendanceRecords() {
           const data = await res.json();
           if (!data.isTeamLeader) {
             router.push('/unauthorized');
+            return;
           }
+          setIsTeamLeader(Boolean(data.isTeamLeader));
         } catch (err) {
           console.error('Team leader check failed:', err);
           router.push('/unauthorized');
@@ -242,11 +245,23 @@ export default function AttendanceRecords() {
   };
 
   const markPresent = async (employeeId: string, day: number) => {
+    // Team leaders are only allowed to apply deductions, not convert absence to presence
+    if (isTeamLeader) {
+      setDeductionModal({ isOpen: true, days: 1, employeeId, day, record: null });
+      return;
+    }
+
     // Open confirmation modal instead of using browser confirm
     setConfirmModal({ isOpen: true, action: 'mark_present', employeeId, day, record: null });
   };
 
   const markOnTime = async (record: AttendanceRecord, employeeId: string, day: number) => {
+    // Team leaders are only allowed to apply deductions, not convert late to on-time
+    if (isTeamLeader) {
+      setDeductionModal({ isOpen: true, days: 1, employeeId, day, record });
+      return;
+    }
+
     // Open confirmation modal instead of using browser confirm
     setConfirmModal({ isOpen: true, action: 'mark_on_time', employeeId, day, record });
   };
