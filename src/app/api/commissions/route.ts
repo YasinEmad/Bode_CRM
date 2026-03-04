@@ -40,14 +40,26 @@ export async function GET(req: NextRequest) {
     }
 
     const commissions = await Commission.find(query)
-      // dealId refers to DealClosing and we want key client fields (include project and shared)
-      .populate('dealId', 'clientName clientNumber developer project attachments info userId shared')
+      // dealId refers to DealClosing and we want key client fields (include project, contractPrice and shared)
+      .populate('dealId', 'clientName clientNumber developer project attachments info userId shared contractPrice')
       .populate('recipients.userId', 'name position')
       .populate('employeeId', 'name')
       .populate('approvedBy', 'name')
       .sort({ createdAt: -1 });
 
-    return NextResponse.json({ commissions });
+    // Attach salesVolume derived directly from deal.contractPrice for frontend convenience
+    const commissionsWithSalesVolume = commissions.map((c: any) => {
+      try {
+        if (c.dealId && typeof c.dealId === 'object') {
+          (c.dealId as any).salesVolume = (c.dealId as any).contractPrice || 0;
+        }
+      } catch (e) {
+        // ignore mapping errors
+      }
+      return c;
+    });
+
+    return NextResponse.json({ commissions: commissionsWithSalesVolume });
   } catch (error) {
     console.error('Error fetching commissions:', error);
     return NextResponse.json({ error: 'Failed to fetch commissions' }, { status: 500 });

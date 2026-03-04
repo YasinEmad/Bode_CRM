@@ -111,6 +111,24 @@ export default function SalesCommissions() {
       return Number(c.amount || 0);
     };
 
+    // Calculate total sales volume for unique deals belonging to this sales user
+    const seenDealIds = new Set<string>();
+    let totalSalesVolume = 0;
+    for (const c of commissions) {
+      const deal = (c as any).dealId || {};
+      const id = String(deal._id || deal.id || '');
+      const sv = Number(deal.salesVolume ?? deal.contractPrice ?? 0) || 0;
+      if (id) {
+        if (!seenDealIds.has(id)) {
+          seenDealIds.add(id);
+          totalSalesVolume += sv;
+        }
+      } else {
+        // If no deal id available, still add the sales volume to be safe
+        totalSalesVolume += sv;
+      }
+    }
+
     return {
       pendingCount: commissions.filter((c) => c.status === 'pending').length,
       approvedCount: commissions.filter((c) => c.status === 'approved').length,
@@ -119,6 +137,7 @@ export default function SalesCommissions() {
       paidAmount: commissions
         .filter((c) => c.status === 'paid')
         .reduce((sum, c) => sum + getUserAmount(c), 0),
+      totalSalesVolume,
     };
   };
 
@@ -150,7 +169,7 @@ export default function SalesCommissions() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           <div className="bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-amber-500">
             <div className="flex items-center justify-between">
               <div>
@@ -188,6 +207,16 @@ export default function SalesCommissions() {
                 <p className="text-4xl font-bold mt-2">{totals.paidCount}</p>
               </div>
               <CheckCircle size={40} className="opacity-30" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all border border-indigo-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-indigo-100 text-sm font-medium"> Total sales</p>
+                <p className="text-3xl font-bold mt-2">EGP {Number(totals.totalSalesVolume || 0).toLocaleString()}</p>
+              </div>
+              <span className="text-4xl opacity-20">📈</span>
             </div>
           </div>
 
@@ -260,6 +289,19 @@ export default function SalesCommissions() {
                   <div>
                     <p className="text-sm text-slate-400 font-medium">🏷️ Developer</p>
                     <p className="text-lg font-semibold text-blue-400 mt-1">{(commission.dealId as any)?.developer || '—'}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 font-medium">💹 Sales Volume</p>
+                    <p className="text-lg font-semibold text-white mt-1">
+                      {(() => {
+                        const deal = (commission.dealId as any) || {};
+                        const sv = deal.salesVolume ?? deal.contractPrice ?? null;
+                        return sv !== null && sv !== undefined
+                          ? `EGP ${Number(sv).toLocaleString()}`
+                          : 'EGP —';
+                      })()}
+                    </p>
                   </div>
 
                   <div>
