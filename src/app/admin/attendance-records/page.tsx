@@ -168,7 +168,9 @@ export default function AttendanceRecords() {
       const isDeductionAbsent = hasDeduction && !rec.isLate;
       if (!isDeductionAbsent) presentDays += 1;
     });
-    const totalWorkDays = currentDaysInMonth;
+    const totalWorkDays = selectedYear && selectedMonth
+      ? countWorkdaysInMonth(parseInt(selectedYear), parseInt(selectedMonth) - 1)
+      : 0;
 
     return Math.round((presentDays / totalWorkDays) * 100);
   };

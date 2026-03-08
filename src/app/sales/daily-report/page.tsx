@@ -18,6 +18,7 @@ export default function SalesDailyReport() {
   const [requests, setRequests] = useState<number>(0);
   const [todayKey, setTodayKey] = useState<string>('');
   const [monthLabel, setMonthLabel] = useState<string>('');
+  const [teamId, setTeamId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +46,7 @@ export default function SalesDailyReport() {
       setMeetings(Number(data.meetings?.[data.today] || 0));
       setRequests(Number(data.requests?.[data.today] || 0));
       setMonthLabel(data.month);
+      setTeamId(data.teamId || null);
     } catch (err) {
       console.error(err);
       addToast('Failed to load daily report', 'error');
@@ -66,7 +68,10 @@ export default function SalesDailyReport() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Save failed');
+        // if the server provided a specific message we surface it so the
+        // user knows they might need to contact an admin or join a team.
+        const msg = err.error || 'Save failed';
+        throw new Error(msg);
       }
       addToast('Saved successfully', 'success');
     } catch (err) {
@@ -90,6 +95,13 @@ export default function SalesDailyReport() {
       <div className="max-w-xl mx-auto bg-slate-800 rounded-2xl p-6 border border-slate-700">
         <h1 className="text-3xl font-bold text-white mb-2">Daily Report</h1>
         <p className="text-slate-400 mb-4">Date: <strong className="text-white">{todayKey} ({monthLabel})</strong></p>
+        {teamId === null && (
+          <p className="text-yellow-300 mb-4">
+            You are not currently assigned to a team. Your numbers are still
+            saved but you may not appear in team‑based reports; contact an admin
+            if this looks wrong.
+          </p>
+        )}
 
         <div className="space-y-4">
           <label className="block">

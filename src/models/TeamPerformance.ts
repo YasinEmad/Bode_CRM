@@ -23,7 +23,8 @@ const TeamPerformanceSchema = new Schema<ITeamPerformance>(
     teamId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Team',
-      required: true,
+      required: false, // allow null for un‑assigned employees
+      default: null,
     },
     month: {
       type: String,
@@ -60,8 +61,9 @@ const TeamPerformanceSchema = new Schema<ITeamPerformance>(
   }
 );
 
-// Create a compound index for faster queries
-TeamPerformanceSchema.index({ userId: 1, teamId: 1, month: 1 }, { unique: true });
+// Create an index ensuring one record per user/month.  teamId is optional so
+// it is not included in the uniqueness constraint.
+TeamPerformanceSchema.index({ userId: 1, month: 1 }, { unique: true });
 
 export default mongoose.models.TeamPerformance ||
   mongoose.model<ITeamPerformance>('TeamPerformance', TeamPerformanceSchema);

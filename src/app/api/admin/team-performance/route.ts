@@ -11,6 +11,18 @@ function extractToken(req: NextRequest): string | null {
   return authHeader.slice(7);
 }
 
+// Convert MongoDB Map to plain object - handles both Map instances and plain objects
+function convertMapToObject(data: any): Record<string, number> {
+  if (!data) return {};
+  if (data instanceof Map) {
+    return Object.fromEntries(data);
+  }
+  if (typeof data === 'object') {
+    return data;
+  }
+  return {};
+}
+
 export async function GET(req: NextRequest) {
   try {
     const token = extractToken(req);
@@ -41,6 +53,10 @@ export async function GET(req: NextRequest) {
       'userId',
       '_id name'
     );
+    console.log(`📊 Team Performance API: month=${month}, found ${performances.length} records`);
+    performances.forEach((p, i) => {
+      console.log(`  ${i+1}. userId: ${p.userId ? (typeof p.userId === 'object' ? p.userId._id : p.userId) : 'null'}, sheets keys: ${Object.keys(p.sheets || {}).length}`);
+    });
 
     // Attach leads/deals counts to each performance (read-only derived from Lead collection)
     try {
@@ -68,7 +84,18 @@ export async function GET(req: NextRequest) {
       const augmented = performances.map((p: any) => {
         const id = String(p.userId?._id || p.userId);
         const stats = leadsMap.get(id) || { leadsCount: 0, dealsCount: 0 };
-        return { ...p.toObject(), leadsCount: stats.leadsCount, dealsCount: stats.dealsCount };
+        const obj = p.toObject();
+        
+        // Ensure all performance data is converted from Maps to plain objects
+        return {
+          ...obj,
+          sheets: convertMapToObject(obj.sheets),
+          meetings: convertMapToObject(obj.meetings),
+          assessments: convertMapToObject(obj.assessments),
+          requests: convertMapToObject(obj.requests),
+          leadsCount: stats.leadsCount,
+          dealsCount: stats.dealsCount,
+        };
       });
 
       return NextResponse.json({ performances: augmented });

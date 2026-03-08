@@ -223,6 +223,8 @@ export default function MonthlyEmployeeReport() {
   const fetchReportDataWithKpi = async (kpiSettingsData: any) => {
     try {
       setLoadingReport(true);
+      const monthStr = `${selectedYear}-${selectedMonth}`;
+      console.log(`🔄 Fetching report data for month: ${monthStr}`);
 
       // Kick off all of the API requests in parallel to save round‑trip time
       const employeesPromise = fetch('/api/employees', {
@@ -263,11 +265,25 @@ export default function MonthlyEmployeeReport() {
         leaderPerfPromise,
       ]);
 
-      if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
+      if (!employeesResponse.ok) {
+        const errData = await employeesResponse.json().catch(() => ({}));
+        console.error(`❌ Employees endpoint failed (${employeesResponse.status}):`, errData);
+        throw new Error(`Failed to fetch employees: ${errData?.error || employeesResponse.statusText}`);
+      }
+      
       const employeesData = await employeesResponse.json();
+      console.log('👥 Employees response:', employeesData);
+      
       const employeesList: any[] = Array.isArray(employeesData.employees)
         ? [...employeesData.employees]
         : [];
+      
+      if (employeesList.length === 0) {
+        console.warn('⚠️ Warning: No employees returned from API');
+        console.log('Response structure:', Object.keys(employeesData));
+      } else {
+        console.log(`✅ Found ${employeesList.length} employees`);
+      }
 
       if (!leadsResponse.ok) throw new Error('Failed to fetch leads');
       const leadsData = await leadsResponse.json();
@@ -281,9 +297,19 @@ export default function MonthlyEmployeeReport() {
 
       if (!performanceResponse.ok) throw new Error('Failed to fetch team performance');
       const performanceData = await performanceResponse.json();
+      console.log('📊 Performance data received:', performanceData.performances?.length || 0, 'record(s)');
+      if (performanceData.performances && performanceData.performances.length > 0) {
+        console.log('   Performance records:');
+        performanceData.performances.slice(0, 5).forEach((p: any) => {
+          console.log(`   - User: ${p.userId?.name || p.userId || 'Unknown'}, sheets keys: ${Object.keys(p.sheets || {}).length}`);
+        });
+      } else {
+        console.warn('   ⚠️ No performance records found - this is the likely cause!');
+      }
 
       if (!leaderPerformanceResponse.ok) throw new Error('Failed to fetch team leader performance');
       const leaderPerformanceData = await leaderPerformanceResponse.json();
+      console.log('👑 Leader performance data received:', leaderPerformanceData.performances?.length || 0, 'records');
 
       // Calculate leads and deals for the selected month
       const selectedMonthStart = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
@@ -345,6 +371,17 @@ export default function MonthlyEmployeeReport() {
         if (!rawId) return;
         const employeeId = String(rawId);
         performanceByEmployee.set(employeeId, perf);
+        
+        // Detailed logging for debugging
+        const sheetsObj = perf.sheets || {};
+        const sheetsKeys = Object.keys(sheetsObj);
+        const sheetsTotal = Object.values(sheetsObj).reduce((sum: any, val: any) => sum + (Number(val) || 0), 0);
+        
+        console.log(`📊 Performance loaded for ${perf.userId?.name || 'Unknown'} (${employeeId}):`);
+        console.log(`   - sheets: ${sheetsKeys.length} keys, total=${sheetsTotal}`, sheetsObj);
+        console.log(`   - meetings: ${Object.keys(perf.meetings || {}).length} keys`);
+        console.log(`   - assessments: ${Object.keys(perf.assessments || {}).length} keys`);
+        console.log(`   - requests: ${Object.keys(perf.requests || {}).length} keys`);
       });
 
       // Create map of team leader performance data by userId (guard when userId is missing)
@@ -409,17 +446,51 @@ export default function MonthlyEmployeeReport() {
       const currentDaysInMonth = countWorkdaysInMonth(parseInt(selectedYear), parseInt(selectedMonth) - 1);
       const attendanceByEmployee = new Map<string, { presentDays: number; lateMinutes: number }>();
 
+      // Group records by employee and day, similar to attendance-records page
+      const recordsByEmployee = new Map<string, Map<number, any>>();
       attendanceData.records?.forEach((record: any) => {
         const employeeId = record.userId && typeof record.userId === 'object' ? record.userId._id : record.userId || null;
         if (!employeeId) return; // skip records with missing user
-        if (!attendanceByEmployee.has(employeeId)) {
-          attendanceByEmployee.set(employeeId, { presentDays: 0, lateMinutes: 0 });
+        const date = new Date(record.date);
+        const day = date.getDate();
+
+        if (!recordsByEmployee.has(employeeId)) {
+          recordsByEmployee.set(employeeId, new Map());
         }
-        const data = attendanceByEmployee.get(employeeId)!;
-        data.presentDays += 1;
-        if (record.isLate) {
-          data.lateMinutes += record.lateMinutes;
+        const dayMap = recordsByEmployee.get(employeeId)!;
+        const existing = dayMap.get(day);
+        if (!existing) {
+          dayMap.set(day, record);
+        } else {
+          // Keep the record with deduction if present, otherwise the latest
+          const existingHasDeduction = Boolean((existing as any).deduction || (existing as any).deductionOnly);
+          const incomingHasDeduction = Boolean((record as any).deduction || (record as any).deductionOnly);
+          if (existingHasDeduction && !incomingHasDeduction) {
+            // keep existing deduction
+          } else if (!existingHasDeduction && incomingHasDeduction) {
+            dayMap.set(day, record);
+          } else {
+            // overwrite with the latest record
+            dayMap.set(day, record);
+          }
         }
+      });
+
+      // Now calculate attendance stats from grouped records
+      recordsByEmployee.forEach((dayMap, employeeId) => {
+        let presentDays = 0;
+        let lateMinutes = 0;
+        dayMap.forEach((record) => {
+          const hasDeduction = Boolean((record as any).deduction && (record as any).deduction > 0) || Boolean((record as any).deductionOnly);
+          const isDeductionAbsent = hasDeduction && !record.isLate;
+          if (!isDeductionAbsent) {
+            presentDays += 1;
+          }
+          if (record.isLate) {
+            lateMinutes += record.lateMinutes;
+          }
+        });
+        attendanceByEmployee.set(employeeId, { presentDays, lateMinutes });
       });
 
       // Calculate totals from team performance (null-safe)
@@ -451,6 +522,15 @@ export default function MonthlyEmployeeReport() {
         const attendanceStats = attendanceByEmployee.get(empIdStr) || { presentDays: 0, lateMinutes: 0 };
         const performanceStats = performanceByEmployee.get(empIdStr);
         let leaderStats = leaderPerformanceByEmployee.get(empIdStr);
+
+        console.log(`\n👨‍💼 Processing employee: ${emp.name} (ID: ${empIdStr})`);
+        console.log(`   - hasPerformanceStats: ${!!performanceStats}`);
+        console.log(`   - hasLeaderStats: ${!!leaderStats}`);
+        console.log(`   - Position: ${emp.position}`);
+        
+        if (!performanceStats && !leaderStats) {
+          console.warn(`   ⚠️ WARNING: No performance data found for this employee`);
+        }
 
         // For leader rows: prefer explicit admin-edited values for daily metrics; fall back to personal/team performance.
         // If the map lookup missed, try to build an explicit object from raw responses as a fallback
@@ -515,6 +595,12 @@ export default function MonthlyEmployeeReport() {
           ? calculateTotal(performanceStats.sheets)
           : 0;
 
+        console.log(`\n📈 Calculating metrics for ${emp.name} (${emp.position}):`);
+        console.log(`   - isLeader: ${!!leaderStats}, hasPerformanceStats: ${!!performanceStats}`);
+        if (performanceStats) {
+          console.log(`   - performanceStats.sheets:`, performanceStats.sheets);
+        }
+
         const meetingsCount = leaderStats
           ? calculateTotal((leaderStats as any).aggregatedDaily?.meetings || {})
           : performanceStats
@@ -532,6 +618,8 @@ export default function MonthlyEmployeeReport() {
           : performanceStats
           ? calculateTotal(performanceStats.requests)
           : 0;
+
+        console.log(`   meetings=${meetingsCount}, assessments=${assessmentsCount}, requests=${requestsCount}`);
 
         // For team leaders: use the aggregated leads/deals which respect aggregationMode
         // These are calculated by the API based on aggregationMode per metric
@@ -605,7 +693,9 @@ const finalDealsCount = isLeaderAggregatedDeals
       setReportData(report);
     } catch (error) {
       console.error('Error fetching report data:', error);
-      addToast('Error loading report data', 'error');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      addToast(`Error loading report data: ${errorMsg}`, 'error');
+      setReportData([]);
     } finally {
       setLoadingReport(false);
     }
@@ -766,7 +856,25 @@ const finalDealsCount = isLeaderAggregatedDeals
 
             {reportData.length === 0 ? (
               <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">
-                <p className="text-slate-400 text-lg">No employee data available</p>
+                <p className="text-slate-400 text-lg mb-2">No employee data available</p>
+                <p className="text-slate-500 text-sm mb-6">
+                  No employees found for {selectedMonthName} {selectedYear}. 
+                  Please check if there are employees registered in the system or try a different month.
+                </p>
+                <button
+                  onClick={() => {
+                    if (selectedMonth && selectedYear && token) {
+                      const loadData = async () => {
+                        const kpiData = await fetchKpiSettingsAndReturn();
+                        await fetchReportDataWithKpi(kpiData);
+                      };
+                      loadData();
+                    }
+                  }}
+                  className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-6 py-2 rounded-lg font-semibold transition-all"
+                >
+                  Retry Loading Data
+                </button>
               </div>
             ) : (
               <>

@@ -38,16 +38,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Sales role required' }, { status: 403 });
     }
 
-    // Find the team the sales belongs to OR the team they lead
-    const team = await Team.findOne({ $or: [{ members: user._id }, { leader: user._id }] });
+    // Find the team the sales belongs to OR the team they lead.  do **not**
+    // treat a missing team as an error; unassigned employees are allowed to
+    // record activity and will simply have `teamId: null`.
+    let team = await Team.findOne({ $or: [{ members: user._id }, { leader: user._id }] });
+    if (!team && user.teamId) {
+      // some user docs still track membership via user.teamId rather than the
+      // Team.members list; check that as a fallback so the UI is more resilient.
+      team = await Team.findById(user.teamId);
+    }
 
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-    let performance = null;
+    let performance: any = null;
     if (team) {
       performance = await TeamPerformance.findOne({ userId: user._id, teamId: team._id, month });
+    } else {
+      // if there's no team, look for a record keyed only by userId/month
+      performance = await TeamPerformance.findOne({ userId: user._id, month });
     }
 
     const emptyDays: Record<string, number> = {};
@@ -106,14 +116,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     }
 
-    // Find user's team (either as member or as leader)
-    const team = await Team.findOne({ $or: [{ members: user._id }, { leader: user._id }] });
-    if (!team) return NextResponse.json({ error: 'User is not assigned to a team' }, { status: 403 });
+    // Determine the team if any, but we won't refuse the request when the
+    // user isn't part of a team.  many legacy users are left un‑assigned and
+    // still need to track personal numbers.
+    let team = await Team.findOne({ $or: [{ members: user._id }, { leader: user._id }] });
+    if (!team && user.teamId) {
+      team = await Team.findById(user.teamId);
+    }
 
-    // Find or create performance for this user/team/month
-    let perf = await TeamPerformance.findOne({ userId: user._id, teamId: team._id, month });
+    // Find or create performance for this user/month.  include the teamId only if
+    // we actually know one (schema allows null now).
+    let perf: any = null;
+    if (team) {
+      perf = await TeamPerformance.findOne({ userId: user._id, teamId: team._id, month });
+    } else {
+      perf = await TeamPerformance.findOne({ userId: user._id, month });
+    }
+
     if (!perf) {
-      perf = new TeamPerformance({ userId: user._id, teamId: team._id, month });
+      perf = new TeamPerformance({ userId: user._id, teamId: team?._id || null, month });
     }
 
     // Only update today's keys. Ignore any provided day keys or month in the request body.
