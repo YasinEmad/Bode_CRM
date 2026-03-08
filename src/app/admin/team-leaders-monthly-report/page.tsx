@@ -102,48 +102,180 @@ export default function TeamLeadersMonthlyReport() {
   const fetchLeaderData = async () => {
     try {
       setLoadingData(true);
-      const response = await fetch(
-        `/api/admin/team-leaders-performance?month=${selectedYear}-${selectedMonth}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const monthStr = `${selectedYear}-${selectedMonth}`;
+
+      // Kick off all of the API requests in parallel to save round‑trip time
+      const teamsPromise = fetch('/api/teams', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const perfPromise = fetch(
+        `/api/admin/team-performance?month=${monthStr}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const leadsPromise = fetch('/api/leads', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const closedDealsPromise = fetch(`/api/closed-deals?month=${selectedYear}-${selectedMonth}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const leaderPerfPromise = fetch(
+        `/api/admin/team-leaders-performance?month=${monthStr}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch team leader data');
-      }
+      const [
+        teamsResponse,
+        performanceResponse,
+        leadsResponse,
+        closedDealsResponse,
+        leaderPerformanceResponse,
+      ] = await Promise.all([
+        teamsPromise,
+        perfPromise,
+        leadsPromise,
+        closedDealsPromise,
+        leaderPerfPromise,
+      ]);
 
-      const data = await response.json();
-      // Normalize to ensure UI only uses leaderPersonal (leader-only) buckets
-      const normalized = (data.performances || []).map((p: any) => {
-        const days = p.daysInMonth || 30;
+      if (!teamsResponse.ok) throw new Error('Failed to fetch teams');
+      const teamsData = await teamsResponse.json();
+
+      if (!performanceResponse.ok) throw new Error('Failed to fetch team performance');
+      const performanceData = await performanceResponse.json();
+
+      if (!leadsResponse.ok) throw new Error('Failed to fetch leads');
+      const leadsData = await leadsResponse.json();
+
+      const closedDealsData = closedDealsResponse.ok
+        ? await closedDealsResponse.json()
+        : { snapshots: [] };
+
+      const leaderPerformanceData = leaderPerformanceResponse.ok
+        ? await leaderPerformanceResponse.json()
+        : { performances: [] };
+
+      // Get team leaders
+      const teamLeaders = teamsData.teams?.filter((team: any) => team.leader) || [];
+      const leaderIds = teamLeaders.map((team: any) => team.leader.id);
+
+      // Calculate leads and deals for the selected month
+      const selectedMonthStart = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
+      const selectedMonthEnd = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0);
+      selectedMonthEnd.setHours(23, 59, 59, 999);
+      const startTs = selectedMonthStart.getTime();
+      const endTs = selectedMonthEnd.getTime();
+
+      const leadsByEmployee = new Map<string, { leadsCount: number; dealsCount: number }>();
+
+      // build an index of lead statuses so we can decide whether a snapshot should count
+      const leadStatusById = new Map<string, string>();
+      leadsData.leads?.forEach((lead: any) => {
+        const idStr = lead._id ? String(lead._id) : null;
+        if (idStr) {
+          leadStatusById.set(idStr, lead.status);
+        }
+
+        const t = new Date(lead.createdAt).getTime();
+        // Check if lead was created in the selected month (numeric compare saves allocations)
+        if (t >= startTs && t <= endTs) {
+          const rawEmployeeId = lead.assignedTo?._id || lead.assignedTo;
+          const employeeId = rawEmployeeId ? String(rawEmployeeId) : null;
+          if (!employeeId) return;
+          if (!leadsByEmployee.has(employeeId)) {
+            leadsByEmployee.set(employeeId, { leadsCount: 0, dealsCount: 0 });
+          }
+          leadsByEmployee.get(employeeId)!.leadsCount += 1;
+        }
+      });
+
+      // Use closed-deals snapshots to count deals (preserves history even if Lead deleted)
+      // however only tally a snapshot if its associated Lead is currently marked `closed`.
+      // this mirrors the logic used on Manage Employees where deals = leads.status==='closed'.
+      (closedDealsData.snapshots || []).forEach((snap: any) => {
+        const rawAssigned = snap.assignedTo || snap.userId || null;
+        const employeeId = rawAssigned ? String(rawAssigned) : null;
+        if (!employeeId) return;
+
+        // skip snapshots whose lead (if known) isn't fully closed
+        if (snap.leadId) {
+          const leadStatus = leadStatusById.get(String(snap.leadId));
+          if (leadStatus && leadStatus !== 'closed') {
+            return; // ignore pending‑approval, rejected, etc.
+          }
+        }
+
+        if (!leadsByEmployee.has(employeeId)) {
+          leadsByEmployee.set(employeeId, { leadsCount: 0, dealsCount: 0 });
+        }
+        const stats = leadsByEmployee.get(employeeId)!;
+        stats.dealsCount += 1;
+      });
+
+      // Create map of team performance data by userId
+      const performanceByEmployee = new Map<string, any>();
+      performanceData.performances?.forEach((perf: any) => {
+        const rawId = perf.userId && typeof perf.userId === 'object' ? perf.userId._id : perf.userId || null;
+        if (!rawId) return;
+        const employeeId = String(rawId);
+        performanceByEmployee.set(employeeId, perf);
+      });
+
+      // Create map of team leader performance data by userId
+      const leaderPerformanceByEmployee = new Map<string, any>();
+      leaderPerformanceData.performances?.forEach((perf: any) => {
+        const rawId = perf.userId;
+        if (!rawId) return;
+        const employeeId = String(rawId);
+        leaderPerformanceByEmployee.set(employeeId, perf);
+      });
+
+      // Build data for team leaders
+      const leaderData = teamLeaders.map((team: any) => {
+        const leaderId = team.leader.id;
+        const leaderName = team.leader.name;
+        const perf = performanceByEmployee.get(leaderId);
+        const leaderPerf = leaderPerformanceByEmployee.get(leaderId);
+        const stats = leadsByEmployee.get(leaderId) || { leadsCount: 0, dealsCount: 0 };
+
+        const days = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
         const emptyDays: Record<string, number> = {};
         for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
 
-        // Ensure leaderPersonal exists and is properly populated
-        // This is the SINGLE SOURCE OF TRUTH for what's displayed
-        const safeLeaderPersonal = {
-          sheets: { ...emptyDays, ...(p.leaderPersonal?.sheets || {}) },
-          assessments: { ...emptyDays, ...(p.leaderPersonal?.assessments || {}) },
-          meetings: { ...emptyDays, ...(p.leaderPersonal?.meetings || {}) },
-          requests: { ...emptyDays, ...(p.leaderPersonal?.requests || {}) },
-        };
+        // Use leader performance data if available, otherwise team performance
+        const sheets = leaderPerf?.leaderPersonal?.sheets || perf?.sheets || emptyDays;
+        const assessments = leaderPerf?.leaderPersonal?.assessments || perf?.assessments || emptyDays;
+        const meetings = leaderPerf?.leaderPersonal?.meetings || perf?.meetings || emptyDays;
+        const requests = leaderPerf?.leaderPersonal?.requests || perf?.requests || emptyDays;
 
         return {
-          ...p,
-          // Explicitly set leaderPersonal to ensure it's always available for display
-          leaderPersonal: safeLeaderPersonal,
-          // Keep other fields as-is but ensure no team-aggregated data is used for display
-          sheets: { ...emptyDays },
-          assessments: { ...emptyDays },
-          meetings: { ...emptyDays },
-          requests: { ...emptyDays },
+          userId: leaderId,
+          leaderName,
+          month: monthStr,
+          daysInMonth: days,
+          sheets,
+          assessments,
+          meetings,
+          requests,
+          leaderPersonal: {
+            sheets,
+            assessments,
+            meetings,
+            requests,
+          },
+          aggregated: leaderPerf?.aggregated || {
+            aggregatedLeads: stats.leadsCount,
+            aggregatedDeals: stats.dealsCount,
+            leaderLeads: stats.leadsCount,
+            leaderDeals: stats.dealsCount,
+          },
+          leaderOwnLeads: stats.leadsCount,
+          leaderOwnDeals: stats.dealsCount,
+          teamLeadsCount: stats.leadsCount, // Simplified
+          teamDealsCount: stats.dealsCount, // Simplified
         };
       });
 
-      setLeaderData(normalized);
+      setLeaderData(leaderData);
     } catch (error) {
       console.error('Error fetching team leader data:', error);
       addToast('Error loading team leader data', 'error');
