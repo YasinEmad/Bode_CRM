@@ -238,10 +238,12 @@ export default function TeamLeadersMonthlyReport() {
         const stats = leadsByEmployee.get(leaderId) || { leadsCount: 0, dealsCount: 0 };
 
         const days = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+        // don't prefill a map of zeros – we want missing entries to stay undefined
         const emptyDays: Record<string, number> = {};
-        for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
+        // (we keep `days` around for rendering but don't populate the object)
 
         // Use leader performance data if available, otherwise team performance
+        // if neither has data we leave the map empty so inputs render blank
         const sheets = leaderPerf?.leaderPersonal?.sheets || perf?.sheets || emptyDays;
         const assessments = leaderPerf?.leaderPersonal?.assessments || perf?.assessments || emptyDays;
         const meetings = leaderPerf?.leaderPersonal?.meetings || perf?.meetings || emptyDays;
@@ -414,14 +416,25 @@ export default function TeamLeadersMonthlyReport() {
     });
   };
 
-  const handleLocalChange = (userId: string, category: 'sheets' | 'assessments' | 'meetings' | 'requests', day: string, value: number) => {
+  const handleLocalChange = (
+    userId: string,
+    category: 'sheets' | 'assessments' | 'meetings' | 'requests',
+    day: string,
+    value: number | null
+  ) => {
     setLeaderData((prev) =>
       prev.map((l) => {
         if (l.userId === userId) {
-          const updatedCategory = {
-            ...(l.leaderPersonal?.[category] || {}),
-            [day]: value,
-          };
+          const existing = l.leaderPersonal?.[category] || {};
+          const updatedCategory = { ...existing } as Record<string, number>;
+
+          if (value === null) {
+            // delete the key when the input is cleared
+            delete updatedCategory[day];
+          } else {
+            updatedCategory[day] = value;
+          }
+
           return {
             ...l,
             leaderPersonal: {
@@ -437,18 +450,34 @@ export default function TeamLeadersMonthlyReport() {
     );
   };
 
-  const calculateTotal = (data?: Record<string, number> | null | number): number => {
+  // totals now return null when there is no recorded value at all
+  const calculateTotal = (
+    data?: Record<string, number> | null | number
+  ): number | null => {
     if (typeof data === 'number') return data;
-    if (!data || typeof data !== 'object') return 0;
-    return Object.values(data).reduce((sum, val) => sum + (Number(val) || 0), 0);
+    if (!data || typeof data !== 'object') return null;
+    const values = Object.values(data)
+      .map(Number)
+      .filter((v) => !isNaN(v));
+    if (values.length === 0) return null;
+    return values.reduce((sum, val) => sum + val, 0);
   };
 
-  const calculateWeekTotal = (data: Record<string, number>, startDay: number, endDay: number): number => {
+  const calculateWeekTotal = (
+    data: Record<string, number> = {},
+    startDay: number,
+    endDay: number
+  ): number | null => {
     let total = 0;
+    let hasValue = false;
     for (let i = startDay; i <= endDay; i++) {
-      total += data[`day${i}`] || 0;
+      const v = data[`day${i}`];
+      if (v != null) {
+        hasValue = true;
+        total += Number(v) || 0;
+      }
     }
-    return total;
+    return hasValue ? total : null;
   };
 
   if (loading) {
@@ -579,10 +608,10 @@ export default function TeamLeadersMonthlyReport() {
                       <h3 className="text-xl sm:text-2xl font-bold text-white line-clamp-1">{leader.leaderName}</h3>
                       {(() => {
                         const adminTotal =
-                          calculateTotal(leader.leaderPersonal?.sheets) +
-                          calculateTotal(leader.leaderPersonal?.assessments) +
-                          calculateTotal(leader.leaderPersonal?.meetings) +
-                          calculateTotal(leader.leaderPersonal?.requests);
+                          (calculateTotal(leader.leaderPersonal?.sheets) || 0) +
+                          (calculateTotal(leader.leaderPersonal?.assessments) || 0) +
+                          (calculateTotal(leader.leaderPersonal?.meetings) || 0) +
+                          (calculateTotal(leader.leaderPersonal?.requests) || 0);
                         return adminTotal > 0 ? (
                           <span className="text-xs bg-indigo-600 text-white px-2 py-1 rounded-lg font-semibold">Admin Entries</span>
                         ) : null;
@@ -592,22 +621,22 @@ export default function TeamLeadersMonthlyReport() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
                         <span className="font-semibold">Team Leads:</span>{' '}
-                        <span className="text-white">{leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? 0}</span>
+                        <span className="text-white">{leader.teamLeadsCount ?? leader.aggregated?.aggregatedLeads ?? ''}</span>
                       </div>
 
                       <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
                         <span className="font-semibold">Team Deals:</span>{' '}
-                        <span className="text-white">{leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? 0}</span>
+                        <span className="text-white">{leader.teamDealsCount ?? leader.aggregated?.aggregatedDeals ?? ''}</span>
                       </div>
 
                       <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
                         <span className="font-semibold">Leader Leads:</span>{' '}
-                        <span className="text-white">{leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? 0}</span>
+                        <span className="text-white">{leader.leaderOwnLeads ?? leader.aggregated?.leaderLeads ?? ''}</span>
                       </div>
 
                       <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
                         <span className="font-semibold">Leader Deals:</span>{' '}
-                        <span className="text-white">{leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? 0}</span>
+                        <span className="text-white">{leader.leaderOwnDeals ?? leader.aggregated?.leaderDeals ?? ''}</span>
                       </div>
                     </div>
                   </div>
@@ -634,7 +663,8 @@ export default function TeamLeadersMonthlyReport() {
                         {Array.from({ length: leader.daysInMonth }).map((_, dayIndex) => {
                           const day = dayIndex + 1;
                           const dayKey = `day${day}`;
-                          const value = leader.leaderPersonal?.[selectedCategory]?.[dayKey] || 0;
+                          const raw = leader.leaderPersonal?.[selectedCategory]?.[dayKey];
+                          const value = raw != null ? raw : '';
                           const dayOfWeek = new Date(parseInt(leader.month.split('-')[0]), parseInt(leader.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
                             weekday: 'short',
                           });
@@ -647,14 +677,24 @@ export default function TeamLeadersMonthlyReport() {
                                 type="number"
                                 min={0}
                                 value={value}
-                                onChange={(e) =>
-                                  handleLocalChange(
-                                    leader.userId,
-                                    selectedCategory,
-                                    dayKey,
-                                    Math.max(0, parseInt(e.target.value) || 0)
-                                  )
-                                }
+                                onChange={(e) => {
+                                  const txt = e.target.value;
+                                  if (txt === '') {
+                                    handleLocalChange(
+                                      leader.userId,
+                                      selectedCategory,
+                                      dayKey,
+                                      null
+                                    );
+                                  } else {
+                                    handleLocalChange(
+                                      leader.userId,
+                                      selectedCategory,
+                                      dayKey,
+                                      Math.max(0, parseInt(txt) || 0)
+                                    );
+                                  }
+                                }}
                                 // previously auto-saved on blur; now only update local state
                                 className={`w-full px-1 py-1 sm:py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-sm sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
                                   selectedCategoryObj?.color === 'blue'
@@ -695,7 +735,7 @@ export default function TeamLeadersMonthlyReport() {
                           return (
                             <div key={week} className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-2 sm:p-3 border-2 text-center`}>
                               <div className="text-xs sm:text-sm text-slate-300">Week {week}</div>
-                              <div className={`text-xl sm:text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal}</div>
+                              <div className={`text-xl sm:text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal ?? ''}</div>
                             </div>
                           );
                         })}
