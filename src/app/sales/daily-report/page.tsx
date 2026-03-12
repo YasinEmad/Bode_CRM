@@ -13,9 +13,10 @@ export default function SalesDailyReport() {
   const { addToast } = useToast();
   const { get: getLabel } = useLabels();
 
-  const [sheets, setSheets] = useState<number>(0);
-  const [meetings, setMeetings] = useState<number>(0);
-  const [requests, setRequests] = useState<number>(0);
+  // use undefined initially so inputs render blank instead of 0
+  const [sheets, setSheets] = useState<number | undefined>(undefined);
+  const [meetings, setMeetings] = useState<number | undefined>(undefined);
+  const [requests, setRequests] = useState<number | undefined>(undefined);
   const [todayKey, setTodayKey] = useState<string>('');
   const [monthLabel, setMonthLabel] = useState<string>('');
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -42,9 +43,22 @@ export default function SalesDailyReport() {
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       setTodayKey(data.today);
-      setSheets(Number(data.sheets?.[data.today] || 0));
-      setMeetings(Number(data.meetings?.[data.today] || 0));
-      setRequests(Number(data.requests?.[data.today] || 0));
+      // when there is no entry for today keep undefined so field stays blank
+      setSheets(
+        data.sheets && typeof data.sheets[data.today] !== 'undefined'
+          ? Number(data.sheets[data.today])
+          : undefined
+      );
+      setMeetings(
+        data.meetings && typeof data.meetings[data.today] !== 'undefined'
+          ? Number(data.meetings[data.today])
+          : undefined
+      );
+      setRequests(
+        data.requests && typeof data.requests[data.today] !== 'undefined'
+          ? Number(data.requests[data.today])
+          : undefined
+      );
       setMonthLabel(data.month);
       setTeamId(data.teamId || null);
     } catch (err) {
@@ -58,13 +72,19 @@ export default function SalesDailyReport() {
   const save = async () => {
     try {
       setSaving(true);
+      // undefined values are omitted by JSON.stringify,
+      // so we only send fields the user has touched.
+      const payload: any = {};
+      if (typeof sheets !== 'undefined') payload.sheets = sheets;
+      if (typeof meetings !== 'undefined') payload.meetings = meetings;
+      if (typeof requests !== 'undefined') payload.requests = requests;
       const res = await fetch('/api/sales/daily-report', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sheets, meetings, requests }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -109,8 +129,11 @@ export default function SalesDailyReport() {
             <input
               type="number"
               min={0}
-              value={sheets}
-              onChange={(e) => setSheets(Math.max(0, parseInt(e.target.value || '0')))}
+              value={sheets ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSheets(v === '' ? undefined : Math.max(0, parseInt(v)));
+              }}
               className="mt-1 block w-full bg-slate-700 border border-slate-600 text-white rounded px-3 py-2"
             />
           </label>
@@ -120,8 +143,11 @@ export default function SalesDailyReport() {
             <input
               type="number"
               min={0}
-              value={meetings}
-              onChange={(e) => setMeetings(Math.max(0, parseInt(e.target.value || '0')))}
+              value={meetings ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setMeetings(v === '' ? undefined : Math.max(0, parseInt(v)));
+              }}
               className="mt-1 block w-full bg-slate-700 border border-slate-600 text-white rounded px-3 py-2"
             />
           </label>
@@ -131,8 +157,11 @@ export default function SalesDailyReport() {
             <input
               type="number"
               min={0}
-              value={requests}
-              onChange={(e) => setRequests(Math.max(0, parseInt(e.target.value || '0')))}
+              value={requests ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setRequests(v === '' ? undefined : Math.max(0, parseInt(v)));
+              }}
               className="mt-1 block w-full bg-slate-700 border border-slate-600 text-white rounded px-3 py-2"
             />
           </label>

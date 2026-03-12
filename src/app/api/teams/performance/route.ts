@@ -83,7 +83,13 @@ export async function GET(req: NextRequest) {
 
     const [teamMembers, performances, teamLeaderSettings, leaderUser] = await Promise.all([
       User.find({ _id: { $in: memberIds }, role: 'sales' }).select('_id name'),
-      TeamPerformance.find({ teamId: team._id, month: month, userId: { $in: perfUserIds } }),
+      // note: we deliberately omit teamId here. the unique constraint on
+      // TeamPerformance is only {userId, month}, so a record created under a
+      // previous team would be skipped if we required a matching teamId. by
+      // querying only by month and user list we ensure the row is returned and
+      // the POST logic (which updates teamId) will correct it on the first
+      // edit.
+      TeamPerformance.find({ month: month, userId: { $in: perfUserIds } }),
       KPISetting.findOne({ scope: 'team-leader' }),
       User.findById(team.leader),
     ]);
@@ -99,11 +105,6 @@ export async function GET(req: NextRequest) {
     const teamData = teamMembers.map((member) => {
       const performance = performanceMap.get(member._id.toString());
 
-      const emptyDays: Record<string, number> = {};
-      for (let i = 1; i <= daysInMonth; i++) {
-        emptyDays[`day${i}`] = 0;
-      }
-
       if (performance) {
         return {
           _id: performance._id,
@@ -112,6 +113,7 @@ export async function GET(req: NextRequest) {
           teamId: team._id,
           month: month,
           daysInMonth,
+          // only include the days actually recorded in the map
           sheets: convertMongoMapToObject(performance.sheets),
           assessments: convertMongoMapToObject(performance.assessments),
           meetings: convertMongoMapToObject(performance.meetings),
@@ -131,18 +133,16 @@ export async function GET(req: NextRequest) {
         teamId: team._id,
         month: month,
         daysInMonth,
-        sheets: emptyDays,
-        assessments: emptyDays,
-        meetings: emptyDays,
-        requests: emptyDays,
+        sheets: {},
+        assessments: {},
+        meetings: {},
+        requests: {},
         editedByAdmin: false,
       };
     });
 
     // Build aggregated totals for the team leader: sum of leader's own entries + all team members + any admin-added values
-    const emptyAgg: Record<string, number> = {};
-    for (let i = 1; i <= daysInMonth; i++) emptyAgg[`day${i}`] = 0;
-
+    // Aggregated object will accumulate only actual numbers; leave empty initially
     // `teamLeaderSettings` and `leaderUser` were fetched above in parallel
     const aggregationConfig = teamLeaderSettings ? getAggregationConfig(teamLeaderSettings.indicators) : {};
     const aggregated = {
@@ -151,10 +151,10 @@ export async function GET(req: NextRequest) {
       teamId: team._id,
       month: month,
       daysInMonth,
-      sheets: { ...emptyAgg },
-      assessments: { ...emptyAgg },
-      meetings: { ...emptyAgg },
-      requests: { ...emptyAgg },
+      sheets: {},
+      assessments: {},
+      meetings: {},
+      requests: {},
       // leads/deals aggregated across team (from Lead collection)
       aggregatedLeads: 0,
       aggregatedDeals: 0,
@@ -425,7 +425,15 @@ export async function POST(req: NextRequest) {
       }
     // Verify the target user is in the team or is the leader
     const targetUser = await User.findById(userId);
-    if (!targetUser || (!team.members.includes(targetUser._id) && !team.leader.equals(targetUser._id))) {
+    // make sure we handle cases where `team.members` might be undefined (e.g. new team or removed team)
+    const isMember = Array.isArray(team.members) && team.members.some((m: any) => String(m) === String(targetUser?._id));
+    if (!targetUser || (!isMember && !team.leader.equals(targetUser._id))) {
+      // log for debugging: this usually means the member list wasn’t kept in sync
+      console.warn('Team performance update rejected: user not in team', {
+        teamId: team._id,
+        userId,
+        members: team.members,
+      });
       return NextResponse.json({ error: 'User not in your team' }, { status: 403 });
     }
 
@@ -488,20 +496,36 @@ export async function POST(req: NextRequest) {
     if (meetingsValue !== undefined) updateOps[`meetings.${dayKey}`] = meetingsValue;
     if (requestsValue !== undefined) updateOps[`requests.${dayKey}`] = requestsValue;
 
+    // always keep the teamId up to date so GET queries will see this record
+    updateOps.teamId = team._id;
+
     // Ensure required identifying fields exist on insert
-    const setOnInsert: any = { userId, teamId: team._id, month };
+    // teamId is already included in updateOps (which is applied even on
+    // upsert), so we don't include it here to avoid conflicting-update
+    // operator errors when $set and $setOnInsert both touch the same path.
+    const setOnInsert: any = { userId, month };
+
+    // NOTE: the unique index on TeamPerformance is only {userId, month},
+    // so filtering by teamId can cause upsert to attempt an insert when a
+    // document already exists for the same user/month but a different
+    // team. that scenario happens when you move a user to a new team or
+    // delete/recreate a team. if the query doesn’t match the old row, mongo
+    // will try to create a duplicate and throw a 11000 error (seen in logs).
+    // to avoid the race we match only on userId+month and let the update
+    // body overwrite the teamId.
+    const filter: any = { userId, month };
 
     let performance;
     if (Object.keys(updateOps).length > 0) {
       performance = await TeamPerformance.findOneAndUpdate(
-        { userId, teamId: team._id, month },
+        filter,
         { $set: updateOps, $setOnInsert: setOnInsert },
         { upsert: true, new: true }
       );
     } else {
       // Nothing to update (shouldn't happen because of earlier check), but return existing or created doc
       performance = await TeamPerformance.findOneAndUpdate(
-        { userId, teamId: team._id, month },
+        filter,
         { $setOnInsert: setOnInsert },
         { upsert: true, new: true }
       );

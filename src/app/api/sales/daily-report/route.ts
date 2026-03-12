@@ -53,24 +53,25 @@ export async function GET(req: NextRequest) {
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
     let performance: any = null;
-    if (team) {
-      performance = await TeamPerformance.findOne({ userId: user._id, teamId: team._id, month });
-    } else {
-      // if there's no team, look for a record keyed only by userId/month
-      performance = await TeamPerformance.findOne({ userId: user._id, month });
+    // Always search by userId + month only to handle team transfers
+    performance = await TeamPerformance.findOne({ userId: user._id, month });
+    if (performance && team) {
+      // Update teamId if it has changed
+      performance.teamId = team._id;
     }
 
-    const emptyDays: Record<string, number> = {};
-    for (let i = 1; i <= daysInMonth; i++) emptyDays[`day${i}`] = 0;
-
+    // when there's no performance document we return empty objects rather
+    // than pre‑filling all days with zeros.  this lets the UI render blanks
+    // when the user hasn't entered any numbers yet instead of misleading
+    // them with a default "0".
     const response = {
       userId: user._id,
       teamId: team?._id || null,
       month,
       daysInMonth,
-      sheets: performance ? convertMongoMapToObject(performance.sheets) : emptyDays,
-      meetings: performance ? convertMongoMapToObject(performance.meetings) : emptyDays,
-      requests: performance ? convertMongoMapToObject(performance.requests) : emptyDays,
+      sheets: performance ? convertMongoMapToObject(performance.sheets) : {},
+      meetings: performance ? convertMongoMapToObject(performance.meetings) : {},
+      requests: performance ? convertMongoMapToObject(performance.requests) : {},
       today: `day${now.getDate()}`,
     };
 
@@ -124,13 +125,14 @@ export async function POST(req: NextRequest) {
       team = await Team.findById(user.teamId);
     }
 
-    // Find or create performance for this user/month.  include the teamId only if
-    // we actually know one (schema allows null now).
+    // Find or create performance for this user/month.  Search by userId + month only
+    // to handle team transfers correctly - a user's records should follow them when transferred.
     let perf: any = null;
-    if (team) {
-      perf = await TeamPerformance.findOne({ userId: user._id, teamId: team._id, month });
-    } else {
-      perf = await TeamPerformance.findOne({ userId: user._id, month });
+    perf = await TeamPerformance.findOne({ userId: user._id, month });
+    
+    if (perf && team) {
+      // Update teamId if it has changed due to team transfer
+      perf.teamId = team._id;
     }
 
     if (!perf) {

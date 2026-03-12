@@ -93,16 +93,22 @@ export default function TeamReport() {
 
   // --- Helper Functions ---
   const calculateTotal = (record: Record<string, number> = {}) => {
-    return Object.values(record).reduce((sum, val) => sum + (val || 0), 0);
+    const keys = Object.keys(record);
+    if (keys.length === 0) return '';
+    return Object.values(record).reduce((sum, val) => sum + (val ?? 0), 0);
   };
 
   const calculateWeekTotal = (record: Record<string, number> = {}, start: number, end: number) => {
     let total = 0;
+    let any = false;
     for (let i = start; i <= end; i++) {
       const dayKey = `day${i}`;
-      total += record[dayKey] || 0;
+      if (record.hasOwnProperty(dayKey)) {
+        any = true;
+        total += record[dayKey] ?? 0;
+      }
     }
-    return total;
+    return any ? total : '';
   };
 
   const toggleEmployee = (computedKey: string) => {
@@ -129,16 +135,24 @@ export default function TeamReport() {
   };
 
   // Fixed: Added missing handleLocalChange function to update state locally
-  const handleLocalChange = (userId: string, category: 'sheets' | 'assessments' | 'meetings' | 'requests', dayKey: string, value: number) => {
+  const handleLocalChange = (
+    userId: string,
+    category: 'sheets' | 'assessments' | 'meetings' | 'requests',
+    dayKey: string,
+    value: number | undefined
+  ) => {
     setTeamData((prev) =>
       prev.map((emp) => {
         if (emp.userId === userId && !emp.aggregated) {
+          const newCat = { ...emp[category] } as Record<string, number>;
+          if (value === undefined) {
+            delete newCat[dayKey];
+          } else {
+            newCat[dayKey] = value;
+          }
           return {
             ...emp,
-            [category]: {
-              ...emp[category],
-              [dayKey]: value,
-            },
+            [category]: newCat,
           };
         }
         return emp;
@@ -169,19 +183,15 @@ export default function TeamReport() {
       const data = await response.json();
 
       const formattedData: PerformanceData[] = data.performances.map((perf: any) => {
-        const days = perf.daysInMonth || 30;
-        const emptyDays: Record<string, number> = {};
-        for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
-
         return {
           userId: perf.userId,
           name: perf.name || 'Unknown',
           month: perf.month,
           daysInMonth: perf.daysInMonth,
-          sheets: { ...emptyDays, ...(perf.sheets || {}) },
-          assessments: { ...emptyDays, ...(perf.assessments || {}) },
-          meetings: { ...emptyDays, ...(perf.meetings || {}) },
-          requests: { ...emptyDays, ...(perf.requests || {}) },
+          sheets: perf.sheets || {},
+          assessments: perf.assessments || {},
+          meetings: perf.meetings || {},
+          requests: perf.requests || {},
           editedByAdmin: perf.editedByAdmin || false,
           leadsCount: perf.leadsCount || 0,
           dealsCount: perf.dealsCount || 0,
@@ -207,20 +217,15 @@ export default function TeamReport() {
 
       if (data.leaderPersonal) {
         const lp = data.leaderPersonal;
-        const days = lp.daysInMonth || 30;
-        const emptyDays: Record<string, number> = {};
-        for (let i = 1; i <= days; i++) emptyDays[`day${i}`] = 0;
-
         const formattedLeader: PerformanceData = {
           userId: String(lp.userId),
           name: (lp.name || 'Leader') + ' (You)',
           month: lp.month,
           daysInMonth: lp.daysInMonth,
-          // merge with emptyDays to guarantee every day key exists
-          sheets: { ...emptyDays, ...(lp.sheets || {}) },
-          assessments: { ...emptyDays, ...(lp.assessments || {}) },
-          meetings: { ...emptyDays, ...(lp.meetings || {}) },
-          requests: { ...emptyDays, ...(lp.requests || {}) },
+          sheets: lp.sheets || {},
+          assessments: lp.assessments || {},
+          meetings: lp.meetings || {},
+          requests: lp.requests || {},
           editedByAdmin: lp.editedByAdmin || false,
           adminLocks: lp.adminLocks || { sheets: {}, assessments: {}, meetings: {}, requests: {} },
           leaderPersonal: true,
@@ -252,7 +257,11 @@ export default function TeamReport() {
         month: employee.month,
       };
 
-      payload[selectedCategory] = employee[selectedCategory] || {};
+      // copy only defined day values to avoid sending empty/undefined keys
+      const catData: Record<string, any> = employee[selectedCategory] || {};
+      payload[selectedCategory] = Object.fromEntries(
+        Object.entries(catData).filter(([, v]) => v !== undefined)
+      );
 
       const response = await fetch('/api/teams/performance', {
         method: 'POST',
@@ -432,10 +441,21 @@ export default function TeamReport() {
                           {Array.from({ length: employee.daysInMonth }).map((_, dayIndex) => {
                             const day = dayIndex + 1;
                             const dayKey = `day${day}`;
-                            const value = employee[selectedCategory][dayKey] || 0;
+                            const rawValue = employee[selectedCategory][dayKey];
+                            const numericValue = rawValue ?? 0; // for styling/calcs
+                            const displayValue = rawValue ?? '';
                             const isToday = canEditDay(day, employee.month);
-                            const adminLocked = !!(employee.leaderPersonal && employee.adminLocks && employee.adminLocks[selectedCategory] && employee.adminLocks[selectedCategory][dayKey]);
-                            const dayOfWeek = new Date(parseInt(employee.month.split('-')[0]), parseInt(employee.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                            const adminLocked = !!(
+                              employee.leaderPersonal &&
+                              employee.adminLocks &&
+                              employee.adminLocks[selectedCategory] &&
+                              employee.adminLocks[selectedCategory][dayKey]
+                            );
+                            const dayOfWeek = new Date(
+                              parseInt(employee.month.split('-')[0]),
+                              parseInt(employee.month.split('-')[1]) - 1,
+                              day
+                            ).toLocaleDateString('en-US', {
                               weekday: 'short',
                             });
 
@@ -446,7 +466,7 @@ export default function TeamReport() {
                                   adminLocked
                                     ? 'border-red-600 bg-red-500/10 opacity-70'
                                     : isToday
-                                    ? value > 0
+                                    ? numericValue > 0
                                       ? selectedCategoryObj?.color === 'blue'
                                         ? 'border-blue-500 bg-blue-500/10'
                                         : selectedCategoryObj?.color === 'emerald'
@@ -458,7 +478,9 @@ export default function TeamReport() {
                                     : 'border-slate-700 bg-slate-800/50 opacity-60'
                                 }`}
                               >
-                                <div className="text-xs text-slate-400 mb-0.5 sm:mb-1 font-semibold hidden sm:block">{dayOfWeek}</div>
+                                <div className="text-xs text-slate-400 mb-0.5 sm:mb-1 font-semibold hidden sm:block">
+                                  {dayOfWeek}
+                                </div>
                                 <div className="text-xs text-slate-500 mb-1 sm:mb-2 font-semibold flex items-center justify-between">
                                   {day}
                                   {adminLocked && <span className="text-red-400 text-xs">🔒</span>}
@@ -466,24 +488,26 @@ export default function TeamReport() {
                                 <input
                                   type="number"
                                   min="0"
-                                  value={value}
+                                  value={displayValue}
                                   disabled={
-                                    !!employee.aggregated || 
+                                    !!employee.aggregated ||
                                     !isToday ||
                                     adminLocked
                                   }
                                   onChange={(e) => {
                                     if (employee.aggregated || !isToday || adminLocked) return;
+                                    const v = e.target.value;
+                                    const num = v === '' ? undefined : Math.max(0, parseInt(v));
                                     handleLocalChange(
                                       employee.userId,
                                       selectedCategory,
                                       dayKey,
-                                      Math.max(0, parseInt(e.target.value) || 0)
+                                      num
                                     );
                                   }}
                                   className={`w-full px-0.5 sm:px-1 py-1 sm:py-2 ${
-                                    employee.aggregated 
-                                      ? 'bg-yellow-800 border-yellow-600 text-yellow-100' 
+                                    employee.aggregated
+                                      ? 'bg-yellow-800 border-yellow-600 text-yellow-100'
                                       : adminLocked
                                       ? 'bg-red-900 border-red-700 text-red-100 cursor-not-allowed'
                                       : !isToday

@@ -22,16 +22,17 @@ export interface DealClosingFormData {
   developer: string;
   project?: string;
   unitCode: string;
-  unitArea: number;
+  // make numeric values optional so inputs can start blank instead of 0
+  unitArea?: number;
   unitType: string;
-  contractPrice: number;
+  contractPrice?: number;
   contractDate: string;
   finishingType: string;
   deliveryDate: number;
   paymentPlan: string;
-  downPaymentPercentage: number;
-  downPaymentAmount: number;
-  paymentByMonth: number; // Monthly installment amount
+  downPaymentPercentage?: number;
+  downPaymentAmount?: number;
+  paymentByMonth?: number; // Monthly installment amount
   attachments: string[];
   info: string;
   shared?: boolean;
@@ -60,16 +61,17 @@ export default function CloseDealModal({
     developer: '',
     project: leadProject || '',
     unitCode: '',
-    unitArea: 0,
+    // start numeric inputs as undefined so the fields appear empty instead of 0
+    unitArea: undefined,
     unitType: '',
-    contractPrice: 0,
+    contractPrice: undefined,
     contractDate: new Date().toISOString().split('T')[0],
     finishingType: '',
     deliveryDate: new Date().getFullYear(),
     paymentPlan: '',
-    downPaymentPercentage: 0,
-    downPaymentAmount: 0,
-    paymentByMonth: 0,
+    downPaymentPercentage: undefined,
+    downPaymentAmount: undefined,
+    paymentByMonth: undefined,
     attachments: [],
     info: '',
     shared: false,
@@ -91,7 +93,12 @@ export default function CloseDealModal({
     const inputType = (target as HTMLInputElement).type;
     setFormData((prev) => ({
       ...prev,
-      [name]: inputType === 'number' ? (value === '' ? 0 : Number(value)) : value,
+      [name]:
+        inputType === 'number'
+          ? value === ''
+            ? undefined
+            : Number(value)
+          : value,
     } as any));
   };
 
@@ -241,7 +248,13 @@ export default function CloseDealModal({
 
     // For non-EOI types, these fields are required
     if (formData.tcrType !== 'EOI') {
-      if (!formData.unitCode || !formData.unitArea || !formData.contractPrice) {
+      if (
+        !formData.unitCode ||
+        formData.unitArea === undefined ||
+        formData.unitArea === null ||
+        formData.contractPrice === undefined ||
+        formData.contractPrice === null
+      ) {
         alert('Please fill in all required fields');
         return;
       }
@@ -260,16 +273,16 @@ export default function CloseDealModal({
         clientNumber: '',
         developer: '',
         unitCode: '',
-        unitArea: 0,
+        unitArea: undefined,
         unitType: '',
-        contractPrice: 0,
+        contractPrice: undefined,
         contractDate: new Date().toISOString().split('T')[0],
         finishingType: '',
         deliveryDate: new Date().getFullYear(),
         paymentPlan: '',
-        downPaymentPercentage: 0,
-        downPaymentAmount: 0,
-        paymentByMonth: 0,
+        downPaymentPercentage: undefined,
+        downPaymentAmount: undefined,
+        paymentByMonth: undefined,
         attachments: [],
         info: '',
         shared: false,
@@ -443,7 +456,7 @@ export default function CloseDealModal({
               <input
                 type="number"
                 name="unitArea"
-                value={formData.unitArea}
+                value={formData.unitArea ?? ''}
                 onChange={handleInputChange}
                 placeholder="Unit Area"
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 placeholder-slate-400 dark:placeholder-slate-400 transition-colors"
@@ -476,7 +489,7 @@ export default function CloseDealModal({
               <input
                 type="number"
                 name="contractPrice"
-                value={formData.contractPrice}
+                value={formData.contractPrice ?? ''}
                 onChange={handleInputChange}
                 placeholder="Contract Price"
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 placeholder-slate-400 dark:placeholder-slate-400 transition-colors"
@@ -522,7 +535,7 @@ export default function CloseDealModal({
               <input
                 type="number"
                 name="deliveryDate"
-                value={formData.deliveryDate}
+                value={formData.deliveryDate ?? ''}
                 onChange={handleInputChange}
                 placeholder="Delivery Year"
                 min="2025"
@@ -557,7 +570,7 @@ export default function CloseDealModal({
               <input
                 type="number"
                 name="downPaymentPercentage"
-                value={formData.downPaymentPercentage}
+                value={formData.downPaymentPercentage ?? ''}
                 onChange={handleInputChange}
                 placeholder="نسبة الدفعة المقدمة"
                 min="0"
@@ -578,7 +591,7 @@ export default function CloseDealModal({
               <input
                 type="number"
                 name="downPaymentAmount"
-                value={formData.downPaymentAmount}
+                value={formData.downPaymentAmount ?? ''}
                 onChange={handleInputChange}
                 placeholder="Down Payment Amount"
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 placeholder-slate-400 dark:placeholder-slate-400 transition-colors"
@@ -592,7 +605,7 @@ export default function CloseDealModal({
               <input
                 type="number"
                 name="paymentByMonth"
-                value={formData.paymentByMonth}
+                value={formData.paymentByMonth ?? ''}
                 onChange={handleInputChange}
                 placeholder="Monthly installment amount"
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white bg-white dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 placeholder-slate-400 dark:placeholder-slate-400 transition-colors"

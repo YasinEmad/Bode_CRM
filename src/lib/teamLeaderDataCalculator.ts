@@ -89,7 +89,9 @@ export async function calculateTeamLeaderPerformance(
   const [year, monthNum] = month.split('-').map(Number);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
 
-  // Create empty day buckets
+  // Create empty day buckets if we ever need them for iterations,
+  // but we will *not* use them as default values when building response
+  // objects; this prevents false zeros from being returned to the UI.
   const emptyDays: Record<string, number> = {};
   for (let i = 1; i <= daysInMonth; i++) {
     emptyDays[`day${i}`] = 0;
@@ -114,10 +116,11 @@ export async function calculateTeamLeaderPerformance(
   });
 
   // Build leaderPersonal by merging sources (admin has priority)
-  let leaderPersonalSheets = { ...emptyDays };
-  let leaderPersonalAssessments = { ...emptyDays };
-  let leaderPersonalMeetings = { ...emptyDays };
-  let leaderPersonalRequests = { ...emptyDays };
+  // start with empty objects so days only appear if explicitly set
+  let leaderPersonalSheets: Record<string, number> = {};
+  let leaderPersonalAssessments: Record<string, number> = {};
+  let leaderPersonalMeetings: Record<string, number> = {};
+  let leaderPersonalRequests: Record<string, number> = {};
 
   // First, merge from TeamPerformance if it exists (leader's own edits from team-report)
   if (teamLeaderPerf) {
@@ -126,10 +129,10 @@ export async function calculateTeamLeaderPerformance(
     const meetings = convertMongoMapToObject(teamLeaderPerf.meetings);
     const requests = convertMongoMapToObject(teamLeaderPerf.requests);
 
-    leaderPersonalSheets = { ...emptyDays, ...sheets };
-    leaderPersonalAssessments = { ...emptyDays, ...assessments };
-    leaderPersonalMeetings = { ...emptyDays, ...meetings };
-    leaderPersonalRequests = { ...emptyDays, ...requests };
+    leaderPersonalSheets = { ...sheets };
+    leaderPersonalAssessments = { ...assessments };
+    leaderPersonalMeetings = { ...meetings };
+    leaderPersonalRequests = { ...requests };
   }
 
   // Then, override with TeamLeaderPerformance if it exists (admin edits override)
@@ -149,16 +152,16 @@ export async function calculateTeamLeaderPerformance(
     const lockReq = convertMongoMapToBoolean(locks.requests) || {};
 
     for (const [k, v] of Object.entries(sheets)) {
-      if (lockSheets[k]) leaderPersonalSheets[k] = Number(v) || 0;
+      if (lockSheets[k]) leaderPersonalSheets[k] = Number(v);
     }
     for (const [k, v] of Object.entries(assessments)) {
-      if (lockAssess[k]) leaderPersonalAssessments[k] = Number(v) || 0;
+      if (lockAssess[k]) leaderPersonalAssessments[k] = Number(v);
     }
     for (const [k, v] of Object.entries(meetings)) {
-      if (lockMeet[k]) leaderPersonalMeetings[k] = Number(v) || 0;
+      if (lockMeet[k]) leaderPersonalMeetings[k] = Number(v);
     }
     for (const [k, v] of Object.entries(requests)) {
-      if (lockReq[k]) leaderPersonalRequests[k] = Number(v) || 0;
+      if (lockReq[k]) leaderPersonalRequests[k] = Number(v);
     }
   }
 
@@ -174,12 +177,13 @@ export async function calculateTeamLeaderPerformance(
   const dealsIncludeTeam = shouldIncludeTeamData('deals', aggregationConfig);
 
   // 6. Build aggregated totals
-  let aggregatedSheets = { ...emptyDays };
-  let aggregatedAssessments = { ...emptyDays };
-  let aggregatedMeetings = { ...emptyDays };
-  let aggregatedRequests = { ...emptyDays };
+  // aggregated buckets start empty; we'll add values only when they exist
+  let aggregatedSheets: Record<string, number> = {};
+  let aggregatedAssessments: Record<string, number> = {};
+  let aggregatedMeetings: Record<string, number> = {};
+  let aggregatedRequests: Record<string, number> = {};
 
-  // Start with leader personal data
+  // Start with leader personal data (which may itself be empty)
   aggregatedSheets = { ...leaderPersonalSheets };
   aggregatedAssessments = { ...leaderPersonalAssessments };
   aggregatedMeetings = { ...leaderPersonalMeetings };
@@ -197,28 +201,28 @@ export async function calculateTeamLeaderPerformance(
       if (sheetsIncludeTeam) {
         const sheets = convertMongoMapToObject(perf.sheets);
         for (const [k, v] of Object.entries(sheets)) {
-          aggregatedSheets[k] = (aggregatedSheets[k] || 0) + Number(v || 0);
+          aggregatedSheets[k] = (aggregatedSheets[k] || 0) + Number(v);
         }
       }
 
       if (assessmentsIncludeTeam) {
         const assessments = convertMongoMapToObject(perf.assessments);
         for (const [k, v] of Object.entries(assessments)) {
-          aggregatedAssessments[k] = (aggregatedAssessments[k] || 0) + Number(v || 0);
+          aggregatedAssessments[k] = (aggregatedAssessments[k] || 0) + Number(v);
         }
       }
 
       if (meetingsIncludeTeam) {
         const meetings = convertMongoMapToObject(perf.meetings);
         for (const [k, v] of Object.entries(meetings)) {
-          aggregatedMeetings[k] = (aggregatedMeetings[k] || 0) + Number(v || 0);
+          aggregatedMeetings[k] = (aggregatedMeetings[k] || 0) + Number(v);
         }
       }
 
       if (requestsIncludeTeam) {
         const requests = convertMongoMapToObject(perf.requests);
         for (const [k, v] of Object.entries(requests)) {
-          aggregatedRequests[k] = (aggregatedRequests[k] || 0) + Number(v || 0);
+          aggregatedRequests[k] = (aggregatedRequests[k] || 0) + Number(v);
         }
       }
     }
