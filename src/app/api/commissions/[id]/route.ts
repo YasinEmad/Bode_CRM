@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Commission from '@/models/Commission';
+import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
 import Lead from '@/models/Lead';
 import DealClosing from '@/models/DealClosing';
 import { verifyToken } from '@/lib/auth';
@@ -134,6 +135,14 @@ export async function DELETE(
 
     if (!commission) {
       return NextResponse.json({ error: 'Commission not found' }, { status: 404 });
+    }
+
+    // Delete associated ClosedDealSnapshot
+    try {
+      await ClosedDealSnapshot.findOneAndDelete({ commissionId: id });
+    } catch (err) {
+      console.error('Failed to delete associated ClosedDealSnapshot:', err);
+      // Continue with commission deletion even if snapshot deletion fails
     }
 
     // Log the admin action

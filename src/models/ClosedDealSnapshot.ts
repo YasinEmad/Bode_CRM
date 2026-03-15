@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IClosedDealSnapshot extends Document {
   dealId: mongoose.Types.ObjectId; // reference to DealClosing
+  commissionId: mongoose.Types.ObjectId; // reference to Commission
   leadId?: mongoose.Types.ObjectId | null; // optional reference to original Lead
   userId: mongoose.Types.ObjectId; // sales who created the DealClosing
   assignedTo?: mongoose.Types.ObjectId | null; // employee assigned on Lead
@@ -32,6 +33,7 @@ export interface IClosedDealSnapshot extends Document {
 const ClosedDealSnapshotSchema = new Schema<IClosedDealSnapshot>(
   {
     dealId: { type: mongoose.Schema.Types.ObjectId, ref: 'DealClosing', required: true, index: true },
+    commissionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Commission', required: false, index: true },
     leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', required: false, default: null, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null, index: true },

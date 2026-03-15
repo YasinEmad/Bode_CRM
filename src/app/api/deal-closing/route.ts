@@ -120,10 +120,50 @@ export async function POST(req: NextRequest) {
       info,
     });
 
+    // Update lead status to closed
+    const updatedLead = await Lead.findByIdAndUpdate(leadId, { status: 'closed_pending_approval' }, { new: true }).populate('assignedTo');
+    console.log('[DEAL-CLOSING] lead updated:', updatedLead?._id?.toString() || null, 'new status:', updatedLead?.status);
+
+    // Create a placeholder commission record so admin can see it in Commission Management
+    let commission = null;
+    if (updatedLead?.assignedTo) {
+      const existingCommission = await Commission.findOne({
+        dealId: dealClosing._id,
+        status: { $in: ['pending', 'approved'] },
+      });
+
+      if (!existingCommission) {
+        console.log('[DEAL-CLOSING] About to create commission with:');
+        console.log('  dealId (value):', dealClosing._id);
+        console.log('  dealId (type):', typeof dealClosing._id);
+        console.log('  employeeId:', updatedLead.assignedTo);
+        
+        commission = await Commission.create({
+          dealId: dealClosing._id,
+          employeeId: updatedLead.assignedTo,
+          amount: 0,
+          status: 'pending',
+          // Denormalize key client fields so UI does not depend on populate
+          clientName: dealClosing.clientName,
+          clientNumber: String(dealClosing.clientNumber || ''),
+          developer: dealClosing.developer,
+          project: dealClosing.project || (updatedLead as any).project || '',
+        });
+        
+        console.log('[DEAL-CLOSING] Commission created successfully:');
+        console.log('  commission._id:', commission._id);
+        console.log('  commission.dealId (after save):', commission.dealId);
+        console.log('  full commission:', JSON.stringify(commission.toObject(), null, 2));
+      } else {
+        commission = existingCommission;
+      }
+    }
+
     // Create a denormalized snapshot to preserve closed-deal data independently
     try {
       const snapshotPayload: any = {
         dealId: dealClosing._id,
+        commissionId: commission?._id,
         leadId: leadId || null,
         userId: decoded.userId,
         tcrType,
@@ -159,42 +199,6 @@ export async function POST(req: NextRequest) {
       await ClosedDealSnapshot.create(snapshotPayload);
     } catch (err) {
       console.error('Failed to create ClosedDealSnapshot:', err);
-    }
-
-    // Update lead status to closed
-    const updatedLead = await Lead.findByIdAndUpdate(leadId, { status: 'closed_pending_approval' }, { new: true }).populate('assignedTo');
-    console.log('[DEAL-CLOSING] lead updated:', updatedLead?._id?.toString() || null, 'new status:', updatedLead?.status);
-
-    // Create a placeholder commission record so admin can see it in Commission Management
-    if (updatedLead?.assignedTo) {
-      const existingCommission = await Commission.findOne({
-        dealId: dealClosing._id,
-        status: { $in: ['pending', 'approved'] },
-      });
-
-      if (!existingCommission) {
-        console.log('[DEAL-CLOSING] About to create commission with:');
-        console.log('  dealId (value):', dealClosing._id);
-        console.log('  dealId (type):', typeof dealClosing._id);
-        console.log('  employeeId:', updatedLead.assignedTo);
-        
-        const commission = await Commission.create({
-          dealId: dealClosing._id,
-          employeeId: updatedLead.assignedTo,
-          amount: 0,
-          status: 'pending',
-          // Denormalize key client fields so UI does not depend on populate
-          clientName: dealClosing.clientName,
-          clientNumber: String(dealClosing.clientNumber || ''),
-          developer: dealClosing.developer,
-          project: dealClosing.project || (updatedLead as any).project || '',
-        });
-        
-        console.log('[DEAL-CLOSING] Commission created successfully:');
-        console.log('  commission._id:', commission._id);
-        console.log('  commission.dealId (after save):', commission.dealId);
-        console.log('  full commission:', JSON.stringify(commission.toObject(), null, 2));
-      }
     }
 
     return NextResponse.json({ dealClosing, updatedLead }, { status: 201 });
