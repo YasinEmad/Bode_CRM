@@ -95,6 +95,41 @@ export async function PUT(
           const leadId = (dealClosing as any).leadId._id || (dealClosing as any).leadId;
           if (status === 'approved') {
             await Lead.findByIdAndUpdate(leadId, { status: 'closed' });
+            // Update or create ClosedDealSnapshot with commissionId when approved
+            const snapshotData = {
+              dealId: dealClosingId,
+              commissionId: commission._id,
+              leadId: dealClosing.leadId,
+              userId: dealClosing.userId,
+              assignedTo: (dealClosing as any).leadId?.assignedTo || null,
+              tcrType: dealClosing.tcrType,
+              clientName: dealClosing.clientName,
+              clientNumber: dealClosing.clientNumber,
+              developer: dealClosing.developer,
+              project: dealClosing.project,
+              unitCode: dealClosing.unitCode,
+              unitArea: dealClosing.unitArea,
+              unitType: dealClosing.unitType,
+              contractPrice: dealClosing.contractPrice,
+              contractDate: dealClosing.contractDate,
+              finishingType: dealClosing.finishingType,
+              deliveryDate: dealClosing.deliveryDate,
+              paymentPlan: dealClosing.paymentPlan,
+              downPaymentPercentage: dealClosing.downPaymentPercentage,
+              downPaymentAmount: dealClosing.downPaymentAmount,
+              paymentByMonth: dealClosing.paymentByMonth,
+              attachments: dealClosing.attachments,
+              info: dealClosing.info,
+              shared: dealClosing.shared,
+              proofImage: (dealClosing as any).leadId?.proofImage || '',
+              createdAt: dealClosing.createdAt,
+              updatedAt: new Date(),
+            };
+            await ClosedDealSnapshot.findOneAndUpdate(
+              { dealId: dealClosingId },
+              snapshotData,
+              { upsert: true, new: true }
+            );
           } else if (status === 'rejected') {
             await Lead.findByIdAndUpdate(leadId, { status: 'rejected' });
           }

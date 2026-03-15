@@ -116,26 +116,20 @@ export default function CloseDealModal({
         throw new Error('ImageKit public key not configured');
       }
 
-      const readFileAsDataUrl = (file: File) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = (err) => reject(err);
-          reader.readAsDataURL(file);
-        });
-
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const formDataUpload = new FormData();
-        let dataUrl: string | null = null;
 
-        // Convert actual File objects to data URI to allow unsigned/publicKey client uploads
-        if (file instanceof File) {
-          dataUrl = await readFileAsDataUrl(file);
-          formDataUpload.append('file', dataUrl);
-        } else {
-          formDataUpload.append('file', file as any);
+        // Warn for large files that might cause issues on mobile
+        const maxRecommendedSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxRecommendedSize) {
+          console.warn(`Large file detected (${(file.size / 1024 / 1024).toFixed(2)}MB). Upload may be slow on mobile devices.`);
         }
+
+        const formDataUpload = new FormData();
+
+        // Use raw File object directly for better iOS Safari compatibility
+        // Avoid converting to data URL which causes memory issues on iOS
+        formDataUpload.append('file', file);
 
         formDataUpload.append('publicKey', publicKey);
         formDataUpload.append('fileName', `deal-closing-${Date.now()}-${i}`);
@@ -144,10 +138,17 @@ export default function CloseDealModal({
         // Debug: ensure public key is present in client (public key is safe to log)
         console.debug('ImageKit publicKey present:', !!publicKey);
 
+        // Add timeout for upload (60 seconds)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
         const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
           method: 'POST',
           body: formDataUpload,
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -160,7 +161,15 @@ export default function CloseDealModal({
             (typeof errorData.error === 'string' && errorData.error.toLowerCase().includes('authorization')) ||
             (errorData.message && errorData.message.includes('missing authorization'));
 
-          if (needAuth && dataUrl) {
+          if (needAuth) {
+            // Convert to data URL only for server-side fallback
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = (err) => reject(err);
+              reader.readAsDataURL(file);
+            });
+
             try {
               const serverRes = await fetch('/api/uploads/imagekit', {
                 method: 'POST',
