@@ -34,6 +34,25 @@ interface TeamLeaderPerformance {
   teamDealsCount?: number;
 }
 
+interface SalesPerformance {
+  userId: string;
+  name: string;
+  month: string;
+  daysInMonth: number;
+  sheets: Record<string, number>;
+  assessments: Record<string, number>;
+  meetings: Record<string, number>;
+  requests: Record<string, number>;
+  leadsCount?: number;
+  dealsCount?: number;
+}
+
+interface TeamWithSales {
+  id: string;
+  name: string;
+  sales: SalesPerformance[];
+}
+
 const months = [
   { name: 'January', value: '01' },
   { name: 'February', value: '02' },
@@ -67,9 +86,11 @@ export default function TeamLeadersMonthlyReport() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<'sheets' | 'assessments' | 'meetings' | 'requests'>('sheets');
   const [leaderData, setLeaderData] = useState<TeamLeaderPerformance[]>([]);
+  const [teamsWithSales, setTeamsWithSales] = useState<TeamWithSales[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
   const [expandedLeaders, setExpandedLeaders] = useState<Set<string>>(new Set());
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
 
   // Generate categories dynamically with labels from hook
   const categories = [
@@ -277,7 +298,68 @@ export default function TeamLeadersMonthlyReport() {
         };
       });
 
+      // Build data for sales employees (all team members except leaders)
+      const allMembers = teamsData.teams?.flatMap((team: any) => team.members || []) || [];
+      const uniqueMembers = Array.from(
+        new Map(allMembers.map((member: any) => [member.id, member])).values()
+      );
+      const salesEmployees = uniqueMembers.filter((emp: any) => !leaderIds.includes(String(emp.id)));
+      const salesData = salesEmployees.map((emp: any) => {
+        const empId = String(emp._id);
+        const perf = performanceByEmployee.get(empId);
+        const stats = leadsByEmployee.get(empId) || { leadsCount: 0, dealsCount: 0 };
+
+        const days = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+        const emptyDays: Record<string, number> = {};
+
+        return {
+          userId: empId,
+          name: emp.name,
+          month: monthStr,
+          daysInMonth: days,
+          sheets: perf?.sheets || emptyDays,
+          assessments: perf?.assessments || emptyDays,
+          meetings: perf?.meetings || emptyDays,
+          requests: perf?.requests || emptyDays,
+          leadsCount: stats.leadsCount,
+          dealsCount: stats.dealsCount,
+        };
+      });
+
+      // Build teams with their sales
+      const teamsWithSalesData = teamsData.teams?.map((team: any) => {
+        const teamSales = team.members?.filter((member: any) => !leaderIds.includes(String(member.id))) || [];
+        const salesPerformances = teamSales.map((emp: any) => {
+          const empId = String(emp.id);
+          const perf = performanceByEmployee.get(empId);
+          const stats = leadsByEmployee.get(empId) || { leadsCount: 0, dealsCount: 0 };
+
+          const days = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+          const emptyDays: Record<string, number> = {};
+
+          return {
+            userId: empId,
+            name: emp.name,
+            month: monthStr,
+            daysInMonth: days,
+            sheets: perf?.sheets || emptyDays,
+            assessments: perf?.assessments || emptyDays,
+            meetings: perf?.meetings || emptyDays,
+            requests: perf?.requests || emptyDays,
+            leadsCount: stats.leadsCount,
+            dealsCount: stats.dealsCount,
+          };
+        });
+
+        return {
+          id: team.id,
+          name: team.name,
+          sales: salesPerformances,
+        };
+      }) || [];
+
       setLeaderData(leaderData);
+      setTeamsWithSales(teamsWithSalesData);
     } catch (error) {
       console.error('Error fetching team leader data:', error);
       addToast('Error loading team leader data', 'error');
@@ -363,6 +445,65 @@ export default function TeamLeadersMonthlyReport() {
     }
   };
 
+  const updateSalesCellValue = async (
+    sales: SalesPerformance,
+    category: 'sheets' | 'assessments' | 'meetings' | 'requests',
+    day: string,
+    newValue: number
+  ) => {
+    try {
+      setSavingData(true);
+
+      const updatedData = {
+        userId: sales.userId,
+        month: sales.month,
+        [category]: {
+          [day]: newValue,
+        },
+      };
+
+      const response = await fetch('/api/admin/team-performance', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to save data`;
+        throw new Error(errorMessage);
+      }
+
+      // Update local state
+      setTeamsWithSales((prevData) =>
+        prevData.map((team) => ({
+          ...team,
+          sales: team.sales.map((s) => {
+            if (s.userId === sales.userId) {
+              return {
+                ...s,
+                [category]: { ...(s[category] || {}), [day]: newValue },
+              };
+            }
+            return s;
+          }),
+        }))
+      );
+
+      await fetchLeaderData();
+      addToast('✅ Data saved successfully!', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error saving data:', message);
+      addToast(`Error saving data: ${message}`, 'error');
+    } finally {
+      setSavingData(false);
+    }
+  };
+
   const saveLeaderChanges = async (leader: TeamLeaderPerformance) => {
     try {
       setSavingData(true);
@@ -407,11 +548,64 @@ export default function TeamLeadersMonthlyReport() {
     }
   };
 
+  const saveSalesChanges = async (sales: SalesPerformance) => {
+    try {
+      setSavingData(true);
+
+      const payload: any = {
+        userId: sales.userId,
+        month: sales.month,
+      };
+
+      payload[selectedCategory] = sales[selectedCategory] || {};
+
+      const response = await fetch('/api/admin/team-performance', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to save data`;
+        throw new Error(errorMessage);
+      }
+
+      setTeamsWithSales((prevData) =>
+        prevData.map((team) => ({
+          ...team,
+          sales: team.sales.map((s) => (s.userId === sales.userId ? sales : s)),
+        }))
+      );
+
+      await fetchLeaderData();
+      addToast('✅ Data saved successfully!', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error saving data:', message);
+      addToast(`Error saving data: ${message}`, 'error');
+    } finally {
+      setSavingData(false);
+    }
+  };
+
   const toggleLeader = (leaderId: string) => {
     setExpandedLeaders((prev) => {
       const next = new Set(prev);
       if (next.has(leaderId)) next.delete(leaderId);
       else next.add(leaderId);
+      return next;
+    });
+  };
+
+  const toggleTeam = (teamId: string) => {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
       return next;
     });
   };
@@ -447,6 +641,37 @@ export default function TeamLeadersMonthlyReport() {
         }
         return l;
       })
+    );
+  };
+
+  const handleSalesLocalChange = (
+    userId: string,
+    category: 'sheets' | 'assessments' | 'meetings' | 'requests',
+    day: string,
+    value: number | null
+  ) => {
+    setTeamsWithSales((prev) =>
+      prev.map((team) => ({
+        ...team,
+        sales: team.sales.map((s) => {
+          if (s.userId === userId) {
+            const existing = s[category] || {};
+            const updatedCategory = { ...existing } as Record<string, number>;
+
+            if (value === null) {
+              delete updatedCategory[day];
+            } else {
+              updatedCategory[day] = value;
+            }
+
+            return {
+              ...s,
+              [category]: updatedCategory,
+            };
+          }
+          return s;
+        }),
+      }))
     );
   };
 
@@ -513,8 +738,8 @@ export default function TeamLeadersMonthlyReport() {
               <Users className="text-white" size={32} />
             </div>
             <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-1">Team Leaders Daily Report</h1>
-              <p className="text-slate-400 text-sm sm:text-base">Track team leaders performance by day</p>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-1">Team Leaders & Sales </h1>
+              <p className="text-slate-400 text-sm sm:text-base">Track team leaders and sales performance by day</p>
             </div>
           </div>
         </div>
@@ -578,19 +803,24 @@ export default function TeamLeadersMonthlyReport() {
           <div className="flex items-center justify-center py-12">
             <Loader className="animate-spin text-indigo-500" size={40} />
           </div>
-        ) : leaderData.length === 0 ? (
+        ) : leaderData.length === 0 && teamsWithSales.length === 0 ? (
           <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-12 text-center border border-slate-700">
-            <p className="text-slate-400 text-lg">No team leaders found</p>
+            <p className="text-slate-400 text-lg">No team leaders or sales found</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {leaderData.map((leader) => {
-              const isExpanded = expandedLeaders.has(leader.userId);
-              return (
-              <div
-                key={leader.userId}
-                className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700"
-              >
+            {/* Team Leaders Section */}
+            {leaderData.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Team Leaders</h2>
+                <div className="space-y-6">
+                  {leaderData.map((leader) => {
+                    const isExpanded = expandedLeaders.has(leader.userId);
+                    return (
+                    <div
+                      key={leader.userId}
+                      className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl p-6 border border-slate-700"
+                    >
                 {/* Leader Header */}
                 <div
                   onClick={() => toggleLeader(leader.userId)}
@@ -749,6 +979,185 @@ export default function TeamLeadersMonthlyReport() {
               </div>
             );
             })}
+                </div>
+              </div>
+            )}
+
+            {/* Teams with Sales Section */}
+            {teamsWithSales.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Sales by Team</h2>
+                <div className="space-y-8">
+                  {teamsWithSales.map((team) => {
+                    const isExpanded = expandedTeams.has(team.id);
+                    return (
+                      <div key={team.id} className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
+                        {/* Team Header */}
+                        <div
+                          onClick={() => toggleTeam(team.id)}
+                          className={`flex items-center justify-between p-6 cursor-pointer select-none hover:bg-slate-700/20 transition ${isExpanded ? 'bg-slate-700/40' : ''}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                              {isExpanded ? (
+                                <ChevronUp size={20} className="text-slate-300" />
+                              ) : (
+                                <ChevronDown size={20} className="text-slate-300" />
+                              )}
+                            </div>
+                            <h3 className="text-xl font-bold text-white">{team.name}</h3>
+                            <span className="text-sm text-slate-400 bg-slate-600/50 px-2 py-1 rounded-lg">
+                              {team.sales.length} Sales
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Team Sales */}
+                        {isExpanded && (
+                          <div className="px-6 pb-6 space-y-6">
+                            {team.sales.map((sales) => (
+                              <div
+                                key={sales.userId}
+                                className="bg-slate-900/50 rounded-xl p-4 border border-slate-600"
+                              >
+                                {/* Sales Header */}
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-2 border-b border-slate-500 gap-2 sm:gap-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                    <h4 className="text-lg font-semibold text-white">{sales.name}</h4>
+                                    {(() => {
+                                      const adminTotal =
+                                        (calculateTotal(sales.sheets) || 0) +
+                                        (calculateTotal(sales.assessments) || 0) +
+                                        (calculateTotal(sales.meetings) || 0) +
+                                        (calculateTotal(sales.requests) || 0);
+                                      return adminTotal > 0 ? (
+                                        <span className="text-xs bg-indigo-600 text-white px-2 py-1 rounded-lg font-semibold">Admin Entries</span>
+                                      ) : null;
+                                    })()}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
+                                      <span className="font-semibold">Leads:</span>{' '}
+                                      <span className="text-white">{sales.leadsCount ?? ''}</span>
+                                    </div>
+
+                                    <div className="text-xs text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-600">
+                                      <span className="font-semibold">Deals:</span>{' '}
+                                      <span className="text-white">{sales.dealsCount ?? ''}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-left sm:text-right">
+                                    <p className="text-slate-400 text-xs sm:text-sm mb-1">Personal Total</p>
+                                    <p className={`text-xl sm:text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>
+                                      {calculateTotal(sales[selectedCategory])}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Daily Performance */}
+                                <div className="mb-4 overflow-x-auto">
+                                  <div>
+                                    <h5 className="text-xs sm:text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Daily Performance</h5>
+                                    <div className="grid gap-1 sm:gap-2" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))'}}>
+                                      {Array.from({ length: sales.daysInMonth }).map((_, dayIndex) => {
+                                        const day = dayIndex + 1;
+                                        const dayKey = `day${day}`;
+                                        const raw = sales[selectedCategory]?.[dayKey];
+                                        const value = raw != null ? raw : '';
+                                        const dayOfWeek = new Date(parseInt(sales.month.split('-')[0]), parseInt(sales.month.split('-')[1]) - 1, day).toLocaleDateString('en-US', {
+                                          weekday: 'short',
+                                        });
+
+                                        return (
+                                          <div key={day} className="bg-slate-900/50 rounded-lg p-1 sm:p-2 border-2 transition hover:shadow-lg">
+                                            <div className="text-xs text-slate-400 mb-1 font-semibold hidden sm:block">{dayOfWeek}</div>
+                                            <div className="text-xs text-slate-500 mb-1 sm:mb-2 font-semibold">{day}</div>
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              value={value}
+                                              onChange={(e) => {
+                                                const txt = e.target.value;
+                                                if (txt === '') {
+                                                  handleSalesLocalChange(
+                                                    sales.userId,
+                                                    selectedCategory,
+                                                    dayKey,
+                                                    null
+                                                  );
+                                                } else {
+                                                  handleSalesLocalChange(
+                                                    sales.userId,
+                                                    selectedCategory,
+                                                    dayKey,
+                                                    Math.max(0, parseInt(txt) || 0)
+                                                  );
+                                                }
+                                              }}
+                                              onBlur={() => {
+                                                const raw = sales[selectedCategory]?.[dayKey];
+                                                if (raw != null) {
+                                                  updateSalesCellValue(sales, selectedCategory, dayKey, raw);
+                                                }
+                                              }}
+                                              className={`w-full px-1 py-1 sm:py-2 bg-gradient-to-br from-slate-700 to-slate-600 border border-slate-500 text-white rounded text-center text-sm sm:text-lg font-bold focus:outline-none focus:ring-2 transition ${
+                                                selectedCategoryObj?.color === 'blue'
+                                                  ? 'focus:ring-blue-500'
+                                                  : selectedCategoryObj?.color === 'emerald'
+                                                  ? 'focus:ring-emerald-500'
+                                                  : selectedCategoryObj?.color === 'purple'
+                                                  ? 'focus:ring-purple-500'
+                                                  : 'focus:ring-orange-500'
+                                              }`}
+                                              title={''}
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3 flex items-center justify-end gap-3">
+                                    <button
+                                      onClick={() => saveSalesChanges(sales)}
+                                      disabled={savingData}
+                                      className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${savingData ? 'opacity-60 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
+                                    >
+                                      {savingData ? 'Saving...' : 'Save'}
+                                    </button>
+                                  </div>
+
+                                  {/* Weekly Summary */}
+                                  <div className="mt-4">
+                                    <h5 className="text-xs sm:text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wide">Weekly Summary</h5>
+                                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                                      {[1, 2, 3, 4].map((week) => {
+                                        const startDay = 1 + (week - 1) * 7;
+                                        const endDay = Math.min(week * 7, sales.daysInMonth);
+                                        const weekTotal = calculateWeekTotal(sales[selectedCategory] || {}, startDay, endDay);
+
+                                        return (
+                                          <div key={week} className={`bg-gradient-to-br from-slate-700 to-slate-600 rounded-lg p-2 sm:p-3 border-2 text-center`}>
+                                            <div className="text-xs sm:text-sm text-slate-300">Week {week}</div>
+                                            <div className={`text-xl sm:text-2xl font-bold text-${selectedCategoryObj?.color}-400`}>{weekTotal ?? ''}</div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

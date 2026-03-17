@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
           id: team._id,
           name: team.name,
           leader: team.leader ? { id: team.leader._id, name: team.leader.name } : null,
+          members: members.map((m: any) => ({ id: m._id, name: m.name, position: m.position })),
           membersCount: members.length,
           leadsCount,
           nonNewLeadsCount,

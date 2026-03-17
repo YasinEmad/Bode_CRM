@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/mongodb';
 import TeamPerformance from '@/models/TeamPerformance';
 import Lead from '@/models/Lead';
@@ -105,5 +106,78 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching team performances:', error);
     return NextResponse.json({ error: 'Failed to fetch team performances' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const token = extractToken(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    // Verify user is admin
+    const user = await User.findById(payload.userId);
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const { userId, month, sheets, assessments, meetings, requests } = await req.json();
+
+    console.log('POST team-performance:', { userId, month, sheets, assessments, meetings, requests });
+
+    if (!userId || !month) {
+      return NextResponse.json({ error: 'Missing required fields: userId and month are required' }, { status: 400 });
+    }
+
+    // Convert userId to ObjectId if it's a string
+    const userObjectId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
+
+    console.log('userObjectId:', userObjectId);
+
+    // Find existing performance or create new one
+    let performance = await TeamPerformance.findOne({ userId: userObjectId, month });
+    if (!performance) {
+      performance = new TeamPerformance({
+        userId: userObjectId,
+        month,
+        sheets: {},
+        assessments: {},
+        meetings: {},
+        requests: {},
+      });
+    }
+
+    // Update the performance data
+    if (sheets) {
+      performance.sheets = new Map([...performance.sheets, ...Object.entries(sheets)]);
+    }
+    if (assessments) {
+      performance.assessments = new Map([...performance.assessments, ...Object.entries(assessments)]);
+    }
+    if (meetings) {
+      performance.meetings = new Map([...performance.meetings, ...Object.entries(meetings)]);
+    }
+    if (requests) {
+      performance.requests = new Map([...performance.requests, ...Object.entries(requests)]);
+    }
+
+    await performance.save();
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error saving team performance:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    return NextResponse.json({ error: 'Failed to save team performance' }, { status: 500 });
   }
 }
