@@ -24,6 +24,7 @@ interface Lead {
   email?: string;
   status: string;
   notes?: string;
+  createdAt: string | Date;
   assignedTo?: {
     name: string;
     _id: string;
@@ -42,6 +43,9 @@ export default function MyTeamPage() {
   const [selectedMemberName, setSelectedMemberName] = useState<string>('');
   const [leadsFilter, setLeadsFilter] = useState<'all' | 'member'>('all');
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
+  const [leadSearch, setLeadSearch] = useState<string>('');
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedMemberForNote, setSelectedMemberForNote] = useState<{ id: string; name: string } | null>(null);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
@@ -86,6 +90,8 @@ export default function MyTeamPage() {
       setSelectedMemberName(memberName);
       setLeadsFilter('member');
       setLeadStatusFilter('all');
+      setDateFromFilter('');
+      setDateToFilter('');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Failed to load leads', 'error');
     }
@@ -94,6 +100,38 @@ export default function MyTeamPage() {
   const handleOpenNoteModal = (memberId: string, memberName: string) => {
     setSelectedMemberForNote({ id: memberId, name: memberName });
     setShowNoteModal(true);
+  };
+
+  const filterLeads = (leads: Lead[]): Lead[] => {
+    return leads.filter((lead: Lead) => {
+      // Status filter
+      if (leadStatusFilter !== 'all' && lead.status !== leadStatusFilter) {
+        return false;
+      }
+
+      // Date range filter
+      if (dateFromFilter || dateToFilter) {
+        const leadDate = new Date(lead.createdAt);
+        if (dateFromFilter) {
+          const fromDate = new Date(dateFromFilter);
+          if (leadDate < fromDate) return false;
+        }
+        if (dateToFilter) {
+          const toDate = new Date(dateToFilter);
+          toDate.setHours(23, 59, 59, 999); // Include entire day
+          if (leadDate > toDate) return false;
+        }
+      }
+
+      // Text search filter (name, phone, email, notes)
+      if (leadSearch.trim()) {
+        const query = leadSearch.trim().toLowerCase();
+        const haystack = `${lead.name || ''} ${lead.phone || ''} ${lead.email || ''} ${lead.notes || ''}`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+
+      return true;
+    });
   };
 
   const handleAssignLead = async (leadId: string, newMemberId: string | null) => {
@@ -418,8 +456,8 @@ export default function MyTeamPage() {
                 <Eye size={22} className="text-cyan-400" />
                 <span className="truncate">
                   {leadsFilter === 'all' 
-                    ? `All Team Leads (${selectedLeads.filter((l: Lead) => leadStatusFilter === 'all' || l.status === leadStatusFilter).length})` 
-                    : `${selectedMemberName}'s Leads (${selectedLeads.filter((l: Lead) => leadStatusFilter === 'all' || l.status === leadStatusFilter).length})`
+                    ? `All Team Leads (${filterLeads(selectedLeads).length})` 
+                    : `${selectedMemberName}'s Leads (${filterLeads(selectedLeads).length})`
                   }
                 </span>
               </h3>
@@ -427,6 +465,8 @@ export default function MyTeamPage() {
                 onClick={() => {
                   setSelectedLeads(null);
                   setLeadStatusFilter('all');
+                  setDateFromFilter('');
+                  setDateToFilter('');
                 }} 
                 className="text-slate-400 hover:text-red-400 transition-colors p-1 hover:bg-red-400/10 rounded-lg"
               >
@@ -434,26 +474,82 @@ export default function MyTeamPage() {
               </button>
             </div>
             
-            {/* Status Filter */}
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-slate-300">Filter by Status:</label>
-              <select
-                value={leadStatusFilter}
-                onChange={(e) => setLeadStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
-              >
-                <option value="all">All Statuses</option>
-                <option value="new">✨ New</option>
-                <option value="connected">✓ Connected</option>
-                <option value="negotiation">💬 Negotiation</option>
-                <option value="pending_closed">⏳ Pending</option>
-                <option value="closed_pending_approval">⏼ Pending Approval</option>
-                <option value="closed">🎉 Closed</option>
-                <option value="low_budget">💰 Low Budget</option>
-                <option value="no_answer">📞 No Answer</option>
-                <option value="switched_off">🔴 Switched Off</option>
-                <option value="lost">❌ Lost</option>
-              </select>
+            {/* Search + Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+              <div className="col-span-1 md:col-span-2">
+                <label className="text-sm font-medium text-slate-300 block mb-2">Search Leads</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={leadSearch}
+                    onChange={(e) => setLeadSearch(e.target.value)}
+                    placeholder="Search by name, phone, email, notes..."
+                    className="w-full pr-10 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLeadSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-100"
+                    aria-label="Clear search"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-300 block mb-2">Status</label>
+                <select
+                  value={leadStatusFilter}
+                  onChange={(e) => setLeadStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="new">✨ New</option>
+                  <option value="connected">✓ Connected</option>
+                  <option value="negotiation">💬 Negotiation</option>
+                  <option value="pending_closed">⏳ Pending</option>
+                  <option value="closed_pending_approval">⏼ Pending Approval</option>
+                  <option value="closed">🎉 Closed</option>
+                  <option value="low_budget">💰 Low Budget</option>
+                  <option value="no_answer">📞 No Answer</option>
+                  <option value="switched_off">🔴 Switched Off</option>
+                  <option value="lost">❌ Lost</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-300 block mb-2">Date Range</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={dateFromFilter}
+                    onChange={(e) => setDateFromFilter(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                  />
+                  <span className="text-slate-400">to</span>
+                  <input
+                    type="date"
+                    value={dateToFilter}
+                    onChange={(e) => setDateToFilter(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end md:justify-start">
+                <button
+                  onClick={() => {
+                    setLeadStatusFilter('all');
+                    setDateFromFilter('');
+                    setDateToFilter('');
+                    setLeadSearch('');
+                  }}
+                  className="mt-6 bg-slate-700/70 hover:bg-slate-600 text-slate-100 px-3 py-2 rounded-lg text-xs font-semibold transition"
+                >
+                  Clear All Filters
+                </button>
+              </div>
             </div>
           </div>
 
@@ -467,8 +563,7 @@ export default function MyTeamPage() {
                 <p className="text-slate-400 font-medium">No leads found</p>
               </div>
             ) : (
-              selectedLeads
-                .filter((lead: Lead) => leadStatusFilter === 'all' || lead.status === leadStatusFilter)
+              filterLeads(selectedLeads)
                 .map((lead: Lead, idx: number) => {
                 const statusColors: Record<string, {bg: string, text: string, label: string}> = {
                   'new': {bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'New'},
@@ -515,6 +610,15 @@ export default function MyTeamPage() {
                                   <span className="font-semibold text-slate-400">Notes:</span> {lead.notes}
                                 </div>
                               )}
+                              <div className="mt-2 text-xs text-slate-500">
+                                Created: {new Date(lead.createdAt).toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
                             </div>
                           </div>
                         </div>
