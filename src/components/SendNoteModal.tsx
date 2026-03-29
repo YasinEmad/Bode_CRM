@@ -73,7 +73,7 @@ export default function SendNoteModal({
               <MessageSquare size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Send Note</h2>
+              <h2 className="text-lg font-bold text-white">Send Message</h2>
               <p className="text-sm text-slate-400">To: <span className="text-blue-400 font-semibold">{receiverName}</span></p>
             </div>
           </div>

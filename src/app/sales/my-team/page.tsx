@@ -23,6 +23,7 @@ interface Lead {
   phone: string;
   email?: string;
   status: string;
+  notes?: string;
   assignedTo?: {
     name: string;
     _id: string;
@@ -45,6 +46,9 @@ export default function MyTeamPage() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedMemberForNote, setSelectedMemberForNote] = useState<{ id: string; name: string } | null>(null);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [editingLeadForNotes, setEditingLeadForNotes] = useState<Lead | null>(null);
+  const [editingNotesText, setEditingNotesText] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
   const [newAssigneeId, setNewAssigneeId] = useState<string>('');
 
   useEffect(() => {
@@ -144,6 +148,46 @@ export default function MyTeamPage() {
       addToast('Lead assigned successfully!', 'success');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Failed to assign lead', 'error');
+    }
+  };
+
+  const openEditNotesModal = (lead: Lead) => {
+    setEditingLeadForNotes(lead);
+    setEditingNotesText(lead.notes || '');
+  };
+
+  const closeEditNotesModal = () => {
+    setEditingLeadForNotes(null);
+    setEditingNotesText('');
+  };
+
+  const saveLeadNotes = async () => {
+    if (!editingLeadForNotes) return;
+    try {
+      setSavingNotes(true);
+      const res = await fetch(`/api/leads/${editingLeadForNotes._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notes: editingNotesText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save notes');
+      setSelectedLeads((prev) =>
+        prev
+          ? prev.map((lead) =>
+              lead._id === editingLeadForNotes._id ? { ...lead, notes: editingNotesText } : lead
+            )
+          : prev
+      );
+      addToast('Notes updated successfully', 'success');
+      closeEditNotesModal();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to save notes', 'error');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -314,7 +358,7 @@ export default function MyTeamPage() {
                       onClick={() => handleOpenNoteModal(member.id, member.name)} 
                       className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm"
                     >
-                      <MessageSquare size={16} /> Send Note
+                      <MessageSquare size={16} /> Send Message
                     </button>
                     <button 
                       onClick={() => viewLeadsFor(member.id, member.name)} 
@@ -382,7 +426,7 @@ export default function MyTeamPage() {
                       onClick={() => handleOpenNoteModal(member.id, member.name)} 
                       className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 font-semibold text-sm"
                     >
-                      <MessageSquare size={16} /> Send Note
+                      <MessageSquare size={16} /> Send Message
                     </button>
                     <button 
                       onClick={() => viewLeadsFor(member.id, member.name)} 
@@ -468,6 +512,11 @@ export default function MyTeamPage() {
                                   <span className="break-all">{lead.email}</span>
                                 </div>
                               )}
+                              {lead.notes && (
+                                <div className="mt-2 text-xs text-slate-300">
+                                  <span className="font-semibold text-slate-400">Notes:</span> {lead.notes}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -519,30 +568,38 @@ export default function MyTeamPage() {
                                     {lead.assignedTo?.name || 'Unassigned'}
                                   </span>
                                 </div>
-                                {lead.status !== 'closed' && (
-                                  <div className="flex gap-1">
-                                    <button
-                                      onClick={() => handleAssignLead(lead._id, user?.id || null)}
-                                      className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
-                                    >
-                                      Assign to Me
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setEditingLeadId(lead._id);
-                                        setNewAssigneeId(lead.assignedTo?._id || '');
-                                      }}
-                                      className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold transition-colors"
-                                    >
-                                      Edit
-                                    </button>
-                                  </div>
-                                )}
-                                {lead.status === 'closed' && (
-                                  <div className="px-2 py-1 bg-slate-700/50 text-slate-400 rounded text-xs font-semibold">
-                                    Closed • Locked
-                                  </div>
-                                )}
+                                <div className="flex gap-1 items-center">
+                                  {lead.status !== 'closed' && (
+                                    <>
+                                      <button
+                                        onClick={() => handleAssignLead(lead._id, user?.id || null)}
+                                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
+                                      >
+                                        Assign to Me
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingLeadId(lead._id);
+                                          setNewAssigneeId(lead.assignedTo?._id || '');
+                                        }}
+                                        className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold transition-colors"
+                                      >
+                                        Edit
+                                      </button>
+                                    </>
+                                  )}
+                                  {lead.status === 'closed' && (
+                                    <div className="px-2 py-1 bg-slate-700/50 text-slate-400 rounded text-xs font-semibold">
+                                      Closed • Locked
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => openEditNotesModal(lead)}
+                                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs font-semibold transition-colors"
+                                  >
+                                    Edit Notes
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </>
@@ -553,6 +610,54 @@ export default function MyTeamPage() {
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Notes Modal */}
+      {editingLeadForNotes && token && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-6">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-white">Edit Notes</h2>
+                <p className="text-sm text-slate-400">Lead: {editingLeadForNotes.name}</p>
+              </div>
+              <button
+                onClick={closeEditNotesModal}
+                disabled={savingNotes}
+                className="text-slate-400 hover:text-white hover:bg-slate-700/50 p-2 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <textarea
+              value={editingNotesText}
+              onChange={(e) => setEditingNotesText(e.target.value)}
+              rows={5}
+              className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Edit notes for this lead..."
+              disabled={savingNotes}
+            />
+            <div className="mt-2 text-xs text-slate-400 flex justify-end">
+              {editingNotesText.length} / 2000 characters
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={closeEditNotesModal}
+                disabled={savingNotes}
+                className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveLeadNotes}
+                disabled={savingNotes}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {savingNotes ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}

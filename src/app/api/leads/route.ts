@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Lead from '@/models/Lead';
 import ClosedDealSnapshot from '@/models/ClosedDealSnapshot';
+import Team from '@/models/Team';
+import User from '@/models/User';
 import { logAdminAction } from '@/lib/adminLogger';
 import { verifyToken } from '@/lib/auth';
 
@@ -52,13 +54,48 @@ export async function GET(req: NextRequest) {
         }
       }
     }
-    // Sales users see only leads assigned to them
+    // Sales users see only leads assigned to them, unless they are team leaders viewing their team members' leads
     else if (payload.role === 'sales') {
-      try {
-        const { Types } = await import('mongoose');
-        query.assignedTo = new Types.ObjectId(payload.userId);
-      } catch {
-        query.assignedTo = payload.userId;
+      if (userId) {
+        // Check if the current user is a team leader and the requested userId is a member of their team
+        const team = await Team.findOne({ leader: payload.userId }).lean();
+        if (team) {
+          // Check if userId is a member of this team
+          const member = await User.findOne({ _id: userId, teamId: team._id }).lean();
+          if (member) {
+            // Team leader is viewing a team member's leads
+            try {
+              const { Types } = await import('mongoose');
+              query.assignedTo = new Types.ObjectId(userId);
+            } catch {
+              query.assignedTo = userId;
+            }
+          } else {
+            // Not a team member, restrict to own leads
+            try {
+              const { Types } = await import('mongoose');
+              query.assignedTo = new Types.ObjectId(payload.userId);
+            } catch {
+              query.assignedTo = payload.userId;
+            }
+          }
+        } else {
+          // Not a team leader, restrict to own leads
+          try {
+            const { Types } = await import('mongoose');
+            query.assignedTo = new Types.ObjectId(payload.userId);
+          } catch {
+            query.assignedTo = payload.userId;
+          }
+        }
+      } else {
+        // No userId specified, show own leads
+        try {
+          const { Types } = await import('mongoose');
+          query.assignedTo = new Types.ObjectId(payload.userId);
+        } catch {
+          query.assignedTo = payload.userId;
+        }
       }
     }
 

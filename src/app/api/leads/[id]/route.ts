@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import Lead from '@/models/Lead';
 import Commission from '@/models/Commission';
 import User from '@/models/User';
+import Team from '@/models/Team';
 import SystemSettings from '@/models/SystemSettings';
 import { verifyToken } from '@/lib/auth';
 import { logAdminAction } from '@/lib/adminLogger';
@@ -35,17 +36,51 @@ export async function PUT(
 
     // Only admin can edit name, project, phone, source, assignedTo
     // Sales can only edit status and notes for their assigned leads
+    // Team leaders (sales with teams) can edit notes for their team members' leads
     if (payload.role === 'sales') {
       // Allow project field only when closing a lead (status === 'closed')
       const isClosingDeal = status === 'closed';
       if (name || (!isClosingDeal && project !== undefined) || phone || source || assignedTo !== undefined) {
         return NextResponse.json({ error: 'Sales can only update status and notes' }, { status: 403 });
       }
-      // Verify lead is assigned to this sales person
+      
+      // Fetch the lead to check ownership
       const lead = await Lead.findById(id);
-      if (!lead || lead.assignedTo?.toString() !== payload.userId) {
-        return NextResponse.json({ error: 'You can only update your assigned leads' }, { status: 403 });
+      if (!lead) {
+        return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
       }
+
+      // Check if user is a team leader and if they're trying to edit a team member's lead
+      const isTeamLeader = await Team.findOne({ leader: payload.userId }).lean();
+      if (isTeamLeader) {
+        // Team leader can edit notes for team members' leads
+        if (notes !== undefined) {
+          // OK - team leader can edit notes
+          // But they cannot change status or close the lead
+          if (status && status !== lead.status) {
+            return NextResponse.json({ error: 'Team leaders can only edit notes, not status' }, { status: 403 });
+          }
+          // Verify the lead is assigned to someone in their team
+          const member = await User.findOne({ _id: lead.assignedTo, teamId: isTeamLeader._id }).lean();
+          if (!member) {
+            // Lead is not assigned to a team member, check if it's assigned to the team leader themselves
+            if (lead.assignedTo?.toString() !== payload.userId) {
+              return NextResponse.json({ error: 'This lead is not in your team' }, { status: 403 });
+            }
+          }
+        } else {
+          // Team leader trying to edit non-notes field - check if it's their own lead
+          if (lead.assignedTo?.toString() !== payload.userId) {
+            return NextResponse.json({ error: 'You can only update your assigned leads' }, { status: 403 });
+          }
+        }
+      } else {
+        // Regular sales person can only edit their own assigned leads
+        if (lead.assignedTo?.toString() !== payload.userId) {
+          return NextResponse.json({ error: 'You can only update your assigned leads' }, { status: 403 });
+        }
+      }
+
       // Prevent sales from changing a closed lead to any other status
       if (lead.status === 'closed' && status && status !== 'closed') {
         return NextResponse.json({ error: 'You cannot change the status of a closed lead' }, { status: 403 });
