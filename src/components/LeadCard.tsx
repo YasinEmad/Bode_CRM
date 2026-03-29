@@ -26,6 +26,9 @@ const statusColors: Record<string, { bg: string; text: string; border: string; l
   connected: { bg: 'from-emerald-600 to-emerald-700', text: 'text-emerald-100', border: 'border-emerald-500', label: 'Connected', icon: '✓' },
   negotiation: { bg: 'from-amber-600 to-amber-700', text: 'text-amber-100', border: 'border-amber-500', label: 'Negotiation', icon: '💬' },
   closed: { bg: 'from-purple-600 to-purple-700', text: 'text-purple-100', border: 'border-purple-500', label: 'Closed', icon: '🎉' },
+  low_budget: { bg: 'from-gray-600 to-gray-700', text: 'text-gray-100', border: 'border-gray-500', label: 'Low Budget', icon: '💸' },
+  no_answer: { bg: 'from-orange-600 to-orange-700', text: 'text-orange-100', border: 'border-orange-500', label: 'No Answer', icon: '📞' },
+  switched_off: { bg: 'from-red-600 to-red-700', text: 'text-red-100', border: 'border-red-500', label: 'Switched Off', icon: '🔴' },
 };
 
 export default function LeadCard({
@@ -253,6 +256,9 @@ export default function LeadCard({
               <option value="connected">✓ Connected</option>
               <option value="negotiation">💬 Negotiation</option>
               <option value="closed">🎉 Closed</option>
+              <option value="low_budget">💸 Low Budget</option>
+              <option value="no_answer">📞 No Answer</option>
+              <option value="switched_off">🔴 Switched Off</option>
             </select>
           </div>
 

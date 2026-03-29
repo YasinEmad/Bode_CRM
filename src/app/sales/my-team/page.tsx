@@ -41,8 +41,7 @@ export default function MyTeamPage() {
   const [selectedLeads, setSelectedLeads] = useState<Lead[] | null>(null);
   const [selectedMemberName, setSelectedMemberName] = useState<string>('');
   const [leadsFilter, setLeadsFilter] = useState<'all' | 'member'>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'leads' | 'closed' | 'conversion'>('leads');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedMemberForNote, setSelectedMemberForNote] = useState<{ id: string; name: string } | null>(null);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
@@ -76,18 +75,6 @@ export default function MyTeamPage() {
     } finally { setLoadingData(false); }
   };
 
-  const getSortedMembers = () => {
-    const sorted = [...members].sort((a, b) => {
-      let aVal: any = a[sortBy as keyof TeamMember];
-      let bVal: any = b[sortBy as keyof TeamMember];
-      
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  };
-
   const viewLeadsFor = async (memberId: string, memberName: string) => {
     try {
       const res = await fetch(`/api/leads?userId=${memberId}`, { 
@@ -98,6 +85,7 @@ export default function MyTeamPage() {
       setSelectedLeads(data.leads || []);
       setSelectedMemberName(memberName);
       setLeadsFilter('member');
+      setLeadStatusFilter('all');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Failed to load leads', 'error');
     }
@@ -257,28 +245,6 @@ export default function MyTeamPage() {
             <TrendingUp size={24} className="text-cyan-400" />
             Team Performance
           </h2>
-          
-          {/* Sorting Controls */}
-          {members.length > 0 && (
-            <div className="w-full sm:w-auto flex gap-2 text-xs sm:text-sm">
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 bg-slate-700/60 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
-              >
-                <option value="name">Sort by Name</option>
-                <option value="leads">Sort by Leads</option>
-                <option value="closed">Sort by Closed</option>
-                <option value="conversion">Sort by Conversion</option>
-              </select>
-              <button
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="px-3 py-2 bg-slate-700/60 border border-slate-600 rounded-lg text-slate-200 hover:bg-slate-600/60 transition-colors flex items-center gap-1"
-              >
-                <ChevronDown size={16} className={`transition-transform ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-          )}
         </div>
 
         {members.length === 0 ? (
@@ -292,7 +258,7 @@ export default function MyTeamPage() {
           <>
             {/* Desktop View - Grid */}
             <div className="hidden lg:grid grid-cols-2 xl:grid-cols-3 gap-5">
-              {getSortedMembers().map((member) => (
+              {members.map((member) => (
                 <div 
                   key={member.id} 
                   className="group relative bg-gradient-to-br from-slate-700/40 to-slate-800/40 border border-slate-600/50 hover:border-cyan-500/50 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/20 hover:bg-slate-700/60"
@@ -373,7 +339,7 @@ export default function MyTeamPage() {
 
             {/* Mobile/Tablet View - List */}
             <div className="lg:hidden space-y-3">
-              {getSortedMembers().map((member) => (
+              {members.map((member) => (
                 <div 
                   key={member.id} 
                   className="bg-gradient-to-br from-slate-700/40 to-slate-800/40 border border-slate-600/50 hover:border-cyan-500/50 rounded-lg p-4 transition-all duration-300"
@@ -446,22 +412,49 @@ export default function MyTeamPage() {
       {selectedLeads && (
         <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-slate-700/50 rounded-xl overflow-hidden backdrop-blur-sm animate-in fade-in duration-300">
           {/* Header */}
-          <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-slate-700/50 bg-gradient-to-r from-slate-800/80 to-slate-900/80">
-            <h3 className="font-bold text-lg sm:text-xl flex items-center gap-2">
-              <Eye size={22} className="text-cyan-400" />
-              <span className="truncate">
-                {leadsFilter === 'all' 
-                  ? `All Team Leads (${selectedLeads.length})` 
-                  : `${selectedMemberName}'s Leads (${selectedLeads.length})`
-                }
-              </span>
-            </h3>
-            <button 
-              onClick={() => setSelectedLeads(null)} 
-              className="text-slate-400 hover:text-red-400 transition-colors p-1 hover:bg-red-400/10 rounded-lg"
-            >
-              <X size={24} />
-            </button>
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-700/50 bg-gradient-to-r from-slate-800/80 to-slate-900/80">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-lg sm:text-xl flex items-center gap-2">
+                <Eye size={22} className="text-cyan-400" />
+                <span className="truncate">
+                  {leadsFilter === 'all' 
+                    ? `All Team Leads (${selectedLeads.filter((l: Lead) => leadStatusFilter === 'all' || l.status === leadStatusFilter).length})` 
+                    : `${selectedMemberName}'s Leads (${selectedLeads.filter((l: Lead) => leadStatusFilter === 'all' || l.status === leadStatusFilter).length})`
+                  }
+                </span>
+              </h3>
+              <button 
+                onClick={() => {
+                  setSelectedLeads(null);
+                  setLeadStatusFilter('all');
+                }} 
+                className="text-slate-400 hover:text-red-400 transition-colors p-1 hover:bg-red-400/10 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            {/* Status Filter */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-slate-300">Filter by Status:</label>
+              <select
+                value={leadStatusFilter}
+                onChange={(e) => setLeadStatusFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+              >
+                <option value="all">All Statuses</option>
+                <option value="new">✨ New</option>
+                <option value="connected">✓ Connected</option>
+                <option value="negotiation">💬 Negotiation</option>
+                <option value="pending_closed">⏳ Pending</option>
+                <option value="closed_pending_approval">⏼ Pending Approval</option>
+                <option value="closed">🎉 Closed</option>
+                <option value="low_budget">💰 Low Budget</option>
+                <option value="no_answer">📞 No Answer</option>
+                <option value="switched_off">🔴 Switched Off</option>
+                <option value="lost">❌ Lost</option>
+              </select>
+            </div>
           </div>
 
           {/* Leads List */}
@@ -474,7 +467,9 @@ export default function MyTeamPage() {
                 <p className="text-slate-400 font-medium">No leads found</p>
               </div>
             ) : (
-              selectedLeads.map((lead: Lead, idx: number) => {
+              selectedLeads
+                .filter((lead: Lead) => leadStatusFilter === 'all' || lead.status === leadStatusFilter)
+                .map((lead: Lead, idx: number) => {
                 const statusColors: Record<string, {bg: string, text: string, label: string}> = {
                   'new': {bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'New'},
                   'connected': {bg: 'bg-purple-500/20', text: 'text-purple-300', label: 'Connected'},
@@ -482,6 +477,9 @@ export default function MyTeamPage() {
                   'pending_closed': {bg: 'bg-yellow-500/20', text: 'text-yellow-300', label: 'Pending'},
                   'closed_pending_approval': {bg: 'bg-cyan-500/20', text: 'text-cyan-300', label: 'Pending Approval'},
                   'closed': {bg: 'bg-emerald-500/20', text: 'text-emerald-300', label: 'Closed'},
+                  'low_budget': {bg: 'bg-gray-500/20', text: 'text-gray-300', label: 'Low Budget'},
+                  'no_answer': {bg: 'bg-orange-600/20', text: 'text-orange-200', label: 'No Answer'},
+                  'switched_off': {bg: 'bg-red-600/20', text: 'text-red-200', label: 'Switched Off'},
                   'lost': {bg: 'bg-red-500/20', text: 'text-red-300', label: 'Lost'},
                 };
                 
@@ -526,83 +524,79 @@ export default function MyTeamPage() {
                           {statusInfo.label}
                         </span>
                         
-                        {/* Assignment Editor */}
-                        {leadsFilter === 'all' && (
-                          <>
-                            {editingLeadId === lead._id ? (
-                              <div className="flex gap-2 items-center">
-                                <select
-                                  value={newAssigneeId}
-                                  onChange={(e) => setNewAssigneeId(e.target.value)}
-                                  className="px-2 py-1 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
-                                >
-                                  <option value="">Unassign</option>
-                                  <option value={user?.id}>{user?.name} (You)</option>
-                                  {members.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                      {m.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => handleAssignLead(lead._id, newAssigneeId || null)}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors"
-                                >
-                                  ✓
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingLeadId(null);
-                                    setNewAssigneeId('');
-                                  }}
-                                  className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-slate-400 flex flex-col sm:flex-row gap-2 items-end">
-                                <div>
-                                  Assigned to:{' '}
-                                  <span className="text-slate-300 font-medium">
-                                    {lead.assignedTo?.name || 'Unassigned'}
-                                  </span>
-                                </div>
-                                <div className="flex gap-1 items-center">
-                                  {lead.status !== 'closed' && (
-                                    <>
-                                      <button
-                                        onClick={() => handleAssignLead(lead._id, user?.id || null)}
-                                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
-                                      >
-                                        Assign to Me
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingLeadId(lead._id);
-                                          setNewAssigneeId(lead.assignedTo?._id || '');
-                                        }}
-                                        className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold transition-colors"
-                                      >
-                                        Edit
-                                      </button>
-                                    </>
-                                  )}
-                                  {lead.status === 'closed' && (
-                                    <div className="px-2 py-1 bg-slate-700/50 text-slate-400 rounded text-xs font-semibold">
-                                      Closed • Locked
-                                    </div>
-                                  )}
+                        {/* Assignment Editor - Show for both 'all' and 'member' filters */}
+                        {editingLeadId === lead._id ? (
+                          <div className="flex gap-2 items-center">
+                            <select
+                              value={newAssigneeId}
+                              onChange={(e) => setNewAssigneeId(e.target.value)}
+                              className="px-2 py-1 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
+                            >
+                              <option value="">Unassign</option>
+                              <option value={user?.id}>{user?.name} (You)</option>
+                              {members.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleAssignLead(lead._id, newAssigneeId || null)}
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingLeadId(null);
+                                setNewAssigneeId('');
+                              }}
+                              className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-400 flex flex-col sm:flex-row gap-2 items-end">
+                            <div>
+                              Assigned to:{' '}
+                              <span className="text-slate-300 font-medium">
+                                {lead.assignedTo?.name || 'Unassigned'}
+                              </span>
+                            </div>
+                            <div className="flex gap-1 items-center flex-wrap">
+                              {lead.status !== 'closed' && (
+                                <>
                                   <button
-                                    onClick={() => openEditNotesModal(lead)}
-                                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs font-semibold transition-colors"
+                                    onClick={() => handleAssignLead(lead._id, user?.id || null)}
+                                    className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
                                   >
-                                    Edit Notes
+                                    Assign to Me
                                   </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingLeadId(lead._id);
+                                      setNewAssigneeId(lead.assignedTo?._id || '');
+                                    }}
+                                    className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold transition-colors"
+                                  >
+                                    Edit
+                                  </button>
+                                </>
+                              )}
+                              {lead.status === 'closed' && (
+                                <div className="px-2 py-1 bg-slate-700/50 text-slate-400 rounded text-xs font-semibold">
+                                  Closed • Locked
                                 </div>
-                              </div>
-                            )}
-                          </>
+                              )}
+                              <button
+                                onClick={() => openEditNotesModal(lead)}
+                                className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs font-semibold transition-colors"
+                              >
+                                Edit Notes
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

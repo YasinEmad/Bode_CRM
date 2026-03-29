@@ -16,7 +16,10 @@ type LeadStatus =
   | 'pending_closed'
   | 'closed_pending_approval'
   | 'closed'
-  | 'lost';
+  | 'lost'
+  | 'low_budget'
+  | 'no_answer'
+  | 'switched_off';
 
 interface Lead {
   _id: string;
@@ -465,6 +468,9 @@ export default function AdminLeads() {
     connected: leads.filter(l => l.status === 'connected').length,
     negotiation: leads.filter(l => l.status === 'negotiation').length,
     closed: leads.filter(l => l.status === 'closed').length,
+    low_budget: leads.filter(l => l.status === 'low_budget').length,
+    no_answer: leads.filter(l => l.status === 'no_answer').length,
+    switched_off: leads.filter(l => l.status === 'switched_off').length,
     totalProjects: leads.filter((l) => Boolean(l.project && l.project.trim().length > 0)).length,
   };
 
@@ -748,6 +754,9 @@ export default function AdminLeads() {
                       <option value="connected">✓ Connected</option>
                       <option value="negotiation">💬 Negotiation</option>
                       <option value="closed">🎉 Closed</option>
+                      <option value="low_budget">💰 Low Budget</option>
+                      <option value="no_answer">📞 No Answer</option>
+                      <option value="switched_off">🔴 Switched Off</option>
                       <option value="lost">Lost</option>
                     </select>
                   </div>

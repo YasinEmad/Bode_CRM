@@ -7,7 +7,7 @@ import { Loader, Plus, X, Info } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import BulkImportComponent from '@/components/BulkImportComponent';
 
-type LeadStatus = 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost';
+type LeadStatus = 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'lost' | 'low_budget' | 'no_answer' | 'switched_off';
 
 interface FormData {
   name: string;

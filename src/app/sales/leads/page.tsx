@@ -14,7 +14,7 @@ interface Lead {
   project?: string;
   phone: string;
   email?: string;
-  status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'rejected' | 'lost';
+  status: 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'rejected' | 'lost' | 'low_budget' | 'no_answer' | 'switched_off';
   source: string;
   notes: string;
   assignedTo?: { _id: string; name: string };
@@ -27,6 +27,9 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   closed: { bg: 'bg-purple-100', text: 'text-purple-800' },
   pending_closed: { bg: 'bg-purple-50', text: 'text-purple-700' },
   closed_pending_approval: { bg: 'bg-purple-200', text: 'text-purple-900' },
+  low_budget: { bg: 'bg-gray-100', text: 'text-gray-800' },
+  no_answer: { bg: 'bg-orange-100', text: 'text-orange-800' },
+  switched_off: { bg: 'bg-red-200', text: 'text-red-900' },
   rejected: { bg: 'bg-red-100', text: 'text-red-800' },
   lost: { bg: 'bg-red-100', text: 'text-red-800' },
 };
@@ -343,6 +346,9 @@ export default function SalesLeads() {
                   <option value="connected">Connected</option>
                   <option value="negotiation">Negotiation</option>
                   <option value="closed">Closed</option>
+                  <option value="low_budget">Low Budget</option>
+                  <option value="no_answer">No Answer</option>
+                  <option value="switched_off">Switched Off</option>
                   <option value="rejected">Rejected</option>
                   <option value="lost">Lost</option>
                 </select>
