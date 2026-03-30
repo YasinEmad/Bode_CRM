@@ -18,6 +18,11 @@ interface Lead {
   status: string;
   notes: string;
   value?: number;
+  comments?: {
+    text: string;
+    author: string;
+    timestamp: string | Date;
+  }[];
 }
 
 interface Employee {
@@ -156,6 +161,32 @@ export default function SalesDashboard() {
       fetchLeads();
     } catch (error) {
       console.error('Error updating lead:', error instanceof Error ? error.message : error);
+    }
+  };
+
+  const handleAddComment = async (leadId: string, comment: string) => {
+    try {
+      const res = await fetch('/api/leads/comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, comment }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add comment');
+      }
+
+      const data = await res.json();
+      if (data?.lead) {
+        setLeads((prev) => prev.map((l) => (l._id === leadId ? { ...l, comments: data.lead.comments || [] } : l)));
+      }
+      fetchLeads();
+      addToast('Comment added successfully!', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to add comment', 'error');
     }
   };
 
@@ -352,6 +383,8 @@ export default function SalesDashboard() {
                     console.error('Assign error:', err);
                   }
                 }}
+                comments={lead.comments || []}
+                onAddComment={(comment) => handleAddComment(lead._id, comment)}
                 onStatusChange={(status, extra) => handleStatusChange(lead._id, status, extra)}
                 onNotesChange={(notes) => handleNotesChange(lead._id, notes)}
               />

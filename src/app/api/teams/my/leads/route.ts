@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
     if (memberIds.length === 0) return NextResponse.json({ leads: [] });
 
     const leads = await Lead.find({ assignedTo: { $in: memberIds } })
+      .select('name project phone email status source notes assignedTo comments createdAt updatedAt')
       .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 });
 

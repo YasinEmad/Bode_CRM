@@ -29,6 +29,11 @@ interface Lead {
     name: string;
     _id: string;
   };
+  comments?: {
+    text: string;
+    author: string;
+    timestamp: Date;
+  }[];
 }
 
 export default function MyTeamPage() {
@@ -48,11 +53,15 @@ export default function MyTeamPage() {
   const [dateToFilter, setDateToFilter] = useState<string>('');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedMemberForNote, setSelectedMemberForNote] = useState<{ id: string; name: string } | null>(null);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
-  const [editingLeadForNotes, setEditingLeadForNotes] = useState<Lead | null>(null);
-  const [editingNotesText, setEditingNotesText] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
   const [newAssigneeId, setNewAssigneeId] = useState<string>('');
+  const [callConfirmation, setCallConfirmation] = useState<{ isOpen: boolean; phone: string; leadName: string }>({
+    isOpen: false,
+    phone: '',
+    leadName: '',
+  });
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -134,6 +143,143 @@ export default function MyTeamPage() {
     });
   };
 
+  const handleAddComment = async (leadId: string) => {
+    const commentText = commentInputs[leadId]?.trim();
+    if (!commentText) return;
+
+    try {
+      const res = await fetch('/api/leads/comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, comment: commentText }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add comment');
+      }
+      const data = await res.json();
+
+      console.log('Comment API response:', data);
+      console.log('Updated lead from server:', data?.lead);
+
+      // Update the lead in selectedLeads using server response (preferred)
+      if (selectedLeads) {
+        const updatedLeadFromServer = data?.lead;
+        console.log('Updating lead with comments:', updatedLeadFromServer?.comments);
+        const updated = selectedLeads.map((l) =>
+          l._id === leadId
+            ? {
+                ...l,
+                ...(updatedLeadFromServer || {}),
+                comments: (updatedLeadFromServer?.comments as any[]) || [
+                  ...(l.comments || []),
+                  {
+                    text: commentText,
+                    author: user?.name || 'Unknown',
+                    timestamp: new Date(),
+                  },
+                ],
+              }
+            : l
+        );
+        console.log('Updated selectedLeads:', updated.find(l => l._id === leadId)?.comments);
+        setSelectedLeads(updated);
+      }
+      setCommentInputs({ ...commentInputs, [leadId]: '' });
+      addToast('Comment added successfully!', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to add comment', 'error');
+    }
+  };
+
+  const handleDeleteComment = async (leadId: string, commentIndex: number) => {
+    try {
+      const res = await fetch('/api/leads/comment', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, commentIndex }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete comment');
+      }
+
+      const data = await res.json();
+      if (data?.lead && selectedLeads) {
+        setSelectedLeads((prev) =>
+          prev?.map((l) => (l._id === leadId ? { ...l, comments: data.lead.comments || [] } : l)) || []
+        );
+      }
+      addToast('Comment deleted successfully!', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to delete comment', 'error');
+    }
+  };
+
+  const handleWhatsApp = (phone: string) => {
+    try {
+      if (!phone) {
+        addToast('No phone number available', 'error');
+        return;
+      }
+
+      let cleaned = phone.toString().trim();
+
+      if (cleaned.startsWith('+')) {
+        cleaned = cleaned.substring(1);
+      }
+
+      let digits = cleaned.replace(/\D/g, '');
+
+      let finalNumber = digits;
+
+      if (digits.startsWith('00')) {
+        finalNumber = digits.substring(2);
+      } else if (digits.startsWith('0')) {
+        const localDigits = digits.substring(1);
+        finalNumber = '20' + localDigits;
+      } else if (digits.length === 10) {
+        finalNumber = '20' + digits;
+      }
+
+      if (finalNumber.length !== 12 || !finalNumber.startsWith('20')) {
+        addToast('Invalid phone number format', 'error');
+        return;
+      }
+
+      const url = `https://wa.me/${finalNumber}`;
+      window.open(url, '_blank');
+    } catch (err) {
+      addToast('Failed to open WhatsApp', 'error');
+    }
+  };
+
+  const handleCall = (phone: string, leadName: string) => {
+    if (!phone) {
+      addToast('No phone number available', 'error');
+      return;
+    }
+    setCallConfirmation({
+      isOpen: true,
+      phone: phone,
+      leadName: leadName,
+    });
+  };
+
+  const confirmCall = () => {
+    if (callConfirmation.phone) {
+      window.location.href = `tel:${callConfirmation.phone}`;
+      setCallConfirmation({ isOpen: false, phone: '', leadName: '' });
+    }
+  };
+
   const handleAssignLead = async (leadId: string, newMemberId: string | null) => {
     try {
       const res = await fetch('/api/leads/assign', {
@@ -174,46 +320,6 @@ export default function MyTeamPage() {
       addToast('Lead assigned successfully!', 'success');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Failed to assign lead', 'error');
-    }
-  };
-
-  const openEditNotesModal = (lead: Lead) => {
-    setEditingLeadForNotes(lead);
-    setEditingNotesText(lead.notes || '');
-  };
-
-  const closeEditNotesModal = () => {
-    setEditingLeadForNotes(null);
-    setEditingNotesText('');
-  };
-
-  const saveLeadNotes = async () => {
-    if (!editingLeadForNotes) return;
-    try {
-      setSavingNotes(true);
-      const res = await fetch(`/api/leads/${editingLeadForNotes._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ notes: editingNotesText }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save notes');
-      setSelectedLeads((prev) =>
-        prev
-          ? prev.map((lead) =>
-              lead._id === editingLeadForNotes._id ? { ...lead, notes: editingNotesText } : lead
-            )
-          : prev
-      );
-      addToast('Notes updated successfully', 'success');
-      closeEditNotesModal();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Failed to save notes', 'error');
-    } finally {
-      setSavingNotes(false);
     }
   };
 
@@ -597,6 +703,20 @@ export default function MyTeamPage() {
                                 <div className="flex items-center gap-2">
                                   <Phone size={14} className="flex-shrink-0 text-cyan-400" />
                                   <span className="break-all">{lead.phone}</span>
+                                  <button
+                                    onClick={() => handleCall(lead.phone, lead.name)}
+                                    className="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
+                                    type="button"
+                                  >
+                                    📞 Call
+                                  </button>
+                                  <button
+                                    onClick={() => handleWhatsApp(lead.phone)}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition-colors whitespace-nowrap"
+                                    type="button"
+                                  >
+                                    💬 WhatsApp
+                                  </button>
                                 </div>
                               )}
                               {lead.email && (
@@ -610,6 +730,78 @@ export default function MyTeamPage() {
                                   <span className="font-semibold text-slate-400">Notes:</span> {lead.notes}
                                 </div>
                               )}
+                              {/* Comments Section */}
+                              {lead.comments && lead.comments.length > 0 && (
+                                <div className="mt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedComments((prev) => ({
+                                        ...prev,
+                                        [lead._id]: !prev[lead._id],
+                                      }))
+                                    }
+                                    className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 mb-2"
+                                  >
+                                    {expandedComments[lead._id] ? 'Hide comments' : `Show comments (${lead.comments.length})`}
+                                  </button>
+
+                                  {expandedComments[lead._id] && (
+                                    <div className="space-y-2">
+                                      {lead.comments.map((comment, idx) => (
+                                        <div key={`${comment.timestamp}-${idx}`} className="bg-slate-700/50 rounded-lg p-2 text-xs text-slate-300">
+                                          <div className="flex justify-between items-start gap-2">
+                                            <div>
+                                              <div className="font-medium text-slate-200">{comment.author}</div>
+                                              <div className="mt-1">{comment.text}</div>
+                                              <div className="mt-1 text-slate-500">
+                                                {new Date(comment.timestamp).toLocaleDateString('en-US', {
+                                                  year: 'numeric',
+                                                  month: 'short',
+                                                  day: 'numeric',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                })}
+                                              </div>
+                                            </div>
+                                            <button
+                                              onClick={() => handleDeleteComment(lead._id, idx)}
+                                              className="text-xs text-red-300 hover:text-red-100 border border-red-400 hover:border-red-200 rounded px-2 py-1"
+                                              type="button"
+                                            >
+                                              Delete
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {/* Add Comment Input */}
+                              <div className="mt-3">
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={commentInputs[lead._id] || ''}
+                                    onChange={(e) => setCommentInputs({ ...commentInputs, [lead._id]: e.target.value })}
+                                    placeholder="Add a comment..."
+                                    className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder:text-slate-400 focus:ring-1 focus:ring-cyan-500 focus:border-transparent"
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleAddComment(lead._id);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => handleAddComment(lead._id)}
+                                    disabled={!commentInputs[lead._id]?.trim()}
+                                    className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-600 text-white rounded text-xs font-semibold transition-colors"
+                                  >
+                                    Add
+                                  </button>
+                                </div>
+                              </div>
                               <div className="mt-2 text-xs text-slate-500">
                                 Created: {new Date(lead.createdAt).toLocaleDateString('en-US', { 
                                   year: 'numeric', 
@@ -693,12 +885,6 @@ export default function MyTeamPage() {
                                   Closed • Locked
                                 </div>
                               )}
-                              <button
-                                onClick={() => openEditNotesModal(lead)}
-                                className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs font-semibold transition-colors"
-                              >
-                                Edit Notes
-                              </button>
                             </div>
                           </div>
                         )}
@@ -708,54 +894,6 @@ export default function MyTeamPage() {
                 );
               })
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Edit Lead Notes Modal */}
-      {editingLeadForNotes && token && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-6">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Edit Notes</h2>
-                <p className="text-sm text-slate-400">Lead: {editingLeadForNotes.name}</p>
-              </div>
-              <button
-                onClick={closeEditNotesModal}
-                disabled={savingNotes}
-                className="text-slate-400 hover:text-white hover:bg-slate-700/50 p-2 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <textarea
-              value={editingNotesText}
-              onChange={(e) => setEditingNotesText(e.target.value)}
-              rows={5}
-              className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Edit notes for this lead..."
-              disabled={savingNotes}
-            />
-            <div className="mt-2 text-xs text-slate-400 flex justify-end">
-              {editingNotesText.length} / 2000 characters
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={closeEditNotesModal}
-                disabled={savingNotes}
-                className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveLeadNotes}
-                disabled={savingNotes}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {savingNotes ? 'Saving...' : 'Save'}
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -775,6 +913,35 @@ export default function MyTeamPage() {
             addToast('Note sent successfully!', 'success');
           }}
         />
+      )}
+
+      {/* Call Confirmation Modal */}
+      {callConfirmation.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-slate-800 rounded-lg shadow-xl p-6 border border-slate-700 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-white mb-2">Confirm Call</h3>
+            <p className="text-slate-300 mb-4">
+              Call <span className="font-semibold">{callConfirmation.leadName}</span> at{' '}
+              <span className="font-semibold text-cyan-400">{callConfirmation.phone}</span>?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setCallConfirmation({ isOpen: false, phone: '', leadName: '' })}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCall}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
+                type="button"
+              >
+                Call Now
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

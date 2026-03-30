@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
     if (status) query.status = status;
 
     const leads = await Lead.find(query)
+      .select('name project phone email status source sourceText notes assignedTo comments createdAt updatedAt')
       .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 });
 

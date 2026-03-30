@@ -18,6 +18,11 @@ interface Lead {
   source: string;
   notes: string;
   assignedTo?: { _id: string; name: string };
+  comments?: {
+    text: string;
+    author: string;
+    timestamp: Date;
+  }[];
 }
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -75,6 +80,28 @@ export default function SalesLeads() {
       fetchLeads();
     }
   }, [token, user]);
+
+  const handleAddComment = async (leadId: string, comment: string) => {
+    try {
+      const res = await fetch('/api/leads/comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, comment }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add comment');
+      }
+      // Refresh leads to show the new comment
+      await fetchLeads();
+      addToast('Comment added successfully!', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to add comment', 'error');
+    }
+  };
 
   const fetchLeads = async () => {
     try {
@@ -380,8 +407,10 @@ export default function SalesLeads() {
                     project={lead.project}
                     status={lead.status}
                     notes={lead.notes}
+                    comments={lead.comments || []}
                     onStatusChange={(newStatus) => handleCardStatusChange(lead._id, newStatus)}
                     onNotesChange={(notes) => handleUpdateNotes(lead._id, notes)}
+                    onAddComment={(comment) => handleAddComment(lead._id, comment)}
                   />
                 ))}
             </div>

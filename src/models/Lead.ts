@@ -3,6 +3,12 @@ import mongoose, { Document, Schema } from 'mongoose';
 export type LeadStatus = 'new' | 'connected' | 'negotiation' | 'pending_closed' | 'closed_pending_approval' | 'closed' | 'rejected' | 'lost' | 'low_budget' | 'no_answer' | 'switched_off';
 export type LeadSource = 'website' | 'referral' | 'phone' | 'email' | 'facebook' | 'instagram' | 'google ads' | 'other';
 
+export interface IComment {
+  text: string;
+  author: string; // team leader name
+  timestamp: Date;
+}
+
 export interface ILead extends Document {
   name: string;
   project?: string;
@@ -16,6 +22,7 @@ export interface ILead extends Document {
   notes: string;
   info?: string; // New field for closing-specific information
   proofImage?: string;
+  comments: IComment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +78,16 @@ const LeadSchema = new Schema<ILead>(
     createdBy: {
       type: String,
       default: '',
+    },
+    comments: {
+      type: [
+        {
+          text: { type: String, required: true },
+          author: { type: String, required: true },
+          timestamp: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
     },
   },
   {

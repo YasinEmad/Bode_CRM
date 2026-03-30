@@ -5,6 +5,12 @@ import CloseDealModal, { DealClosingFormData } from './CloseDealModal';
 import { useAuth } from '@/hooks/useAuth';
 import { Phone, Edit2, X, Save, MessageCircle } from 'lucide-react';
 
+interface CommentItem {
+  text: string;
+  author: string;
+  timestamp: string | Date;
+}
+
 interface LeadCardProps {
   id: string;
   name: string;
@@ -15,10 +21,12 @@ interface LeadCardProps {
   status: string;
   notes?: string;
   value?: number;
+  comments?: CommentItem[];
   onStatusChange?: (status: string, extra?: { proofImage?: string; info?: string; notes?: string }) => void;
   onNotesChange?: (notes: string) => void;
   assignableMembers?: { _id: string; name: string }[];
   onAssign?: (employeeId: string | null) => Promise<void> | void;
+  onAddComment?: (comment: string) => Promise<void>;
 }
 
 const statusColors: Record<string, { bg: string; text: string; border: string; label: string; icon: string }> = {
@@ -41,13 +49,24 @@ export default function LeadCard({
   status,
   notes = '',
   value = 0,
+  comments = [],
   onStatusChange,
   onNotesChange,
   assignableMembers,
   onAssign,
+  onAddComment,
 }: LeadCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [editNotes, setEditNotes] = useState(notes);
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isAddingComment, setIsAddingComment] = useState(false);
+
+  const sortedComments = (comments || [])
+    .map((c) => ({ ...c, timestamp: new Date(c.timestamp) }))
+    .sort((a, b) => (a.timestamp as Date).getTime() - (b.timestamp as Date).getTime());
+
+  const latestComment = sortedComments.length > 0 ? sortedComments[sortedComments.length - 1] : null;
   const [closeInfo, setCloseInfo] = useState('');
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [isSubmittingClose, setIsSubmittingClose] = useState(false);
@@ -127,6 +146,19 @@ export default function LeadCard({
     setIsExpanded(false);
   };
 
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !onAddComment) return;
+    setIsAddingComment(true);
+    try {
+      await onAddComment(newComment.trim());
+      setNewComment('');
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
   return (
     <div className={`bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-6 border-l-4 ${statusColor.border} border border-slate-600 flex flex-col h-full`}>
       {/* Header */}
@@ -163,6 +195,91 @@ export default function LeadCard({
             <div>
               <p className="text-xs text-slate-400">Value</p>
               <p className="text-emerald-400 font-semibold text-xs sm:text-sm">EGP {value.toLocaleString()}</p>
+            </div>
+          </div>
+        )}
+        {latestComment ? (
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex items-start gap-2">
+              <span className="text-slate-500 flex-shrink-0">💬</span>
+              <div className="flex-1">
+                <p className="text-xs text-slate-400">Latest Comment</p>
+                <div className="bg-slate-700/50 rounded-lg p-2 mt-1">
+                  <p className="text-slate-200 text-xs sm:text-sm font-medium">{latestComment.author}</p>
+                  <p className="text-slate-300 text-xs sm:text-sm mt-1">{latestComment.text}</p>
+                  <p className="text-slate-500 text-xs mt-1">
+                    {(latestComment.timestamp as Date).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {sortedComments.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setShowAllComments((prev) => !prev)}
+                className="text-xs text-cyan-400 underline hover:text-cyan-100"
+              >
+                {showAllComments ? 'Hide all comments' : `View all comments (${sortedComments.length})`}
+              </button>
+            )}
+
+            {showAllComments && (
+              <div className="space-y-1 mt-1">
+                {sortedComments.map((comment, index) => (
+                  <div key={`${comment.timestamp}-${index}`} className="bg-slate-700/40 rounded-lg p-2 text-xs">
+                    <div className="text-slate-200 font-medium">{comment.author}</div>
+                    <div className="text-slate-300">{comment.text}</div>
+                    <div className="text-slate-500 text-[11px] mt-0.5">
+                      {(comment.timestamp as Date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 text-sm">
+            <span className="text-slate-500 flex-shrink-0">💬</span>
+            <p className="text-xs text-slate-400">No comments yet</p>
+          </div>
+        )}
+
+        {/* Add Comment Section */}
+        {onAddComment && (
+          <div className="flex items-start gap-2 text-sm mt-2">
+            <span className="text-slate-500 flex-shrink-0">💬</span>
+            <div className="flex-1 flex gap-2">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="flex-1 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-white text-xs placeholder:text-slate-400 focus:ring-1 focus:ring-cyan-500 focus:border-transparent"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddComment();
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={!newComment.trim() || isAddingComment}
+                className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-600 text-white rounded text-xs font-semibold transition-colors"
+              >
+                {isAddingComment ? 'Adding...' : 'Add'}
+              </button>
             </div>
           </div>
         )}
